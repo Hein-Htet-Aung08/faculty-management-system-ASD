@@ -43,7 +43,7 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS staff_expertise (
     expertise_id INTEGER PRIMARY KEY,
     staff_id INTEGER NOT NULL,
-    expertise_area TEXT NOT NULL,
+    expertise_area TEXT NOT NULL,   
     skill_level INTEGER NOT NULL,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
 )
