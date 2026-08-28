@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS staff_qualifications (
     qualification_name TEXT NOT NULL,
     institution TEXT,
     year_obtained INTEGER,
-    FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
 )
 """)
 
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS staff_expertise (
     staff_id INTEGER NOT NULL,
     expertise_area TEXT NOT NULL,   
     skill_level INTEGER NOT NULL,
-    FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
 )
 """)
 
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS staff_availability (
     day TEXT NOT NULL,
     time_slot TEXT NOT NULL,
     availability_status TEXT NOT NULL,
-    FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
 )
 """)
 
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS staff_ai_analysis (
     generated_summary TEXT NOT NULL,
     suitability_score REAL NOT NULL,
     date_generated TEXT NOT NULL,
-    FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
 )
 """)
 
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS staff_ai_recommended_subjects (
     recommendation_id INTEGER PRIMARY KEY,
     analysis_id INTEGER NOT NULL,
     subject_name TEXT NOT NULL,
-    FOREIGN KEY (analysis_id) REFERENCES staff_ai_analysis(analysis_id)
+    FOREIGN KEY (analysis_id) REFERENCES staff_ai_analysis(analysis_id) ON DELETE CASCADE
 )
 """)
 
