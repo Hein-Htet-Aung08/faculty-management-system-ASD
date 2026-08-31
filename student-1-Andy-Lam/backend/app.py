@@ -1,4 +1,6 @@
 from flask import Flask, jsonify, request
+from llm_client import generate_response
+from datetime import date
 import sqlite3
 from pathlib import Path
 
@@ -209,6 +211,52 @@ def filter_staff():
     results = conn.execute(query, params).fetchall()
     conn.close()
     return jsonify([dict(row) for row in results])
+
+@app.route("/api/staff/<int:staff_id>/generate_analysis", methods=["POST"])
+def generate_staff_analysis(staff_id):
+    conn = get_db_connection()
+
+    staff = conn.execute(
+        """SELECT staff.name, staff.position, staff_expertise.expertise_area, staff_expertise.skill_level, staff_qualifications.qualification_name, staff_qualifications.institution
+        FROM staff
+        JOIN staff_expertise ON staff.staff_id = staff_expertise.staff_id
+        JOIN staff_qualifications ON staff.staff_id = staff_qualifications.staff_id
+        WHERE staff.staff_id = ?""", (staff_id,)
+    ).fetchone()
+
+    if staff is None:
+        conn.close()
+        return jsonify({"error": "Staff member not found"}), 404
+
+    suitability_score = staff["skill_level"] * 2
+
+    prompt = f"""Write a 2-3 sentence professional summary of a staff member's suitability for teaching, based on the following information:
+                Name: {staff["name"]}
+                Position: {staff["position"]}
+                Expertise: {staff["expertise_area"]} (skill level {staff["skill_level"]}/5)
+                Qualification: {staff["qualification_name"]} from {staff["institution"]}
+
+                Write only the summary, no preamble."""
+    try: 
+        summary = generate_response(prompt)
+
+    except Exception as e:
+        conn.close()
+        return jsonify({"error": f"AI service unavailable: {e}"}), 503
+    
+    conn.execute(
+        """INSERT INTO staff_ai_analysis (staff_id, generated_summary, suitability_score, date_generated)
+        VALUES (?, ? ,?, ?)""",
+        (staff_id, summary, suitability_score, date.today().isoformat())
+    )
+
+    conn.commit()
+    conn.close()
+    return jsonify({
+        "message": "AI analysis successfully added", 
+        "generated_summary": summary, 
+        "suitability_score": suitability_score
+        }), 201
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
