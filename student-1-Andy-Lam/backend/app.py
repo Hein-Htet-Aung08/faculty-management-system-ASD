@@ -169,6 +169,47 @@ def get_staff_availability(staff_id):
     conn.close()
     return jsonify([dict(row) for row in availability])
 
+@app.route("/api/staff/search")
+def search_staff_by_expertise():
+    expertise_query = request.args.get("expertise", "")
+    conn = get_db_connection()
+
+    results = conn.execute(
+        """SELECT DISTINCT staff.staff_id, staff.name, departments.department_name, staff.position, staff_expertise.expertise_area, staff_expertise.skill_level 
+        FROM staff
+        JOIN staff_expertise ON staff.staff_id = staff_expertise.staff_id
+        JOIN departments ON staff.department_id = departments.department_id
+        WHERE staff_expertise.expertise_area LIKE ?""", (f"%{expertise_query}%",)
+    ).fetchall()
+
+    conn.close()
+    return jsonify([dict(row) for row in results])
+
+@app.route("/api/staff/filter")
+def filter_staff():
+    department_id = request.args.get("department_id")
+    position = request.args.get("position")
+
+    conn = get_db_connection()
+
+    query = """SELECT staff.staff_id, staff.name, departments.department_name, staff.position, staff.employment_type, staff.status
+            FROM staff
+            JOIN departments ON staff.department_id = departments.department_id
+            WHERE 1=1"""
+    params = []
+
+    if department_id:
+        query += " AND staff.department_id = ?"
+        params.append(department_id)
+
+    if position:
+        query += " AND staff.position = ?"
+        params.append(position)
+
+    results = conn.execute(query, params).fetchall()
+    conn.close()
+    return jsonify([dict(row) for row in results])
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
 
