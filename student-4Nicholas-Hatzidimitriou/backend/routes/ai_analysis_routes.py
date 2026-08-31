@@ -1,22 +1,23 @@
 from flask import Blueprint, request, jsonify
 from services import database_api
-from views.json_views import row_to_dict, rows_to_list
+from views.json_formatters import row_to_dict, rows_to_list
 
 ai_analysis_bp = Blueprint("ai_analysis", __name__)
 
-@ai_analysis_bp.route("/ai_analysis", methods=["GET"])
-def get_ai_analysis():
-    rows = database_api.get_ai_analysis(
+@ai_analysis_bp.route("/ai-analysis", methods=["GET"])
+def get_ai_analyses():
+    rows = database_api.list_ai_analyses(
         project_id=request.args.get("projectID"),
         staff_id=request.args.get("staffID"),
     )
     return jsonify(rows_to_list(rows)), 200
-
-@ai_analysis_bp.route("/ai_analysis/<int:ai_analysis_id>", methods=["GET"])
-def get_ai_analysis(ai_analysis_id):
-    row = database_api.get_ai_analysis_by_id(ai_analysis_id)
+ 
+ 
+@ai_analysis_bp.route("/ai-analysis/<int:analysis_id>", methods=["GET"])
+def get_ai_analysis(analysis_id):
+    row = database_api.get_ai_analysis(analysis_id)
     if row is None:
-        return jsonify({"error": "AI analysis entry not found"}), 404
+        return jsonify({"error": "AI analysis record not found"}), 404
     return jsonify(row_to_dict(row)), 200
 
 @ai_analysis_bp.route("/ai_analysis", methods=["POST"])

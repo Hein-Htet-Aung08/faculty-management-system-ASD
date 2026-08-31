@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services import database_api
-from views.json_views import row_to_dict, rows_to_list
+from views.json_formatters import row_to_dict, rows_to_list
 
 grants_bp = Blueprint("grants", __name__)
 
