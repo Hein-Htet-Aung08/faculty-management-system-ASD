@@ -1,0 +1,33 @@
+TASK
+
+Propose a redistribution of workload for the overloaded staff member described in
+the context below.
+
+For each proposal, identify:
+
+- the activity to move (use the exact description shown in the context)
+- how many weekly hours to move
+- which staff member should receive the work
+- why that target is suitable
+
+Respond with JSON in exactly this shape and nothing else:
+
+{
+  "proposals": [
+    {
+      "from_staff_id": 1,
+      "to_staff_id": 2,
+      "activity": "exact activity description from the context",
+      "hours": 9.0,
+      "rationale": "one short sentence grounded in the hours shown"
+    }
+  ]
+}
+
+Constraints:
+
+- Produce at most 3 proposals.
+- "hours" must not exceed the hours recorded for that activity.
+- "to_staff_id" must appear in the CANDIDATES list with enough headroom.
+- Use a "to_staff_id" of null only if the work should be dropped or deferred
+  rather than reassigned.
