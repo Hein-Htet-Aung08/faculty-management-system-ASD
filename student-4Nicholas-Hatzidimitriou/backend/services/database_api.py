@@ -5,7 +5,6 @@ DATABASE_SERVICE_URL = os.environ.get("DATABASE_SERVICE_URL", "http://localhost:
  
  
 def _get(path, params=None):
-    """GET returning a list, or None on 404."""
     response = requests.get(f"{DATABASE_SERVICE_URL}{path}", params=params, timeout=10)
     if response.status_code == 404:
         return None
