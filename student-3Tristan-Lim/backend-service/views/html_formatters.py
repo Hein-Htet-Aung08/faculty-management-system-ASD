@@ -1,5 +1,3 @@
-"""Render database rows as small HTML fragments for the HTMX frontend."""
-
 from html import escape
 
 
@@ -190,3 +188,87 @@ def format_recommendations(recs):
             for r in recs
         ],
     )
+
+
+# ------------------------------------------------- computed workload analysis ---
+
+def _status_badge(status):
+    return f'<span class="badge badge-{_esc(status)}">{_esc(status)}</span>'
+
+
+def format_analysis_table(results):
+    rows = [
+        (
+            r["staff_id"],
+            r["staff_name"],
+            r["department"],
+            f'{r["computed_hours"]:.1f}',
+            f'{r["cap"]:.1f}' if r["cap"] is not None else "-",
+            f'{r["headroom"]:+.1f}' if r["headroom"] is not None else "-",
+            len(r["clashes"]),
+            r["status"],
+        )
+        for r in sorted(results, key=lambda r: r["staff_id"])
+    ]
+    return _table(
+        ["Staff", "Name", "Dept", "Hours", "Cap", "Headroom", "Clashes", "Status"],
+        rows,
+    )
+
+
+def format_analysis_detail(result):
+    activity_rows = "".join(
+        f"<li>{_esc(activity)}: {hours:.1f}h</li>"
+        for activity, hours in sorted(result["by_activity"].items())
+    )
+    clash_rows = "".join(
+        f'<li>{_esc(c["kind"])}: {_esc(c["detail"])}</li>' for c in result["clashes"]
+    ) or "<li>None detected.</li>"
+
+    drift_note = ""
+    if result["drift"]:
+        drift_note = (
+            f'<p class="msg msg-warn">Stored profile reads '
+            f'{result["recorded_hours"]:.1f}h but entries total '
+            f'{result["computed_hours"]:.1f}h ({result["drift"]:+.1f}h drift).</p>'
+        )
+
+    return f"""
+<section class="analysis">
+  <h3>{_esc(result["staff_name"])} &mdash; staff {result["staff_id"]}
+      {_status_badge(result["status"])}</h3>
+  <p>{_esc(result["department"])} &middot;
+     {result["computed_hours"]:.1f}h of {result["cap"]:.1f}h cap
+     (warning at {result["warning_threshold"]:.1f}h,
+      underload below {result["underload_floor"]:.1f}h)</p>
+  {drift_note}
+  <h4>Hours by activity</h4>
+  <ul>{activity_rows}</ul>
+  <h4>Clashes</h4>
+  <ul>{clash_rows}</ul>
+</section>
+""".strip()
+
+
+def format_clashes(clashes):
+    return _table(
+        ["Staff", "Name", "Kind", "Detail"],
+        [(c["staff_id"], c.get("staff_name"), c["kind"], c["detail"]) for c in clashes],
+    )
+
+
+def format_recompute_summary(created, failed, evaluated, drifted):
+    lines = [
+        f'<p class="msg msg-info">Evaluated {evaluated} staff profiles. '
+        f'Raised {created} new alert(s).</p>'
+    ]
+    if failed:
+        lines.append(message(f"{failed} alert(s) could not be written.", "error"))
+    if drifted:
+        detail = "".join(
+            f'<li>{_esc(d["staff_name"])}: stored {d["recorded_hours"]:.1f}h vs '
+            f'computed {d["computed_hours"]:.1f}h ({d["drift"]:+.1f}h)</li>'
+            for d in drifted
+        )
+        lines.append(f"<h4>Profiles out of step with their entries</h4><ul>{detail}</ul>")
+    return "".join(lines)
