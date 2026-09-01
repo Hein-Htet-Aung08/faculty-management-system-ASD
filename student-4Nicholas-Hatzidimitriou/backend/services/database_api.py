@@ -39,11 +39,7 @@ def _clean_params(params):
     """Drop None values so they aren't sent as empty query strings."""
     return {k: v for k, v in params.items() if v is not None}
  
- 
-# ─────────────────────────────────────────────────────────────
 # ResearchProjects
-# ─────────────────────────────────────────────────────────────
- 
 def list_projects(department=None, status=None):
     return _get("/projects", _clean_params({"department": department, "status": status}))
  
@@ -67,11 +63,7 @@ def update_project(project_id, data):
 def delete_project(project_id):
     return _delete(f"/projects/{project_id}")
  
- 
-# ─────────────────────────────────────────────────────────────
 # Grants
-# ─────────────────────────────────────────────────────────────
- 
 def list_grants(status=None, project_id=None):
     return _get("/grants", _clean_params({"status": status, "projectID": project_id}))
  
@@ -95,11 +87,7 @@ def update_grant(grant_id, data):
 def delete_grant(grant_id):
     return _delete(f"/grants/{grant_id}")
  
- 
-# ─────────────────────────────────────────────────────────────
 # Publications
-# ─────────────────────────────────────────────────────────────
- 
 def list_publications(project_id=None, staff_id=None, publication_type=None):
     return _get("/publications", _clean_params({
         "projectID": project_id,
@@ -123,11 +111,7 @@ def update_publication(publication_id, data):
 def delete_publication(publication_id):
     return _delete(f"/publications/{publication_id}")
  
- 
-# ─────────────────────────────────────────────────────────────
 # ProjectStaff
-# ─────────────────────────────────────────────────────────────
- 
 def list_project_staff(project_id=None, staff_id=None):
     return _get("/project-staff", _clean_params({
         "projectID": project_id,
@@ -150,11 +134,7 @@ def update_project_staff(project_staff_id, data):
 def delete_project_staff(project_staff_id):
     return _delete(f"/project-staff/{project_staff_id}")
  
- 
-# ─────────────────────────────────────────────────────────────
 # GrantAlerts
-# ─────────────────────────────────────────────────────────────
- 
 def list_grant_alerts(grant_id=None, status=None):
     return _get("/grant-alerts", _clean_params({"grantID": grant_id, "status": status}))
  
@@ -174,11 +154,7 @@ def update_grant_alert(alert_id, data):
 def delete_grant_alert(alert_id):
     return _delete(f"/grant-alerts/{alert_id}")
  
- 
-# ─────────────────────────────────────────────────────────────
 # ResearchAIAnalysis
-# ─────────────────────────────────────────────────────────────
- 
 def list_ai_analyses(project_id=None, staff_id=None):
     return _get("/ai-analysis", _clean_params({
         "projectID": project_id,
