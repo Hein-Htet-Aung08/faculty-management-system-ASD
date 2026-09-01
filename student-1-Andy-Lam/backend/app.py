@@ -18,9 +18,10 @@ def get_db_connection():
 def get_all_staff():
     conn = get_db_connection()
     staff = conn.execute(
-        """SELECT staff.staff_id, staff.name, departments.department_name, staff.position, staff.employment_type, staff.status
+        """SELECT staff.staff_id, staff.name, departments.department_name, staff.position, staff.employment_type, staff.status, staff_expertise.expertise_area
         FROM staff
-        JOIN departments ON staff.department_id = departments.department_id"""
+        JOIN departments ON staff.department_id = departments.department_id
+        LEFT JOIN staff_expertise ON staff.staff_id = staff_expertise.staff_id"""
     ).fetchall()
     conn.close()
     return jsonify([dict(row) for row in staff])
@@ -177,7 +178,7 @@ def search_staff_by_expertise():
     conn = get_db_connection()
 
     results = conn.execute(
-        """SELECT DISTINCT staff.staff_id, staff.name, departments.department_name, staff.position, staff_expertise.expertise_area, staff_expertise.skill_level 
+        """SELECT DISTINCT staff.staff_id, staff.name, departments.department_name, staff.position, staff.status, staff_expertise.expertise_area, staff_expertise.skill_level 
         FROM staff
         JOIN staff_expertise ON staff.staff_id = staff_expertise.staff_id
         JOIN departments ON staff.department_id = departments.department_id
@@ -194,9 +195,10 @@ def filter_staff():
 
     conn = get_db_connection()
 
-    query = """SELECT staff.staff_id, staff.name, departments.department_name, staff.position, staff.employment_type, staff.status
+    query = """SELECT staff.staff_id, staff.name, departments.department_name, staff.position, staff.employment_type, staff.status, staff_expertise.expertise_area
             FROM staff
             JOIN departments ON staff.department_id = departments.department_id
+            LEFT JOIN staff_expertise ON staff.staff_id = staff_expertise.staff_id
             WHERE 1=1"""
     params = []
 
@@ -211,6 +213,15 @@ def filter_staff():
     results = conn.execute(query, params).fetchall()
     conn.close()
     return jsonify([dict(row) for row in results])
+
+@app.route("/api/departments")
+def get_all_departments():
+    conn = get_db_connection()
+    departments = conn.execute(
+        "SELECT department_id, department_name FROM departments"
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(row) for row in departments])
 
 @app.route("/api/staff/<int:staff_id>/generate_analysis", methods=["POST"])
 def generate_staff_analysis(staff_id):
