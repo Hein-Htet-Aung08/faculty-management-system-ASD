@@ -30,7 +30,7 @@ def get_all_staff():
 def get_staff_by_id(staff_id):
     conn = get_db_connection()
     staff = conn.execute(
-        """SELECT staff.staff_id, staff.name, staff.email, staff.phone, departments.department_name, staff.position, staff.employment_type, staff.status
+        """SELECT staff.staff_id, staff.name, staff.email, staff.phone, staff.department_id, departments.department_name, staff.position, staff.employment_type, staff.status
         FROM staff
         JOIN departments ON staff.department_id = departments.department_id
         WHERE staff.staff_id=?""", (staff_id,)
