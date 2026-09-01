@@ -272,3 +272,31 @@ def format_recompute_summary(created, failed, evaluated, drifted):
         )
         lines.append(f"<h4>Profiles out of step with their entries</h4><ul>{detail}</ul>")
     return "".join(lines)
+
+
+def format_calendar(grid, days, start_hour=8, end_hour=20):
+    """Weekly availability grid, one row per hour."""
+    header = "".join(f"<th>{_esc(day)}</th>" for day in days)
+
+    rows = ""
+    for hour in range(start_hour, end_hour):
+        cells = ""
+        for day in days:
+            availability = grid[day].get(hour)
+            css = f' class="slot-{_esc(availability)}"' if availability else ""
+            title = f' title="{_esc(availability)}"' if availability else ""
+            cells += f"<td{css}{title}></td>"
+        rows += f'<tr><td class="hour">{hour:02d}:00</td>{cells}</tr>'
+
+    legend = (
+        '<div class="calendar-legend">'
+        '<span><i class="swatch slot-available"></i>available</span>'
+        '<span><i class="swatch slot-preferred"></i>preferred</span>'
+        '<span><i class="swatch slot-unavailable"></i>unavailable</span>'
+        "</div>"
+    )
+
+    return (
+        f'<table class="calendar"><thead><tr><th class="hour"></th>{header}</tr></thead>'
+        f"<tbody>{rows}</tbody></table>{legend}"
+    )

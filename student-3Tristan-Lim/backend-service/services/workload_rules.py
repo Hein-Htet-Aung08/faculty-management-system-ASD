@@ -235,3 +235,37 @@ def build_alerts(analysis):
         })
 
     return alerts
+
+
+# ------------------------------------------------------------------ calendar ---
+
+CALENDAR_DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+# When two slots cover the same hour, the more restrictive one is shown.
+AVAILABILITY_PRECEDENCE = {"available": 0, "preferred": 1, "unavailable": 2}
+
+
+def build_calendar_grid(slots, start_hour=8, end_hour=20):
+    """Map availability slots onto an hour-by-day grid for the weekly view."""
+    grid = {day: {} for day in CALENDAR_DAYS}
+
+    for slot in slots:
+        day = slot.get("day_of_week")
+        if day not in grid:
+            continue
+
+        start, end = _minutes(slot.get("start_time")), _minutes(slot.get("end_time"))
+        if start is None or end is None:
+            continue
+
+        availability = slot.get("availability") or "available"
+        rank = AVAILABILITY_PRECEDENCE.get(availability, 0)
+
+        for hour in range(start_hour, end_hour):
+            if not ranges_overlap(start, end, hour * 60, hour * 60 + 60):
+                continue
+            current = grid[day].get(hour)
+            if current is None or rank > AVAILABILITY_PRECEDENCE.get(current, 0):
+                grid[day][hour] = availability
+
+    return grid

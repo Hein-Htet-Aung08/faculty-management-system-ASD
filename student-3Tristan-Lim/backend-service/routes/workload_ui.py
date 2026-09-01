@@ -195,6 +195,25 @@ def clashes():
     return fmt.format_clashes(found), 200
 
 
+@workload_bp.get("/calendar")
+def calendar():
+    """Weekly availability grid for one staff member."""
+    staff_id = request.args.get("staff_id", "").strip()
+    if not staff_id:
+        return fmt.message("staff_id is required for the calendar view.", "warn"), 400
+
+    try:
+        slots = db.list_rows("availability_slot", staff_id=staff_id)
+    except requests.RequestException as exc:
+        return fmt.message(f"database-service unreachable: {exc}", "error"), 503
+
+    if not slots:
+        return fmt.message(f"No availability recorded for staff {staff_id}.", "info"), 200
+
+    grid = rules.build_calendar_grid(slots)
+    return fmt.format_calendar(grid, rules.CALENDAR_DAYS), 200
+
+
 @workload_bp.post("/alerts/recompute")
 def recompute_alerts():
     """Write computed overload/underload/clash alerts back to the database.
