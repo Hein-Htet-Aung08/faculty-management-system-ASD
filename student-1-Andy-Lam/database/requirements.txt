@@ -1,0 +1,2 @@
+# No external dependencies required for this folder.
+# sqlite3 is part of the Python standard library.

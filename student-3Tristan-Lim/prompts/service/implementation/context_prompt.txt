@@ -1,0 +1,17 @@
+CONTEXT NOTES
+
+The context below is generated from live workload records, not from your own
+knowledge. Treat it as the only source of truth.
+
+Field meanings:
+
+- cap: the maximum weekly hours this staff member may be allocated.
+- hours: the staff member's current total weekly hours across all activities.
+- headroom: cap minus hours. A negative headroom means the staff member is
+  already over their cap and must not receive additional work.
+- ACTIVITIES: the individual commitments making up the source staff member's
+  total, with the weekly hours attributable to each.
+- CANDIDATES: staff members who may be able to absorb reassigned work, with the
+  headroom available to each.
+- CLASHES: known scheduling conflicts already detected for the source staff
+  member. Take these into account when choosing what to move.

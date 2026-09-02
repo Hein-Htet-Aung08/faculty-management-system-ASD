@@ -1,1 +1,11 @@
 .env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+student-3Tristan-Lim/**/data/
+*.db
+
+# Student 3 personal notes
+student-3Tristan-Lim/README.md
