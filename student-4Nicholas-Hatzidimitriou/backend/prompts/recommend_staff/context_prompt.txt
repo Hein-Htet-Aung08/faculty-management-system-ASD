@@ -1,0 +1,10 @@
+Research opportunity:
+Title: {title}
+Department: {department}
+Description: {description}
+
+Available staff (candidates):
+{staff_roster}
+
+Staff already assigned to this project (exclude these from your recommendations):
+{already_assigned}

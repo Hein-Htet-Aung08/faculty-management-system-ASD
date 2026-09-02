@@ -1,11 +1,13 @@
 from flask import Flask, jsonify, request
 from llm_client import generate_response
+from flask_cors import CORS
 from datetime import date
 import sqlite3
 import os
 from pathlib import Path
 
 app = Flask(__name__)
+CORS(app)
 
 DATA_DIR = os.getenv("DB_PATH", str(Path(__file__).parent.parent / "database" / "staff.db"))
 PROMPT_DIR = Path(__file__).parent / "prompts"
