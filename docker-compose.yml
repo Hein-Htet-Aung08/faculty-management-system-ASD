@@ -1,4 +1,15 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
   # ---- Student 1: Andy - Staff Management ----
   staff-database:
     build: ./student-1-Andy-Lam/database
@@ -6,6 +17,8 @@ services:
       - staff-data:/app
     environment:
       - DB_PATH=/app/staff.db
+    networks:
+      - faculty-network
 
   staff-backend:
     build: ./student-1-Andy-Lam/backend
@@ -15,9 +28,12 @@ services:
       - staff-data:/app/data
     environment:
       - DB_PATH=/app/data/staff.db
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
+      - OLLAMA_BASE_URL=http://ollama:11434/v1
     depends_on:
       - staff-database
+      - ollama
+    networks:
+      - faculty-network
 
   staff-frontend:
     build: ./student-1-Andy-Lam/frontend
@@ -25,11 +41,68 @@ services:
       - "8001:80"
     depends_on:
       - staff-backend
+    networks:
+      - faculty-network
 
   # ---- Student 2: Hein - Teaching Subject and Classroom Allocation ----
+
   # ---- Student 3: Tristan - Workload and Availability Management ----
+
   # ---- Student 4: Nicholas - Research and Grant Management ----
+  student4-frontend:
+    build:
+      context: ./student-4Nicholas-Hatzidimitriou/frontend
+    container_name: student4-frontend
+    ports:
+      - "8004:8004"
+    depends_on:
+      - student4-backend
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student4-backend:
+    build:
+      context: ./student-4Nicholas-Hatzidimitriou/backend
+    container_name: student4-backend
+    ports:
+      - "5004:5004"
+    environment:
+      DATABASE_SERVICE_URL: http://student4-database:5104
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: qwen2.5:0.5b
+      PORT: 5004
+      STAFF_SERVICE_URL: http://staff-backend:5001
+      WORKLOAD_SERVICE_URL: http://student3-backend:5003
+    depends_on:
+      - student4-database
+      - ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student4-database:
+    build:
+      context: ./student-4Nicholas-Hatzidimitriou/database-service
+    container_name: student4-database
+    ports:
+      - "5104:5104"
+    environment:
+      DATA_DIR: /app/data
+      PORT: 5104
+    volumes:
+      - student4_data:/app/data
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
   # ---- Student 5: Matthew - Performance and Professional Development ----
 
 volumes:
   staff-data:
+  student4_data:
+  ollama_data:
+
+networks:
+  faculty-network:
+    driver: bridge

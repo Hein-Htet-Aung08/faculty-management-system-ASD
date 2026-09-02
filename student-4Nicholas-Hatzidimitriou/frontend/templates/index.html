@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Research &amp; Grant Ledger</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.10/htmx.min.js"></script>
+</head>
+<body>
+
+  <header class="ledger-header">
+    <h1>Research &amp; Grant Ledger</h1>
+    <p class="subtitle">Faculty Management System — Research and Grant Management</p>
+
+    <nav class="tab-nav">
+      <button
+        class="tab-button active"
+        hx-get="/tabs/normal"
+        hx-target="#tab-content"
+        hx-swap="innerHTML"
+        onclick="setActiveTab(this)"
+      >
+        Projects &amp; Grants
+      </button>
+      <button
+        class="tab-button"
+        hx-get="/tabs/ai-mode"
+        hx-target="#tab-content"
+        hx-swap="innerHTML"
+        onclick="setActiveTab(this)"
+      >
+        AI Insights
+      </button>
+    </nav>
+  </header>
+
+  <main class="ledger-panel" id="tab-content" hx-get="/tabs/normal" hx-trigger="load">
+  </main>
+
+  <script>
+    function setActiveTab(clicked) {
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      clicked.classList.add('active');
+    }
+    const API_BASE = window.RESEARCH_API_BASE || 'http://localhost:5004';
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+Title: {title}
+Description: {description}
+Department: {department}
+Status: {status}
+Publications produced: {publications}

@@ -1,0 +1,4 @@
+Project title: {title}
+Department: {department}
+Description: {description}
+Staff currently assigned: {staff_roles}
