@@ -1,0 +1,35 @@
+services:
+  # ---- Student 1: Andy - Staff Management ----
+  staff-database:
+    build: ./student-1-Andy-Lam/database
+    volumes:
+      - staff-data:/app
+    environment:
+      - DB_PATH=/app/staff.db
+
+  staff-backend:
+    build: ./student-1-Andy-Lam/backend
+    ports:
+      - "5001:5001"
+    volumes:
+      - staff-data:/app/data
+    environment:
+      - DB_PATH=/app/data/staff.db
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
+    depends_on:
+      - staff-database
+
+  staff-frontend:
+    build: ./student-1-Andy-Lam/frontend
+    ports:
+      - "8001:80"
+    depends_on:
+      - staff-backend
+
+  # ---- Student 2: Hein - Teaching Subject and Classroom Allocation ----
+  # ---- Student 3: Tristan - Workload and Availability Management ----
+  # ---- Student 4: Nicholas - Research and Grant Management ----
+  # ---- Student 5: Matthew - Performance and Professional Development ----
+
+volumes:
+  staff-data:
