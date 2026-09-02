@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teaching, Subject & Classroom Allocation</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <header class="ledger-header">
+    <h1>Teaching, Subject &amp; Classroom Allocation</h1>
+    <p class="subtitle">Faculty Management System</p>
+
+    <nav class="tab-nav">
+        <button class="tab-button active" data-tab="subjects">
+        Subjects
+        </button>
+
+        <button class="tab-button" data-tab="subject-offers">
+        Subject Offers
+        </button>
+
+        <button class="tab-button" data-tab="classrooms">
+        Classrooms
+        </button>
+
+        <button class="tab-button" data-tab="allocations">
+        Teaching Allocations
+        </button>
+
+        <button class="tab-button" data-tab="ai-recommendations">
+        AI Recommendations
+        </button>
+    </nav>
+    </header>
+
+    <main class="ledger-panel">
+
+    <section id="subjects" class="panel-section">
+        <h2>Subjects</h2>
+
+        <form id="subject-form">
+        <div class="form-grid">
+
+            <div class="form-field">
+            <label for="subject-code">Subject Code</label>
+            <input
+                id="subject-code"
+                name="subject_code"
+                type="text"
+                maxlength="5"
+                required
+            >
+            </div>
+
+            <div class="form-field">
+            <label for="subject-name">Subject Name</label>
+            <input
+                id="subject-name"
+                name="name"
+                type="text"
+                required
+            >
+            </div>
+
+            <div class="form-field span-2">
+            <label for="expertise-search">Required Expertise</label>
+
+            <div id="expertise-tags"></div>
+
+            <input
+                id="expertise-search"
+                type="text"
+                placeholder="Search or add expertise"
+                autocomplete="off"
+            >
+
+            <div id="expertise-suggestions"></div>
+            </div>
+
+        </div>
+
+        <button class="btn" type="submit">
+            Add Subject
+        </button>
+
+        <button
+            id="subject-cancel-button"
+            class="btn secondary"
+            type="button"
+            hidden
+        >
+            Cancel
+        </button>
+        </form>
+
+        <div id="subject-message"></div>
+
+        <div class="panel-section">
+        <h2>Subject Records</h2>
+
+        <table class="ledger-table">
+            <thead>
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Required Expertise</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="subjects-table-body">
+            </tbody>
+        </table>
+
+        <div id="subjects-empty" class="empty-state" hidden>
+            No subjects found.
+        </div>
+        </div>
+    </section>
+
+    <section
+    id="subject-offers"
+    class="panel-section"
+    hidden
+    >
+    <h2>Subject Offers</h2>
+
+    <form id="subject-offer-form">
+    <div class="form-grid">
+        <div class="form-field">
+        <label for="offer-subject-code">Subject Code</label>
+        <input
+            id="offer-subject-code"
+            name="subject_code"
+            type="text"
+            maxlength="5"
+            required
+        >
+        </div>
+
+        <div class="form-field">
+        <label for="offer-semester">Semester</label>
+        <select
+            id="offer-semester"
+            name="semester"
+            required
+        >
+            <option value="">Select semester</option>
+            <option value="AUT">AUT</option>
+            <option value="SPR">SPR</option>
+            <option value="SUM">SUM</option>
+        </select>
+        </div>
+
+        <div class="form-field">
+        <label for="offer-year">Year</label>
+        <input
+            id="offer-year"
+            name="year"
+            type="number"
+            min="1000"
+            max="9999"
+            required
+        >
+        </div>
+
+        <div class="form-field">
+        <label for="offer-enrollment">Expected Enrollment</label>
+        <input
+            id="offer-enrollment"
+            name="expected_enrollment"
+            type="number"
+            min="1"
+            required
+        >
+        </div>
+    </div>
+
+    <button class="btn" type="submit">
+        Add Subject Offer
+    </button>
+
+    <button
+        id="subject-offer-cancel-button"
+        class="btn secondary"
+        type="button"
+        hidden
+    >
+        Cancel
+    </button>
+    </form>
+
+    <div id="subject-offer-message"></div>
+
+    <div class="panel-section">
+    <h2>Subject Offer Records</h2>
+
+    <table class="ledger-table">
+        <thead>
+        <tr>
+            <th>Offer ID</th>
+            <th>Subject Code</th>
+            <th>Semester</th>
+            <th>Year</th>
+            <th>Expected Enrollment</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+
+        <tbody id="subject-offers-table-body">
+        </tbody>
+    </table>
+
+    <div
+        id="subject-offers-empty"
+        class="empty-state"
+        hidden
+    >
+        No subject offers found.
+    </div>
+    </div>
+</section>
+
+<section
+    id="classrooms"
+    class="panel-section"
+    hidden
+    >
+    <h2>Classrooms</h2>
+
+    <form id="classroom-form">
+    <div class="form-grid">
+
+        <div class="form-field">
+        <label for="classroom-building">Building</label>
+        <input
+            id="classroom-building"
+            name="building"
+            type="text"
+            placeholder="CB11"
+            required
+        >
+        </div>
+
+        <div class="form-field">
+        <label for="classroom-floor">Floor</label>
+        <input
+            id="classroom-floor"
+            name="floor"
+            type="text"
+            placeholder="04"
+            required
+        >
+        </div>
+
+        <div class="form-field">
+        <label for="classroom-room-number">Room Number</label>
+        <input
+            id="classroom-room-number"
+            name="room_number"
+            type="text"
+            placeholder="405"
+            required
+        >
+        </div>
+
+        <div class="form-field">
+        <label for="classroom-id">Classroom ID</label>
+        <input
+            id="classroom-id"
+            type="text"
+            readonly
+            placeholder="CB11.04.405"
+        >
+        </div>
+
+        <div class="form-field">
+        <label for="classroom-capacity">Capacity</label>
+        <input
+            id="classroom-capacity"
+            name="capacity"
+            type="number"
+            min="1"
+            required
+        >
+        </div>
+
+        <div class="form-field">
+        <label for="classroom-room-type">Room Type</label>
+        <input
+            id="classroom-room-type"
+            name="room_type"
+            type="text"
+            placeholder="Lecture Theatre"
+            required
+        >
+        </div>
+
+        <div class="form-field span-2">
+        <label for="facility-search">Facilities</label>
+
+        <div id="facility-tags"></div>
+
+        <input
+            id="facility-search"
+            type="text"
+            placeholder="Search or add facility"
+            autocomplete="off"
+        >
+
+        <div id="facility-suggestions"></div>
+        </div>
+
+    </div>
+
+    <button class="btn" type="submit">
+        Add Classroom
+    </button>
+
+    <button
+        id="classroom-cancel-button"
+        class="btn secondary"
+        type="button"
+        hidden
+    >
+        Cancel
+    </button>
+    </form>
+
+    <div id="classroom-message"></div>
+
+    <div class="panel-section">
+    <h2>Classroom Records</h2>
+
+    <table class="ledger-table">
+        <thead>
+        <tr>
+            <th>Classroom ID</th>
+            <th>Building</th>
+            <th>Floor</th>
+            <th>Room</th>
+            <th>Capacity</th>
+            <th>Room Type</th>
+            <th>Facilities</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+
+        <tbody id="classrooms-table-body">
+        </tbody>
+    </table>
+
+    <div
+        id="classrooms-empty"
+        class="empty-state"
+        hidden
+    >
+        No classrooms found.
+    </div>
+    </div>
+    </section>
+
+    <section
+    id="allocations"
+    class="panel-section"
+    hidden
+    >
+    <h2>Teaching Allocations</h2>
+
+    <form id="allocation-form">
+        <div class="form-grid">
+
+        <div class="form-field">
+            <label for="allocation-offer-id">Subject Offer</label>
+            <select id="allocation-offer-id" required>
+            <option value="">Select subject offer</option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label for="allocation-staff-id">Staff ID</label>
+            <input
+            id="allocation-staff-id"
+            type="number"
+            min="1"
+            placeholder="Leave blank if unassigned"
+            >
+        </div>
+
+        <div class="form-field">
+            <label for="allocation-classroom-id">Classroom</label>
+            <select id="allocation-classroom-id" required>
+            <option value="">Select classroom</option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label for="allocation-day">Day</label>
+            <select id="allocation-day" required>
+            <option value="">Select day</option>
+            <option value="MON">Monday</option>
+            <option value="TUE">Tuesday</option>
+            <option value="WED">Wednesday</option>
+            <option value="THU">Thursday</option>
+            <option value="FRI">Friday</option>
+            </select>
+        </div>
+
+        <div class="form-field span-2">
+            <label for="allocation-date-range">Date Range</label>
+            <input
+            id="allocation-date-range"
+            type="text"
+            placeholder="03/08 - 20/09"
+            required
+            >
+        </div>
+
+        <div class="form-field">
+            <label for="allocation-start-time">Start Time</label>
+            <input
+            id="allocation-start-time"
+            type="time"
+            required
+            >
+        </div>
+
+        <div class="form-field">
+            <label for="allocation-end-time">End Time</label>
+            <input
+            id="allocation-end-time"
+            type="time"
+            required
+            >
+        </div>
+
+        <div class="form-field">
+            <label for="allocation-class-type">Class Type</label>
+            <select id="allocation-class-type" required>
+            <option value="">Select class type</option>
+            <option value="BCP">BCP</option>
+            <option value="BRK">BRK</option>
+            <option value="CNR">CNR</option>
+            <option value="CMP">CMP</option>
+            <option value="DRP">DRP</option>
+            <option value="INT">INT</option>
+            <option value="LAB">LAB</option>
+            <option value="LDT">LDT</option>
+            <option value="LEC">LEC</option>
+            <option value="PRC">PRC</option>
+            <option value="SEM">SEM</option>
+            <option value="STU">STU</option>
+            <option value="TUT">TUT</option>
+            <option value="UPS">UPS</option>
+            <option value="WRK">WRK</option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label for="allocation-class-size">Expected Class Size</label>
+            <input
+            id="allocation-class-size"
+            type="number"
+            min="1"
+            required
+            >
+        </div>
+
+        <div class="form-field">
+            <label for="allocation-status">Status</label>
+            <select id="allocation-status">
+            <option value="PENDING">Pending</option>
+            <option value="CONFIRMED">Confirmed</option>
+            <option value="NEEDS_ASSIGNMENT">Needs Assignment</option>
+            <option value="CANCELLED">Cancelled</option>
+            </select>
+        </div>
+
+        </div>
+
+        <button class="btn" type="submit">
+        Add Teaching Allocation
+        </button>
+
+        <button
+        id="allocation-cancel-button"
+        class="btn secondary"
+        type="button"
+        hidden
+        >
+        Cancel
+        </button>
+    </form>
+
+    <div id="allocation-message"></div>
+
+    <div class="panel-section">
+        <h2>Teaching Allocation Records</h2>
+
+        <table class="ledger-table">
+        <thead>
+            <tr>
+            <th>ID</th>
+            <th>Offer</th>
+            <th>Staff</th>
+            <th>Classroom</th>
+            <th>Day</th>
+            <th>Date Range</th>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Size</th>
+            <th>Status</th>
+            <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody id="allocations-table-body">
+        </tbody>
+        </table>
+
+        <div
+        id="allocations-empty"
+        class="empty-state"
+        hidden
+        >
+        No teaching allocations found.
+        </div>
+    </div>
+    </section>
+
+    <section
+    id="ai-recommendations"
+    class="panel-section"
+    hidden
+    >
+    <h2>AI Staff Recommendations</h2>
+
+    <p>
+        Generate suitable teaching staff recommendations using subject expertise,
+        availability and workload context.
+    </p>
+
+    <form id="ai-recommendation-form">
+        <div class="form-grid">
+
+        <div class="form-field">
+            <label for="ai-offer-id">Subject Offer</label>
+            <select id="ai-offer-id" required>
+            <option value="">Select subject offer</option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label for="ai-day">Day</label>
+            <select id="ai-day" required>
+            <option value="">Select day</option>
+            <option value="MON">Monday</option>
+            <option value="TUE">Tuesday</option>
+            <option value="WED">Wednesday</option>
+            <option value="THU">Thursday</option>
+            <option value="FRI">Friday</option>
+            </select>
+        </div>
+
+        <div class="form-field span-2">
+            <label for="ai-date-range">Date Range</label>
+            <input
+            id="ai-date-range"
+            type="text"
+            placeholder="03/08 - 20/09"
+            required
+            >
+        </div>
+
+        <div class="form-field">
+            <label for="ai-start-time">Start Time</label>
+            <input
+            id="ai-start-time"
+            type="time"
+            required
+            >
+        </div>
+
+        <div class="form-field">
+            <label for="ai-end-time">End Time</label>
+            <input
+            id="ai-end-time"
+            type="time"
+            required
+            >
+        </div>
+
+        <div class="form-field">
+            <label for="ai-class-type">Class Type</label>
+            <select id="ai-class-type" required>
+            <option value="">Select class type</option>
+            <option value="BCP">BCP</option>
+            <option value="BRK">BRK</option>
+            <option value="CNR">CNR</option>
+            <option value="CMP">CMP</option>
+            <option value="DRP">DRP</option>
+            <option value="INT">INT</option>
+            <option value="LAB">LAB</option>
+            <option value="LDT">LDT</option>
+            <option value="LEC">LEC</option>
+            <option value="PRC">PRC</option>
+            <option value="SEM">SEM</option>
+            <option value="STU">STU</option>
+            <option value="TUT">TUT</option>
+            <option value="UPS">UPS</option>
+            <option value="WRK">WRK</option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label for="ai-class-size">Expected Class Size</label>
+            <input
+            id="ai-class-size"
+            type="number"
+            min="1"
+            required
+            >
+        </div>
+
+        </div>
+
+        <button
+        id="ai-generate-button"
+        class="btn"
+        type="submit"
+        >
+        Generate Recommendations
+        </button>
+
+        <button
+        id="ai-generate-again-button"
+        class="btn secondary"
+        type="button"
+        hidden
+        >
+        Generate Again
+        </button>
+    </form>
+
+    <div id="ai-message"></div>
+
+    <div class="panel-section">
+        <h2>Agentic Workflow</h2>
+
+        <div class="ai-result-panel">
+        <p><strong>Plan:</strong> Gather subject, staff, expertise, availability and workload context.</p>
+        <p><strong>Act:</strong> Ask the approved LLM to rank suitable teaching staff.</p>
+        <p><strong>Observe:</strong> Verify returned staff IDs and hard availability constraints.</p>
+        <p><strong>Adapt:</strong> Generate again using previous recommendation outcomes.</p>
+        </div>
+    </div>
+
+    <div class="panel-section">
+        <h2>Recommendations</h2>
+
+        <div id="ai-results" class="ai-result-panel"></div>
+    </div>
+
+    <div
+        id="ai-rejected-section"
+        class="panel-section"
+        hidden
+    >
+        <h2>Rejected Recommendations</h2>
+
+        <div id="ai-rejected-results"></div>
+    </div>
+    </section>
+
+    </main>
+
+   <script src="js/api.js"></script>
+    <script src="js/subjects.js"></script>
+    <script src="js/subject_offers.js"></script>
+    <script src="js/classrooms.js"></script>
+    <script src="js/allocations.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/tabs.js"></script>
+</body>
+</html>

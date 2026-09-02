@@ -68,6 +68,7 @@ services:
       - allocation-data:/app/data
     networks:
       - faculty-network
+    restart: unless-stopped
 
   allocation-backend:
     build:
@@ -86,6 +87,18 @@ services:
       - staff-backend
       #- <TRISTAN_SERVICE_NAME> # Needa replace this with Student 3's backend service.
       - ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  allocation-frontend:
+    build:
+      context: .
+      dockerfile: ./student-2Hein-Htet-Aung/frontend/Dockerfile
+    ports:
+      - "3002:80"
+    depends_on:
+      - allocation-backend
     networks:
       - faculty-network
 
