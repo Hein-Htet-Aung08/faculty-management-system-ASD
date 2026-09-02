@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
 COPY llm_client.py .
+COPY prompts/ prompts/
 
 EXPOSE 5001
 
