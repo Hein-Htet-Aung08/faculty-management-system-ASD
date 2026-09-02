@@ -59,6 +59,33 @@
         <div id="detail-panel" class="panel"></div>
         <div id="calendar-panel" class="panel is-hidden"></div>
 
+        <h2>Export</h2>
+        <p class="hint">Download the current view as CSV, or open a printable
+           report and save it as PDF from the browser.</p>
+
+        <div class="filter-row">
+            <div>
+                <label for="export-dataset">Dataset</label>
+                <select id="export-dataset">
+                    <option value="analysis">Workload analysis (computed)</option>
+                    <option value="clashes">Conflicts</option>
+                    <option value="profiles">Staff workload profiles</option>
+                    <option value="entries">Workload entries</option>
+                    <option value="availability">Availability slots</option>
+                    <option value="leave">Leave records</option>
+                    <option value="alerts">Alerts</option>
+                    <option value="recommendations">Rebalance recommendations</option>
+                    <option value="rules">Workload rules</option>
+                </select>
+            </div>
+            <div>
+                <label for="export-staff">Staff ID (blank for all)</label>
+                <input id="export-staff" type="number" min="1" placeholder="All staff">
+            </div>
+            <button type="button" data-action="export-csv">Download CSV</button>
+            <button type="button" class="secondary" data-action="print-report">Printable report</button>
+        </div>
+
         <h2>Conflicts</h2>
         <p class="hint">Overlapping availability slots, and leave that falls inside
            a teaching commitment.</p>
@@ -369,7 +396,30 @@ function recompute() {
         .then(loadOverview);
 }
 
+function exportCsv() {
+    const params = new URLSearchParams();
+    const staffId = value("export-staff");
+    if (staffId) params.set("staff_id", staffId);
+
+    // Navigating the top window would replace the dashboard, so the download is
+    // triggered from a link click instead.
+    const link = document.createElement("a");
+    link.href = `${BACKEND}/export/${value("export-dataset")}.csv?${params}`;
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
+function printReport() {
+    const staffId = value("export-staff");
+    const query = staffId ? `?staff_id=${staffId}` : "";
+    window.open(`/report.html${query}`, "_blank");
+}
+
 const ACTIONS = {
+    "export-csv": exportCsv,
+    "print-report": printReport,
     "load-overview": loadOverview,
     "load-detail": loadDetail,
     "load-calendar": loadCalendar,

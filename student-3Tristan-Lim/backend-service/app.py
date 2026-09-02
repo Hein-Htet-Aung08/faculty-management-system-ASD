@@ -9,6 +9,7 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 from routes.ai_mode import ai_mode_bp
+from routes.exports import exports_bp
 from routes.workload_ui import workload_bp
 
 
@@ -17,6 +18,7 @@ def create_app():
     CORS(app)
     app.register_blueprint(workload_bp)
     app.register_blueprint(ai_mode_bp)
+    app.register_blueprint(exports_bp)
     return app
 
 
