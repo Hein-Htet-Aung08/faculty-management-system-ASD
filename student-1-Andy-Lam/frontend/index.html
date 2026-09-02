@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Staff Management</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<h1>Staff Management</h1>
+
+<section id="staff-list-section">
+    <input type="text" id="search-input" placeholder="Search by expertise...">
+    <button id="search-btn">Search</button>
+
+    <select id="department-filter">
+        <option value="">All Departments</option>
+    </select>
+    <select id="position-filter">
+        <option value="">All Positions</option>
+    </select>
+    <button id="filter-btn">Filter</button>
+
+    <button id="add-staff-btn">Add New Staff</button>
+
+    <table id="staff-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Position</th>
+                <th>Expertise</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="staff-table-body">
+            <!-- rows get inserted here by JS -->
+        </tbody>
+    </table>
+</section>
+
+<section id="staff-detail-section" style="display: none;">
+    <button id="back-to-list-btn">← Back to list</button>
+    <h2 id="detail-name"></h2>
+    <p id="detail-info"></p>
+
+    <h3>Qualifications</h3>
+    <ul id="detail-qualifications"></ul>
+
+    <h3>Expertise</h3>
+    <ul id="detail-expertise"></ul>
+
+    <h3>Availability</h3>
+    <ul id="detail-availability"></ul>
+    
+    <h3>AI Suitability Analysis</h3>
+    <div id="detail-ai-analysis"></div>
+    <button id="generate-analysis-btn">Generate AI Analysis</button>
+</section>
+
+<section id="staff-form-section" style="display: none;">
+    <h2 id="form-title">Add New Staff</h2>
+    <form id="staff-form">
+        <input type="text" id="form-name" placeholder="Name" required>
+        <input type="email" id="form-email" placeholder="Email" required>
+        <input type="text" id="form-phone" placeholder="Phone">
+        <select id="form-department" required></select>
+        <input type="text" id="form-position" placeholder="Position" required>
+        <select id="form-employment-type" required>
+            <option value="Full-time">Full-time</option>
+            <option value="Part-time">Part-time</option>
+            <option value="Casual">Casual</option>
+        </select>
+        <select id="form-status" required>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+            <option value="On Leave">On Leave</option>
+        </select>
+        <button type="submit">Save</button>
+        <button type="button" id="cancel-form-btn">Cancel</button>
+    </form>
+</section>
+
+<script src="js/app.js"></script>
+</body>
+</html>
