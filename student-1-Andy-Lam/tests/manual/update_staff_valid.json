@@ -1,0 +1,9 @@
+{
+  "name": "Test Person Updated",
+  "email": "test.updated@university.edu",
+  "phone": "0400000001",
+  "department_id": 999,
+  "position": "Senior Tutor",
+  "employment_type": "Casual",
+  "status": "Active"
+}

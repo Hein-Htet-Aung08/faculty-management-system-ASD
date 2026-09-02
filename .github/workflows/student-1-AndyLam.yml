@@ -1,0 +1,34 @@
+name: Student 1 CI
+
+on:
+  push:
+    branches: [ main, student-1-* ]
+    paths: [ 'student-1-Andy-Lam/**' ]
+  pull_request:
+    paths: [ 'student-1-Andy-Lam/**' ]
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: pip install -r student-1-Andy-Lam/backend/requirements.txt
+
+      - name: Check backend imports correctly
+        run: python -c "import sys; sys.path.insert(0, 'student-1-Andy-Lam/backend'); import app"
+
+      - name: Build database Docker image
+        run: docker build -t staff-database student-1-Andy-Lam/database
+
+      - name: Build backend Docker image
+        run: docker build -t staff-backend student-1-Andy-Lam/backend
+
+      - name: Build frontend Docker image
+        run: docker build -t staff-frontend student-1-Andy-Lam/frontend

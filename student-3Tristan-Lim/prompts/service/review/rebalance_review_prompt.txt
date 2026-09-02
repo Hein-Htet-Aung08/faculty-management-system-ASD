@@ -1,0 +1,14 @@
+REVISION REQUEST
+
+Your previous proposals were checked against the workload rules engine. Some of
+them were rejected. The validation results are shown below.
+
+Produce a corrected set of proposals that resolves every rejection listed.
+
+- Keep any proposal that was accepted, unchanged.
+- Replace or drop any proposal that was rejected.
+- Do not repeat a proposal that was rejected for the same reason.
+- If no valid reassignment exists for a rejected proposal, set "to_staff_id" to
+  null and explain in the rationale that the work should be deferred or reduced.
+
+Respond with the same JSON structure as before and nothing else.
