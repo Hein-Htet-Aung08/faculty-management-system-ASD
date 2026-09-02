@@ -46,6 +46,35 @@ services:
 
   # ---- Student 2: Hein - Teaching Subject and Classroom Allocation ----
 
+  allocation-database:
+    build:
+      context: ./student-2Hein-Htet-Aung
+      dockerfile: database/Dockerfile
+    volumes:
+      - allocation-data:/app/data
+    networks:
+      - faculty-network
+
+  allocation-backend:
+    build:
+      context: ./student-2Hein-Htet-Aung
+      dockerfile: backend/Dockerfile
+    ports:
+      - "5002:5002"
+    environment:
+      - DATABASE_SERVICE_URL=http://allocation-database:6002
+      - STAFF_SERVICE_URL=http://staff-backend:5001
+      #- WORKLOAD_SERVICE_URL=http://<TRISTAN_SERVICE_NAME>:5003 #Needa replace this
+      - OLLAMA_BASE_URL=http://ollama:11434/v1
+      - OLLAMA_MODEL=qwen2.5:0.5b
+    depends_on:
+      - allocation-database
+      - staff-backend
+      #- <TRISTAN_SERVICE_NAME> # Needa replace this with Student 3's backend service.
+      - ollama
+    networks:
+      - faculty-network
+
   # ---- Student 3: Tristan - Workload and Availability Management ----
 
   # ---- Student 4: Nicholas - Research and Grant Management ----
@@ -102,6 +131,8 @@ volumes:
   staff-data:
   student4_data:
   ollama_data:
+  allocation-data:
+
 
 networks:
   faculty-network:

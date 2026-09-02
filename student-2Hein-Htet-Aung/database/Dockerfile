@@ -2,12 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY database/requirements.txt ./requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py .
-COPY init_db.py .
+COPY database/app.py ./app.py
+COPY database/init_db.py ./init_db.py
 
 RUN python init_db.py
 

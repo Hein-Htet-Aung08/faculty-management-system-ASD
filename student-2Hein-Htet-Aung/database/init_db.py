@@ -1,90 +1,85 @@
 import os
 import sqlite3
 
+
 DATA_DIR = "/app/data"
 DATABASE_NAME = os.path.join(DATA_DIR, "allocation.db")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
-conn = sqlite3.connect(
-    DATABASE_NAME
-)
-
+conn = sqlite3.connect(DATABASE_NAME)
 cursor = conn.cursor()
 
 cursor.execute("PRAGMA foreign_keys = ON")
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS subjects (
-    subject_code TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    required_expertise TEXT NOT NULL
-)
-""")
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS subject_offers (
-    offer_id TEXT PRIMARY KEY,
-    subject_code TEXT NOT NULL,
-    semester TEXT NOT NULL,
-    year TEXT NOT NULL,
-    expected_enrollment INTEGER NOT NULL,
-    FOREIGN KEY (subject_code)
-        REFERENCES subjects(subject_code)
-        ON DELETE RESTRICT
-)
-""")
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS classrooms (
-    classroom_id TEXT PRIMARY KEY,
-    building TEXT NOT NULL,
-    floor TEXT NOT NULL,
-    room_number TEXT NOT NULL,
-    capacity INTEGER NOT NULL,
-    room_type TEXT NOT NULL,
-    facilities TEXT NOT NULL
-)
-""")
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS teaching_allocations (
-    allocation_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    offer_id TEXT NOT NULL,
-    assigned_staff_member INTEGER NOT NULL,
-    classroom_id TEXT NOT NULL,
-    day TEXT NOT NULL,
-    date_range TEXT NOT NULL,
-    start_time TEXT NOT NULL,
-    end_time TEXT NOT NULL,
-    class_type TEXT NOT NULL,
-    expected_class_size INTEGER NOT NULL,
-    allocation_status TEXT NOT NULL,
-    FOREIGN KEY (offer_id)
-        REFERENCES subject_offers(offer_id)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE,
-    FOREIGN KEY (classroom_id)
-        REFERENCES classrooms(classroom_id)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT
-)
-""")
+cursor.execute("DROP TABLE IF EXISTS teaching_allocations")
+cursor.execute("DROP TABLE IF EXISTS subject_offers")
+cursor.execute("DROP TABLE IF EXISTS classrooms")
+cursor.execute("DROP TABLE IF EXISTS subjects")
 
 cursor.execute(
-    "DELETE FROM teaching_allocations"
+    """
+    CREATE TABLE subjects (
+        subject_code TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        required_expertise TEXT NOT NULL
+    )
+    """
 )
 
 cursor.execute(
-    "DELETE FROM subject_offers"
+    """
+    CREATE TABLE subject_offers (
+        offer_id TEXT PRIMARY KEY,
+        subject_code TEXT NOT NULL,
+        semester TEXT NOT NULL,
+        year TEXT NOT NULL,
+        expected_enrollment INTEGER NOT NULL,
+        FOREIGN KEY (subject_code)
+            REFERENCES subjects(subject_code)
+            ON DELETE RESTRICT
+    )
+    """
 )
 
 cursor.execute(
-    "DELETE FROM classrooms"
+    """
+    CREATE TABLE classrooms (
+        classroom_id TEXT PRIMARY KEY,
+        building TEXT NOT NULL,
+        floor TEXT NOT NULL,
+        room_number TEXT NOT NULL,
+        capacity INTEGER NOT NULL,
+        room_type TEXT NOT NULL,
+        facilities TEXT NOT NULL
+    )
+    """
 )
 
 cursor.execute(
-    "DELETE FROM subjects"
+    """
+    CREATE TABLE teaching_allocations (
+        allocation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        offer_id TEXT NOT NULL,
+        assigned_staff_member INTEGER,
+        classroom_id TEXT NOT NULL,
+        day TEXT NOT NULL,
+        date_range TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        class_type TEXT NOT NULL,
+        expected_class_size INTEGER NOT NULL,
+        allocation_status TEXT NOT NULL,
+        FOREIGN KEY (offer_id)
+            REFERENCES subject_offers(offer_id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE,
+        FOREIGN KEY (classroom_id)
+            REFERENCES classrooms(classroom_id)
+            ON UPDATE CASCADE
+            ON DELETE RESTRICT
+    )
+    """
 )
 
 subjects = [
@@ -109,7 +104,7 @@ cursor.executemany(
     )
     VALUES (?, ?, ?)
     """,
-    subjects
+    subjects,
 )
 
 subject_offers = [
@@ -136,7 +131,7 @@ cursor.executemany(
     )
     VALUES (?, ?, ?, ?, ?)
     """,
-    subject_offers
+    subject_offers,
 )
 
 classrooms = [
@@ -165,14 +160,14 @@ cursor.executemany(
     )
     VALUES (?, ?, ?, ?, ?, ?, ?)
     """,
-    classrooms
+    classrooms,
 )
 
 teaching_allocations = [
     ("41082_SPR_2026", 1, "CB11.05.501", "MON", "03/08 - 20/09", "10:00", "12:00", "LEC", 180, "CONFIRMED"),
     ("41080_SPR_2026", 2, "CB11.05.502", "TUE", "03/08 - 20/09", "09:00", "11:00", "LEC", 160, "CONFIRMED"),
     ("41113_SPR_2026", 3, "CB11.04.405", "WED", "03/08 - 20/09", "12:00", "14:00", "TUT", 30, "CONFIRMED"),
-    ("41114_SPR_2026", 4, "CB11.04.406", "THU", "03/08 - 20/09", "14:00", "16:00", "TUT", 30, "PENDING"),
+    ("41114_SPR_2026", None, "CB11.04.406", "THU", "03/08 - 20/09", "14:00", "16:00", "TUT", 30, "NEEDS_ASSIGNMENT"),
     ("31271_SPR_2026", 5, "CB10.02.301", "FRI", "03/08 - 20/09", "10:00", "12:00", "LAB", 30, "CONFIRMED"),
     ("31268_SPR_2026", 6, "CB10.02.302", "MON", "03/08 - 20/09", "14:00", "16:00", "LAB", 30, "CONFIRMED"),
     ("41092_SPR_2026", 7, "CB10.03.401", "TUE", "03/08 - 20/09", "12:00", "14:00", "TUT", 40, "CONFIRMED"),
@@ -197,12 +192,10 @@ cursor.executemany(
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
-    teaching_allocations
+    teaching_allocations,
 )
 
 conn.commit()
 conn.close()
 
-print(
-    "Database initialized."
-)
+print("Database initialized.")

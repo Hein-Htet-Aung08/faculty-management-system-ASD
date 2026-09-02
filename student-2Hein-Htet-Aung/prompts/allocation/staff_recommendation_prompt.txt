@@ -1,0 +1,27 @@
+Rank the most suitable staff members for the supplied teaching allocation.
+
+Return this exact JSON structure:
+
+{
+  "recommendations": [
+    {
+      "staff_id": 1,
+      "rank": 1,
+      "reason": "Short explanation of why this staff member is suitable."
+    }
+  ]
+}
+
+The recommendations must be ordered from most suitable to least suitable.
+
+staff_id must be copied exactly from the supplied staff data.
+
+rank must begin at 1.
+
+Do not return more than three recommendations.
+
+Do not recommend staff identified in previous_recommendation_ids when other suitable staff are available.
+
+If previous recommendation failure reasons are supplied, use those observations when choosing the new recommendations.
+
+Do not include markdown, code fences or any text outside the JSON object.
