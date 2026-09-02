@@ -128,17 +128,30 @@ function showAddForm() {
     editingStaffId = null;
     document.getElementById("form-title").textContent = "Add New Staff";
     document.getElementById("staff-form").reset();
+    
+    const expertiseField = document.getElementById("form-expertise-area");
+    const skillLevelField = document.getElementById("form-skill-level");
+    expertiseField.disabled = false;               
+    skillLevelField.disabled = false;               
+    expertiseField.required = true;                  
+    skillLevelField.required = true;                 
     document.getElementById("staff-list-section").style.display = "none";
     document.getElementById("staff-form-section").style.display = "block";
 }
 
 async function editStaff(staffId) {
-    const response = await fetch(`${API_BASE}/api/staff/${staffId}`);
-    const staff = await response.json();
 
+    const [staffRes, expRes] = await Promise.all([
+        fetch(`${API_BASE}/api/staff/${staffId}`),
+        fetch(`${API_BASE}/api/staff/${staffId}/expertise`)   
+    ]);
+ 
+    const staff = await staffRes.json();
+    const expertise = await expRes.json();            
+ 
     editingStaffId = staffId;
     document.getElementById("form-title").textContent = "Edit Staff";
-
+    document.getElementById("staff-form").reset();     
     document.getElementById("form-name").value = staff.name;
     document.getElementById("form-email").value = staff.email;
     document.getElementById("form-phone").value = staff.phone;
@@ -147,6 +160,22 @@ async function editStaff(staffId) {
     document.getElementById("form-employment-type").value = staff.employment_type;
     document.getElementById("form-status").value = staff.status;
 
+    const expertiseField = document.getElementById("form-expertise-area");
+    const skillLevelField = document.getElementById("form-skill-level");
+ 
+    if (expertise.length > 0) {
+        expertiseField.value = expertise[0].expertise_area;
+        skillLevelField.value = expertise[0].skill_level;
+    } else {
+        expertiseField.value = "";
+        skillLevelField.value = "";
+    }
+
+    expertiseField.disabled = true;
+    skillLevelField.disabled = true;
+    expertiseField.required = false;
+    skillLevelField.required = false;
+ 
     document.getElementById("staff-list-section").style.display = "none";
     document.getElementById("staff-form-section").style.display = "block";
 }
@@ -199,6 +228,8 @@ document.getElementById("staff-form").addEventListener("submit", async function(
     };
 
     if (editingStaffId === null) {
+        staffData.expertise_area = document.getElementById("form-expertise-area").value;
+        staffData.skill_level = parseInt(document.getElementById("form-skill-level").value);
         const response = await fetch(`${API_BASE}/api/staff`, {
             method: "POST",
             headers: {
