@@ -51,6 +51,8 @@ services:
     build: ./student-1-Andy-Lam/frontend
     ports:
       - "8001:80"
+    volumes:
+      - ./shared/frontend/css:/usr/share/nginx/html/css:ro
     depends_on:
       - staff-backend
     networks:
