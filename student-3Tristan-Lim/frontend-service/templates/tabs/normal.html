@@ -151,10 +151,14 @@
 
             <div class="form-actions">
                 <button type="submit">Add entry</button>
-                <button type="button" class="secondary" data-delete="entries"
-                        data-input="entry-delete-id">Delete by ID</button>
-                <input id="entry-delete-id" type="number" min="1" placeholder="entry_id"
+                <input id="entry-row-id" type="number" min="1" placeholder="entry_id"
                        style="width: 8rem;">
+                <button type="button" class="secondary" data-load="entries"
+                        data-input="entry-row-id">Load</button>
+                <button type="button" class="secondary" data-update="entries"
+                        data-input="entry-row-id">Update</button>
+                <button type="button" class="secondary" data-delete="entries"
+                        data-input="entry-row-id">Delete</button>
             </div>
         </form>
 
@@ -213,10 +217,14 @@
 
             <div class="form-actions">
                 <button type="submit">Add slot</button>
-                <button type="button" class="secondary" data-delete="availability"
-                        data-input="slot-delete-id">Delete by ID</button>
-                <input id="slot-delete-id" type="number" min="1" placeholder="slot_id"
+                <input id="slot-row-id" type="number" min="1" placeholder="slot_id"
                        style="width: 8rem;">
+                <button type="button" class="secondary" data-load="availability"
+                        data-input="slot-row-id">Load</button>
+                <button type="button" class="secondary" data-update="availability"
+                        data-input="slot-row-id">Update</button>
+                <button type="button" class="secondary" data-delete="availability"
+                        data-input="slot-row-id">Delete</button>
             </div>
         </form>
 
@@ -277,10 +285,14 @@
 
             <div class="form-actions">
                 <button type="submit">Submit leave</button>
-                <button type="button" class="secondary" data-delete="leave"
-                        data-input="leave-delete-id">Delete by ID</button>
-                <input id="leave-delete-id" type="number" min="1" placeholder="leave_id"
+                <input id="leave-row-id" type="number" min="1" placeholder="leave_id"
                        style="width: 8rem;">
+                <button type="button" class="secondary" data-load="leave"
+                        data-input="leave-row-id">Load</button>
+                <button type="button" class="secondary" data-update="leave"
+                        data-input="leave-row-id">Update</button>
+                <button type="button" class="secondary" data-delete="leave"
+                        data-input="leave-row-id">Delete</button>
             </div>
         </form>
 
@@ -381,6 +393,17 @@ const FORMS = {
     "leave-form": { resource: "leave", panel: "leave-panel", filter: "leave-staff" },
 };
 
+function configFor(resource) {
+    const formId = Object.keys(FORMS).find((id) => FORMS[id].resource === resource);
+    return { formId, ...FORMS[formId] };
+}
+
+// Carry the active staff filter so a write does not reset the panel to all rows.
+function filterQuery(config) {
+    const staffId = value(config.filter);
+    return staffId ? `?staff_id=${staffId}` : "";
+}
+
 Object.entries(FORMS).forEach(([formId, config]) => {
     document.getElementById(formId).addEventListener("submit", (event) => {
         event.preventDefault();
@@ -392,19 +415,53 @@ Object.entries(FORMS).forEach(([formId, config]) => {
     });
 });
 
+// Load an existing record into the form so it can be edited and updated.
+document.querySelectorAll("[data-load]").forEach((button) => {
+    button.addEventListener("click", async () => {
+        const config = configFor(button.dataset.load);
+        const rowId = document.getElementById(button.dataset.input).value;
+        if (!rowId) return message(config.panel, "Enter a record ID to load.");
+
+        try {
+            const response = await fetch(`${BACKEND}/${config.resource}/${rowId}/record`);
+            const record = await response.json();
+
+            if (!response.ok) {
+                return message(config.panel, record.error || "Record not found.");
+            }
+
+            const form = document.getElementById(config.formId);
+            Object.entries(record).forEach(([field, fieldValue]) => {
+                const input = form.elements[field];
+                if (input && fieldValue !== null) input.value = fieldValue;
+            });
+            message(config.panel, `Loaded record ${rowId}. Edit the fields, then Update.`, "info");
+        } catch (error) {
+            message(config.panel, `Could not load record ${rowId}.`, "error");
+        }
+    });
+});
+
+document.querySelectorAll("[data-update]").forEach((button) => {
+    button.addEventListener("click", () => {
+        const config = configFor(button.dataset.update);
+        const rowId = document.getElementById(button.dataset.input).value;
+        if (!rowId) return message(config.panel, "Enter a record ID to update.");
+
+        const body = new URLSearchParams(new FormData(document.getElementById(config.formId)));
+        render(config.panel, `${BACKEND}/${config.resource}/${rowId}${filterQuery(config)}`,
+               { method: "PUT", body });
+    });
+});
+
 document.querySelectorAll("[data-delete]").forEach((button) => {
     button.addEventListener("click", () => {
-        const resource = button.dataset.delete;
+        const config = configFor(button.dataset.delete);
         const rowId = document.getElementById(button.dataset.input).value;
-        if (!rowId) return;
+        if (!rowId) return message(config.panel, "Enter a record ID to delete.");
 
-        const config = Object.values(FORMS).find((c) => c.resource === resource);
-
-        // The backend re-renders the list after deleting, so carry the staff
-        // filter across or the panel would fall back to showing every row.
-        const staffId = value(config.filter);
-        const query = staffId ? `?staff_id=${staffId}` : "";
-        render(config.panel, `${BACKEND}/${resource}/${rowId}${query}`, { method: "DELETE" });
+        render(config.panel, `${BACKEND}/${config.resource}/${rowId}${filterQuery(config)}`,
+               { method: "DELETE" });
     });
 });
 

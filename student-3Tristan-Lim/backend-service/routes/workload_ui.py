@@ -1,5 +1,5 @@
 import requests
-from flask import Blueprint, request
+from flask import Blueprint, jsonify, request
 
 from services import database_api as db
 from services import workload_rules as rules
@@ -265,6 +265,29 @@ def list_resource(resource):
     except requests.RequestException as exc:
         return fmt.message(f"database-service unreachable: {exc}", "error"), 503
     return LIST_FORMATTERS[resource](rows), 200
+
+
+@workload_bp.get("/<resource>/<int:row_id>/record")
+def get_resource_record(resource, row_id):
+    """One record as JSON, used by the frontend to populate the edit form.
+
+    Every other route returns an HTML fragment, but the edit flow needs field
+    values rather than markup. The frontend still never talks to the database
+    service directly.
+    """
+    if resource not in RESOURCES:
+        return jsonify({"error": f"unknown resource '{resource}'"}), 404
+    table, _fields, _numeric = RESOURCES[resource]
+
+    try:
+        response = db.get_row(table, row_id)
+        if response.status_code == 404:
+            return jsonify({"error": "not found"}), 404
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        return jsonify({"error": f"database-service unreachable: {exc}"}), 503
+
+    return jsonify(response.json()), 200
 
 
 @workload_bp.post("/<resource>")
