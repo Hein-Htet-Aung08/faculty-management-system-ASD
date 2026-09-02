@@ -66,6 +66,35 @@
 </section>
 
 <section class="panel-section">
+    <h2>Staff directory</h2>
+    <p>Staff records are owned by the Staff Management service (Student 1) and
+       read live over the network. This feature stores workload only, keyed by
+       the same staff_id.</p>
+
+    <div class="actions">
+        <div class="form-field">
+            <label for="staff-expertise">Filter by expertise</label>
+            <input id="staff-expertise" type="text" placeholder="e.g. Machine Learning">
+        </div>
+        <button type="button" class="btn" data-action="load-directory">Show staff</button>
+        <button type="button" class="btn secondary" data-action="staff-health">Check service</button>
+        <button type="button" class="btn secondary" data-action="reconcile">Reconcile with workload</button>
+    </div>
+
+    <div id="staff-panel"></div>
+
+    <div class="actions">
+        <div class="form-field">
+            <label for="staff-lookup">Staff ID</label>
+            <input id="staff-lookup" type="number" min="1" value="1">
+        </div>
+        <button type="button" class="btn secondary" data-action="staff-detail">Staff record + workload</button>
+    </div>
+
+    <div id="staff-detail-panel"></div>
+</section>
+
+<section class="panel-section">
     <h2>Export</h2>
     <p>Download the current view as CSV, or open a printable report and save it
        as PDF from the browser.</p>
@@ -443,7 +472,33 @@ function printReport() {
     window.open(`/report.html${query}`, "_blank");
 }
 
+// --------------------------------- staff records from the Student 1 service ---
+
+function loadDirectory() {
+    const expertise = value("staff-expertise");
+    const query = expertise ? `?expertise=${encodeURIComponent(expertise)}` : "";
+    render("staff-panel", `${BACKEND}/staff/directory${query}`);
+}
+
+function staffHealth() {
+    render("staff-panel", `${BACKEND}/staff/health`);
+}
+
+function reconcile() {
+    render("staff-panel", `${BACKEND}/staff/reconcile`);
+}
+
+function staffDetail() {
+    const staffId = value("staff-lookup");
+    if (!staffId) return message("staff-detail-panel", "Enter a staff ID.");
+    render("staff-detail-panel", `${BACKEND}/staff/${staffId}`);
+}
+
 const ACTIONS = {
+    "load-directory": loadDirectory,
+    "staff-health": staffHealth,
+    "reconcile": reconcile,
+    "staff-detail": staffDetail,
     "export-csv": exportCsv,
     "print-report": printReport,
     "load-overview": loadOverview,
