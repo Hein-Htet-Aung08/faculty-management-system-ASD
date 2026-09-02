@@ -2,11 +2,12 @@ from flask import Flask, jsonify, request
 from llm_client import generate_response
 from datetime import date
 import sqlite3
+import os
 from pathlib import Path
 
 app = Flask(__name__)
 
-DATA_DIR = Path(__file__).parent.parent/"database"/"staff.db"
+DATA_DIR = os.getenv("DB_PATH", str(Path(__file__).parent.parent / "database" / "staff.db"))
 
 def get_db_connection():
     conn = sqlite3.connect(DATA_DIR)

@@ -1,7 +1,8 @@
 import sqlite3
 from pathlib import Path
+import os
 
-DATA_DIR = Path(__file__).parent/"staff.db"
+DATA_DIR = os.getenv("DB_PATH", str(Path(__file__).parent / "staff.db"))
 conn = sqlite3.connect(DATA_DIR)
 conn.execute("PRAGMA foreign_keys = ON;")
 cursor = conn.cursor()

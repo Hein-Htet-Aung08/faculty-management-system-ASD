@@ -1,3 +1,4 @@
 .env
 venv/
 staff.db
+__pycache__/
