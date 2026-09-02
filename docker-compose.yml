@@ -10,6 +10,18 @@ services:
       - faculty-network
     restart: unless-stopped
 
+  #Shared unified home page 
+  home:
+    image: nginx:alpine
+    container_name: unified-home
+    ports:
+      - "8000:80"
+    volumes:
+      - ./shared/frontend:/usr/share/nginx/html:ro
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
   # ---- Student 1: Andy - Staff Management ----
   staff-database:
     build: ./student-1-Andy-Lam/database
@@ -39,6 +51,8 @@ services:
     build: ./student-1-Andy-Lam/frontend
     ports:
       - "8001:80"
+    volumes:
+      - ./shared/frontend/css:/usr/share/nginx/html/css:ro
     depends_on:
       - staff-backend
     networks:

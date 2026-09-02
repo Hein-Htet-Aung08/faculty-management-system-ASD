@@ -126,8 +126,24 @@
         ? publications.map(p => `<li>${p.title} (${p.publicationType})</li>`).join('')
         : '<li class="empty-state">No publications recorded.</li>';
 
-      const staffRows = staff.length
-        ? staff.map(s => `<li>Staff #${s.staffID} — ${s.role}</li>`).join('')
+      // Enrich each staffID with the real name from Andy's Staff
+      // service. Falls back to "Staff #<id>" if his service is
+      // unreachable, so this never breaks the whole page.
+      const enrichedStaff = await Promise.all(
+        staff.map(async (s) => {
+          try {
+            const res = await fetch(`${STAFF_API_BASE}/api/staff/${s.staffID}`);
+            if (!res.ok) throw new Error('not found');
+            const staffDetail = await res.json();
+            return { ...s, name: staffDetail.name };
+          } catch {
+            return { ...s, name: `Staff #${s.staffID}` };
+          }
+        })
+      );
+
+      const staffRows = enrichedStaff.length
+        ? enrichedStaff.map(s => `<li>${s.name} — ${s.role}</li>`).join('')
         : '<li class="empty-state">No staff linked yet.</li>';
 
       detail.innerHTML = `
