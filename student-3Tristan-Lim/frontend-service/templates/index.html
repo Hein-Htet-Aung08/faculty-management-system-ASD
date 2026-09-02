@@ -5,31 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Workload and Availability Management</title>
     <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .tab-pane { width: 100%; min-height: 900px; border: 0; display: block; }
+        .tab-pane[hidden] { display: none; }
+    </style>
 </head>
 <body>
-<main class="app-shell">
-    <header class="app-header">
-        <h1>Workload and Availability Management</h1>
-        <p>Faculty Management System &middot; Student 3 &middot; Tristan Lim</p>
-    </header>
+<header class="ledger-header">
+    <h1>Workload and Availability Management</h1>
+    <p class="subtitle">Faculty Management System &middot; Student 3 &middot; Tristan Lim</p>
 
-    <section class="tab-shell card">
-        <nav class="tab-nav" aria-label="Feature tabs">
-            <button class="tab-btn is-active" data-tab="normal" type="button">Dashboard</button>
-            <button class="tab-btn" data-tab="ai-mode" type="button">AI Mode</button>
-        </nav>
+    <nav class="tab-nav" aria-label="Feature tabs">
+        <button class="tab-button active" data-tab="normal" type="button">Dashboard</button>
+        <button class="tab-button" data-tab="ai-mode" type="button">AI Mode</button>
+    </nav>
+</header>
 
-        <div class="tab-content">
-            <iframe id="tab-frame-normal" class="tab-frame is-active"
-                    src="tabs/normal.html" title="Workload dashboard"></iframe>
-            <iframe id="tab-frame-ai-mode" class="tab-frame"
-                    src="tabs/ai-mode.html" title="AI Mode"></iframe>
-        </div>
-    </section>
-</main>
+<div class="ledger-panel">
+    <iframe id="tab-frame-normal" class="tab-pane"
+            src="tabs/normal.html" title="Workload dashboard"></iframe>
+    <iframe id="tab-frame-ai-mode" class="tab-pane" hidden
+            src="tabs/ai-mode.html" title="AI Mode"></iframe>
+</div>
 
 <script>
-const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
+const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
 const tabFrames = {
     normal: document.getElementById("tab-frame-normal"),
     "ai-mode": document.getElementById("tab-frame-ai-mode"),
@@ -37,11 +37,11 @@ const tabFrames = {
 
 function activateTab(tabName) {
     tabButtons.forEach((button) => {
-        button.classList.toggle("is-active", button.dataset.tab === tabName);
+        button.classList.toggle("active", button.dataset.tab === tabName);
     });
 
     Object.entries(tabFrames).forEach(([name, frame]) => {
-        frame.classList.toggle("is-active", name === tabName);
+        frame.hidden = name !== tabName;
     });
 
     window.location.hash = tabName;
