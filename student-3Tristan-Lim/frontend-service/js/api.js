@@ -1,4 +1,4 @@
-const BACKEND = window.BACKEND_URL || "http://localhost:5301";
+const BACKEND = window.BACKEND_URL || "http://localhost:5003";
 
 function value(elementId) {
     const element = document.getElementById(elementId);

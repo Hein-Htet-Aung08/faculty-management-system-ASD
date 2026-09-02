@@ -3,7 +3,7 @@
 # everything in /docker-entrypoint.d/ before starting the server.
 set -e
 
-: "${BACKEND_URL:=http://localhost:5301}"
+: "${BACKEND_URL:=http://localhost:5003}"
 
 cat > /usr/share/nginx/html/js/config.js <<CONFIG
 window.BACKEND_URL = "${BACKEND_URL}";

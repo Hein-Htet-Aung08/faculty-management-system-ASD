@@ -8,6 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend-service ./backend-service
 COPY prompts ./prompts
 
-EXPOSE 5301
+EXPOSE 5003
 
 CMD ["python", "backend-service/app.py"]

@@ -15,9 +15,9 @@ on:
 
 env:
   STUDENT_DIR: student-3Tristan-Lim
-  DATABASE_PORT: "5302"
-  BACKEND_PORT: "5301"
-  FRONTEND_PORT: "8083"
+  DATABASE_PORT: "5103"
+  BACKEND_PORT: "5003"
+  FRONTEND_PORT: "8003"
 
 jobs:
 
@@ -68,9 +68,9 @@ jobs:
       - name: Start services
         run: |
           docker network create s3-net
-          docker run -d --name s3-db --network s3-net -p ${DATABASE_PORT}:5302 s3-db:ci
-          docker run -d --name s3-be --network s3-net -p ${BACKEND_PORT}:5301 \
-            -e DATABASE_SERVICE_URL=http://s3-db:5302 \
+          docker run -d --name s3-db --network s3-net -p ${DATABASE_PORT}:5103 s3-db:ci
+          docker run -d --name s3-be --network s3-net -p ${BACKEND_PORT}:5003 \
+            -e DATABASE_SERVICE_URL=http://s3-db:5103 \
             -e OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 \
             -e LLM_TIMEOUT=5 \
             s3-be:ci

@@ -2,7 +2,7 @@ import os
 
 import requests
 
-DATABASE_SERVICE_URL = os.getenv("DATABASE_SERVICE_URL", "http://database-service:5302")
+DATABASE_SERVICE_URL = os.getenv("DATABASE_SERVICE_URL", "http://database-service:5103")
 TIMEOUT = int(os.getenv("DATABASE_TIMEOUT", "5"))
 
 

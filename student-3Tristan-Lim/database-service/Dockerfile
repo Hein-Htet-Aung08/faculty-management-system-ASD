@@ -11,6 +11,6 @@ COPY app.py .
 
 RUN python init_db.py
 
-EXPOSE 5302
+EXPOSE 5103
 
 CMD ["python", "app.py"]
