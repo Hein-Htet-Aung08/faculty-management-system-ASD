@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Workload Dashboard</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        body { margin: 0; background: transparent; }
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .actions .form-field { flex: 0 0 9rem; }
+    </style>
+</head>
+<body>
+
+<section class="panel-section">
+    <h2>Workload overview</h2>
+    <p>Hours are recomputed from workload entries, then checked against the
+       department and fractional caps in workload_rule.</p>
+
+    <div class="form-grid">
+        <div class="form-field">
+            <label for="overview-status">Status</label>
+            <select id="overview-status">
+                <option value="">All staff</option>
+                <option value="overloaded">Overloaded only</option>
+                <option value="underloaded">Underloaded only</option>
+                <option value="ok">Within limits</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="overview-department">Department</label>
+            <select id="overview-department">
+                <option value="">All departments</option>
+                <option>Computing</option>
+                <option>Engineering</option>
+                <option>Design</option>
+                <option>Business</option>
+                <option>Science</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button type="button" class="btn" data-action="load-overview">Refresh</button>
+        <button type="button" class="btn secondary" data-action="recompute">Recompute alerts</button>
+    </div>
+
+    <div id="overview-panel"></div>
+    <div id="recompute-panel" hidden></div>
+</section>
+
+<section class="panel-section">
+    <h2>Staff detail</h2>
+
+    <div class="actions">
+        <div class="form-field">
+            <label for="detail-staff">Staff ID</label>
+            <input id="detail-staff" type="number" min="1" value="1">
+        </div>
+        <button type="button" class="btn" data-action="load-detail">View breakdown</button>
+        <button type="button" class="btn secondary" data-action="load-calendar">Calendar</button>
+    </div>
+
+    <div id="detail-panel"></div>
+    <div id="calendar-panel" hidden></div>
+</section>
+
+<section class="panel-section">
+    <h2>Staff directory</h2>
+    <p>Staff records are owned by the Staff Management service (Student 1) and
+       read live over the network. This feature stores workload only, keyed by
+       the same staff_id.</p>
+
+    <div class="actions">
+        <div class="form-field">
+            <label for="staff-expertise">Filter by expertise</label>
+            <input id="staff-expertise" type="text" placeholder="e.g. Machine Learning">
+        </div>
+        <button type="button" class="btn" data-action="load-directory">Show staff</button>
+        <button type="button" class="btn secondary" data-action="staff-health">Check service</button>
+        <button type="button" class="btn secondary" data-action="reconcile">Reconcile with workload</button>
+    </div>
+
+    <div id="staff-panel"></div>
+
+    <div class="actions">
+        <div class="form-field">
+            <label for="staff-lookup">Staff ID</label>
+            <input id="staff-lookup" type="number" min="1" value="1">
+        </div>
+        <button type="button" class="btn secondary" data-action="staff-detail">Staff record + workload</button>
+    </div>
+
+    <div id="staff-detail-panel"></div>
+</section>
+
+<section class="panel-section">
+    <h2>Export</h2>
+    <p>Download the current view as CSV, or open a printable report and save it
+       as PDF from the browser.</p>
+
+    <div class="form-grid">
+        <div class="form-field">
+            <label for="export-dataset">Dataset</label>
+            <select id="export-dataset">
+                <option value="analysis">Workload analysis (computed)</option>
+                <option value="clashes">Conflicts</option>
+                <option value="profiles">Staff workload profiles</option>
+                <option value="entries">Workload entries</option>
+                <option value="availability">Availability slots</option>
+                <option value="leave">Leave records</option>
+                <option value="alerts">Alerts</option>
+                <option value="recommendations">Rebalance recommendations</option>
+                <option value="rules">Workload rules</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="export-staff">Staff ID (blank for all)</label>
+            <input id="export-staff" type="number" min="1" placeholder="All staff">
+        </div>
+    </div>
+
+    <div class="actions">
+        <button type="button" class="btn" data-action="export-csv">Download CSV</button>
+        <button type="button" class="btn secondary" data-action="print-report">Printable report</button>
+    </div>
+</section>
+
+<section class="panel-section">
+    <h2>Conflicts</h2>
+    <p>Overlapping availability slots, and leave that falls inside a teaching
+       commitment.</p>
+
+    <div class="actions">
+        <div class="form-field">
+            <label for="clash-staff">Staff ID</label>
+            <input id="clash-staff" type="number" min="1" placeholder="All staff">
+        </div>
+        <button type="button" class="btn" data-action="load-clashes">Find conflicts</button>
+    </div>
+
+    <div id="clashes-panel"></div>
+</section>
+
+<section class="panel-section">
+    <h2>Alerts</h2>
+
+    <div class="form-grid">
+        <div class="form-field">
+            <label for="alert-type">Type</label>
+            <select id="alert-type">
+                <option value="">All types</option>
+                <option value="overload">Overload</option>
+                <option value="underload">Underload</option>
+                <option value="clash">Clash</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="alert-status">Status</label>
+            <select id="alert-status">
+                <option value="">All</option>
+                <option value="open">Open</option>
+                <option value="acknowledged">Acknowledged</option>
+                <option value="resolved">Resolved</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button type="button" class="btn" data-action="load-alerts">Show alerts</button>
+    </div>
+
+    <div id="alerts-panel"></div>
+</section>
+
+<!-- ------------------------------------------------------------ workload --- -->
+
+<section class="panel-section">
+    <h2>Workload entries</h2>
+
+    <div class="actions">
+        <div class="form-field">
+            <label for="entries-staff">Staff ID</label>
+            <input id="entries-staff" type="number" min="1" value="1">
+        </div>
+        <button type="button" class="btn" data-action="load-entries">Show entries</button>
+    </div>
+
+    <div id="entries-panel"></div>
+
+    <form id="entry-form">
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="entry-staff-id">Staff ID</label>
+                <input id="entry-staff-id" name="staff_id" type="number" min="1" required>
+            </div>
+            <div class="form-field">
+                <label for="entry-activity">Activity type</label>
+                <select id="entry-activity" name="activity_type">
+                    <option>teaching</option>
+                    <option>research</option>
+                    <option>professional_development</option>
+                    <option>service</option>
+                    <option>admin</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="entry-hours">Hours per week</label>
+                <input id="entry-hours" name="hours_per_week" type="number" step="0.5" min="0.5" required>
+            </div>
+            <div class="form-field">
+                <label for="entry-semester">Semester</label>
+                <input id="entry-semester" name="semester" value="2026-S2">
+            </div>
+            <div class="form-field">
+                <label for="entry-start">Start date</label>
+                <input id="entry-start" name="start_date" type="date" value="2026-07-28">
+            </div>
+            <div class="form-field">
+                <label for="entry-end">End date</label>
+                <input id="entry-end" name="end_date" type="date" value="2026-11-06">
+            </div>
+            <div class="form-field span-2">
+                <label for="entry-description">Description</label>
+                <input id="entry-description" name="description"
+                       placeholder="e.g. 31266 Introduction to Software Development">
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn">Add entry</button>
+            <div class="form-field">
+                <label for="entry-row-id">Record ID</label>
+                <input id="entry-row-id" type="number" min="1" placeholder="entry_id">
+            </div>
+            <button type="button" class="btn secondary" data-load="entries" data-input="entry-row-id">Load</button>
+            <button type="button" class="btn secondary" data-update="entries" data-input="entry-row-id">Update</button>
+            <button type="button" class="btn secondary" data-delete="entries" data-input="entry-row-id">Delete</button>
+        </div>
+    </form>
+</section>
+
+<!-- -------------------------------------------------------- availability --- -->
+
+<section class="panel-section">
+    <h2>Availability</h2>
+
+    <div class="actions">
+        <div class="form-field">
+            <label for="availability-staff">Staff ID</label>
+            <input id="availability-staff" type="number" min="1" value="1">
+        </div>
+        <button type="button" class="btn" data-action="load-availability">Show availability</button>
+    </div>
+
+    <div id="availability-panel"></div>
+
+    <form id="availability-form">
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="slot-staff-id">Staff ID</label>
+                <input id="slot-staff-id" name="staff_id" type="number" min="1" required>
+            </div>
+            <div class="form-field">
+                <label for="slot-day">Day</label>
+                <select id="slot-day" name="day_of_week">
+                    <option>Mon</option><option>Tue</option><option>Wed</option>
+                    <option>Thu</option><option>Fri</option><option>Sat</option>
+                    <option>Sun</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="slot-start">Start time</label>
+                <input id="slot-start" name="start_time" type="time" value="09:00">
+            </div>
+            <div class="form-field">
+                <label for="slot-end">End time</label>
+                <input id="slot-end" name="end_time" type="time" value="17:00">
+            </div>
+            <div class="form-field">
+                <label for="slot-availability">Availability</label>
+                <select id="slot-availability" name="availability">
+                    <option>available</option>
+                    <option>preferred</option>
+                    <option>unavailable</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="slot-recurring">Recurring</label>
+                <select id="slot-recurring" name="is_recurring">
+                    <option value="1">Weekly</option>
+                    <option value="0">One off</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn">Add slot</button>
+            <div class="form-field">
+                <label for="slot-row-id">Record ID</label>
+                <input id="slot-row-id" type="number" min="1" placeholder="slot_id">
+            </div>
+            <button type="button" class="btn secondary" data-load="availability" data-input="slot-row-id">Load</button>
+            <button type="button" class="btn secondary" data-update="availability" data-input="slot-row-id">Update</button>
+            <button type="button" class="btn secondary" data-delete="availability" data-input="slot-row-id">Delete</button>
+        </div>
+    </form>
+</section>
+
+<!-- --------------------------------------------------------------- leave --- -->
+
+<section class="panel-section">
+    <h2>Leave requests</h2>
+
+    <div class="form-grid">
+        <div class="form-field">
+            <label for="leave-staff">Staff ID</label>
+            <input id="leave-staff" type="number" min="1" value="1">
+        </div>
+        <div class="form-field">
+            <label for="leave-approval">Approval</label>
+            <select id="leave-approval">
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button type="button" class="btn" data-action="load-leave">Show leave</button>
+    </div>
+
+    <div id="leave-panel"></div>
+
+    <form id="leave-form">
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="leave-staff-id">Staff ID</label>
+                <input id="leave-staff-id" name="staff_id" type="number" min="1" required>
+            </div>
+            <div class="form-field">
+                <label for="leave-type">Leave type</label>
+                <select id="leave-type" name="leave_type">
+                    <option>annual</option><option>sick</option>
+                    <option>conference</option><option>long_service</option>
+                    <option>parental</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="leave-start">Start date</label>
+                <input id="leave-start" name="start_date" type="date" required>
+            </div>
+            <div class="form-field">
+                <label for="leave-end">End date</label>
+                <input id="leave-end" name="end_date" type="date" required>
+            </div>
+            <div class="form-field">
+                <label for="leave-status">Approval</label>
+                <select id="leave-status" name="approval">
+                    <option>pending</option><option>approved</option><option>rejected</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="leave-reason">Reason</label>
+                <input id="leave-reason" name="reason" placeholder="Optional">
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn">Submit leave</button>
+            <div class="form-field">
+                <label for="leave-row-id">Record ID</label>
+                <input id="leave-row-id" type="number" min="1" placeholder="leave_id">
+            </div>
+            <button type="button" class="btn secondary" data-load="leave" data-input="leave-row-id">Load</button>
+            <button type="button" class="btn secondary" data-update="leave" data-input="leave-row-id">Update</button>
+            <button type="button" class="btn secondary" data-delete="leave" data-input="leave-row-id">Delete</button>
+        </div>
+    </form>
+</section>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script>
+// ------------------------------------------------------------- read views ---
+
+function loadOverview() {
+    const params = new URLSearchParams();
+    const status = value("overview-status");
+    const department = value("overview-department");
+    if (status) params.set("status", status);
+    if (department) params.set("department", department);
+
+    // /analysis has no server-side filter, so narrow with /profiles when a
+    // filter is set and use the computed view otherwise.
+    const url = params.toString()
+        ? `${BACKEND}/profiles?${params}`
+        : `${BACKEND}/analysis`;
+    render("overview-panel", url);
+}
+
+function loadDetail() {
+    const staffId = value("detail-staff");
+    if (!staffId) return message("detail-panel", "Enter a staff ID.");
+    render("detail-panel", `${BACKEND}/analysis?staff_id=${staffId}`);
+}
+
+function loadCalendar() {
+    const staffId = value("detail-staff");
+    if (!staffId) return message("calendar-panel", "Enter a staff ID.");
+    show("calendar-panel");
+    render("calendar-panel", `${BACKEND}/calendar?staff_id=${staffId}`);
+}
+
+function loadClashes() {
+    const staffId = value("clash-staff");
+    const query = staffId ? `?staff_id=${staffId}` : "";
+    render("clashes-panel", `${BACKEND}/clashes${query}`);
+}
+
+function loadAlerts() {
+    const params = new URLSearchParams();
+    const type = value("alert-type");
+    const status = value("alert-status");
+    if (type) params.set("alert_type", type);
+    if (status) params.set("status", status);
+    render("alerts-panel", `${BACKEND}/alerts?${params}`);
+}
+
+function loadEntries() {
+    render("entries-panel", `${BACKEND}/entries?staff_id=${value("entries-staff")}`);
+}
+
+function loadAvailability() {
+    render("availability-panel", `${BACKEND}/availability?staff_id=${value("availability-staff")}`);
+}
+
+function loadLeave() {
+    const params = new URLSearchParams({ staff_id: value("leave-staff") });
+    const approval = value("leave-approval");
+    if (approval) params.set("approval", approval);
+    render("leave-panel", `${BACKEND}/leave?${params}`);
+}
+
+function recompute() {
+    show("recompute-panel");
+    message("recompute-panel", "Recomputing...");
+    render("recompute-panel", `${BACKEND}/alerts/recompute`, { method: "POST" })
+        .then(loadOverview);
+}
+
+function exportCsv() {
+    const params = new URLSearchParams();
+    const staffId = value("export-staff");
+    if (staffId) params.set("staff_id", staffId);
+
+    // Navigating the top window would replace the dashboard, so the download is
+    // triggered from a link click instead.
+    const link = document.createElement("a");
+    link.href = `${BACKEND}/export/${value("export-dataset")}.csv?${params}`;
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
+function printReport() {
+    const staffId = value("export-staff");
+    const query = staffId ? `?staff_id=${staffId}` : "";
+    window.open(`/report.html${query}`, "_blank");
+}
+
+// --------------------------------- staff records from the Student 1 service ---
+
+function loadDirectory() {
+    const expertise = value("staff-expertise");
+    const query = expertise ? `?expertise=${encodeURIComponent(expertise)}` : "";
+    render("staff-panel", `${BACKEND}/staff/directory${query}`);
+}
+
+function staffHealth() {
+    render("staff-panel", `${BACKEND}/staff/health`);
+}
+
+function reconcile() {
+    render("staff-panel", `${BACKEND}/staff/reconcile`);
+}
+
+function staffDetail() {
+    const staffId = value("staff-lookup");
+    if (!staffId) return message("staff-detail-panel", "Enter a staff ID.");
+    render("staff-detail-panel", `${BACKEND}/staff/${staffId}`);
+}
+
+const ACTIONS = {
+    "load-directory": loadDirectory,
+    "staff-health": staffHealth,
+    "reconcile": reconcile,
+    "staff-detail": staffDetail,
+    "export-csv": exportCsv,
+    "print-report": printReport,
+    "load-overview": loadOverview,
+    "load-detail": loadDetail,
+    "load-calendar": loadCalendar,
+    "load-clashes": loadClashes,
+    "load-alerts": loadAlerts,
+    "load-entries": loadEntries,
+    "load-availability": loadAvailability,
+    "load-leave": loadLeave,
+    "recompute": recompute,
+};
+
+document.querySelectorAll("[data-action]").forEach((button) => {
+    button.addEventListener("click", () => ACTIONS[button.dataset.action]());
+});
+
+// ------------------------------------------------------------------ CRUD ---
+
+const FORMS = {
+    "entry-form": { resource: "entries", panel: "entries-panel", filter: "entries-staff" },
+    "availability-form": { resource: "availability", panel: "availability-panel", filter: "availability-staff" },
+    "leave-form": { resource: "leave", panel: "leave-panel", filter: "leave-staff" },
+};
+
+function configFor(resource) {
+    const formId = Object.keys(FORMS).find((id) => FORMS[id].resource === resource);
+    return { formId, ...FORMS[formId] };
+}
+
+// Carry the active staff filter so a write does not reset the panel to all rows.
+function filterQuery(config) {
+    const staffId = value(config.filter);
+    return staffId ? `?staff_id=${staffId}` : "";
+}
+
+Object.entries(FORMS).forEach(([formId, config]) => {
+    document.getElementById(formId).addEventListener("submit", (event) => {
+        event.preventDefault();
+        const body = new URLSearchParams(new FormData(event.target));
+        render(config.panel, `${BACKEND}/${config.resource}?staff_id=${body.get("staff_id")}`, {
+            method: "POST",
+            body,
+        });
+    });
+});
+
+// Load an existing record into the form so it can be edited and updated.
+document.querySelectorAll("[data-load]").forEach((button) => {
+    button.addEventListener("click", async () => {
+        const config = configFor(button.dataset.load);
+        const rowId = document.getElementById(button.dataset.input).value;
+        if (!rowId) return message(config.panel, "Enter a record ID to load.");
+
+        try {
+            const response = await fetch(`${BACKEND}/${config.resource}/${rowId}/record`);
+            const record = await response.json();
+
+            if (!response.ok) {
+                return message(config.panel, record.error || "Record not found.");
+            }
+
+            const form = document.getElementById(config.formId);
+            Object.entries(record).forEach(([field, fieldValue]) => {
+                const input = form.elements[field];
+                if (input && fieldValue !== null) input.value = fieldValue;
+            });
+            message(config.panel, `Loaded record ${rowId}. Edit the fields, then Update.`, "info");
+        } catch (error) {
+            message(config.panel, `Could not load record ${rowId}.`, "error");
+        }
+    });
+});
+
+document.querySelectorAll("[data-update]").forEach((button) => {
+    button.addEventListener("click", () => {
+        const config = configFor(button.dataset.update);
+        const rowId = document.getElementById(button.dataset.input).value;
+        if (!rowId) return message(config.panel, "Enter a record ID to update.");
+
+        const body = new URLSearchParams(new FormData(document.getElementById(config.formId)));
+        render(config.panel, `${BACKEND}/${config.resource}/${rowId}${filterQuery(config)}`,
+               { method: "PUT", body });
+    });
+});
+
+document.querySelectorAll("[data-delete]").forEach((button) => {
+    button.addEventListener("click", () => {
+        const config = configFor(button.dataset.delete);
+        const rowId = document.getElementById(button.dataset.input).value;
+        if (!rowId) return message(config.panel, "Enter a record ID to delete.");
+
+        render(config.panel, `${BACKEND}/${config.resource}/${rowId}${filterQuery(config)}`,
+               { method: "DELETE" });
+    });
+});
+
+loadOverview();
+</script>
+</body>
+</html>

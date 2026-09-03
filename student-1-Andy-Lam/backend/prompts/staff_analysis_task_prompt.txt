@@ -1,0 +1,15 @@
+Staff Member:
+Name: {{STAFF_NAME}}
+Position: {{POSITION}}
+Department: {{DEPARTMENT}}
+Employment Type: {{EMPLOYMENT_TYPE}}
+Status: {{STATUS}}
+ 
+Expertise Areas:
+{{EXPERTISE_LIST}}
+ 
+Qualifications:
+{{QUALIFICATIONS_LIST}}
+ 
+Task:
+Using only the staff data above, write a 2-3 sentence professional summary assessing this staff member's suitability for teaching, based on their expertise and qualifications. If expertise or qualifications are listed as "None supplied", note that suitability cannot be fully assessed rather than guessing.

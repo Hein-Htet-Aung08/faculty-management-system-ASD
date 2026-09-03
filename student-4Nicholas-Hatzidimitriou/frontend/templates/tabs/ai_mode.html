@@ -1,0 +1,107 @@
+<section class="panel-section">
+  <h2>AI Insights</h2>
+  <p style="color: var(--line-strong); font-size: 0.9rem;">
+    Select a project, then generate an AI research summary, get rationale
+    for currently assigned staff, or search all staff for new candidates.
+    Powered by the shared Ollama runtime (AI-Mode).
+  </p>
+
+  <div class="form-field span-2" style="margin-bottom: 1.25rem;">
+    <label for="ai-project-select">Project</label>
+    <select id="ai-project-select">
+      <option value="">Loading projects…</option>
+    </select>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+    <button
+      id="btn-generate-summary"
+      class="btn"
+      disabled
+      hx-post="/htmx/projects/0/generate-summary"
+      hx-target="#ai-result"
+      hx-swap="innerHTML"
+      hx-indicator="#ai-loading"
+    >
+      Generate Research Summary
+    </button>
+
+    <button
+      id="btn-match-staff"
+      class="btn secondary"
+      disabled
+      hx-post="/htmx/projects/0/match-staff"
+      hx-target="#ai-result"
+      hx-swap="innerHTML"
+      hx-indicator="#ai-loading"
+    >
+      Explain Current Staff Fit
+    </button>
+
+    <button
+      id="btn-recommend-staff"
+      class="btn secondary"
+      disabled
+      hx-post="/htmx/projects/0/recommend-staff"
+      hx-target="#ai-result"
+      hx-swap="innerHTML"
+      hx-indicator="#ai-loading"
+    >
+      Recommend New Staff
+    </button>
+
+    <span id="ai-loading" class="loading-indicator">Thinking…</span>
+  </div>
+
+  <div id="ai-result" class="ai-result-panel"></div>
+</section>
+
+<script>
+(function () {
+  const select = document.getElementById('ai-project-select');
+  const summaryBtn = document.getElementById('btn-generate-summary');
+  const matchBtn = document.getElementById('btn-match-staff');
+  const recommendBtn = document.getElementById('btn-recommend-staff');
+
+  // The /htmx AI-Mode endpoints live on the backend, not this frontend,
+  // so requests need the full backend origin, not a relative path.
+  function updateHtmxTargets() {
+    const projectId = select.value;
+    const enabled = !!projectId;
+    summaryBtn.disabled = !enabled;
+    matchBtn.disabled = !enabled;
+    recommendBtn.disabled = !enabled;
+
+    if (enabled) {
+      summaryBtn.setAttribute('hx-post', `${API_BASE}/htmx/projects/${projectId}/generate-summary`);
+      matchBtn.setAttribute('hx-post', `${API_BASE}/htmx/projects/${projectId}/match-staff`);
+      recommendBtn.setAttribute('hx-post', `${API_BASE}/htmx/projects/${projectId}/recommend-staff`);
+      // Re-process so HTMX picks up the new hx-post values
+      htmx.process(summaryBtn);
+      htmx.process(matchBtn);
+      htmx.process(recommendBtn);
+    }
+  }
+
+  select.addEventListener('change', updateHtmxTargets);
+
+  async function loadProjectOptions() {
+    try {
+      const res = await fetch(`${API_BASE}/projects`);
+      const projects = await res.json();
+
+      if (projects.length === 0) {
+        select.innerHTML = '<option value="">No projects available</option>';
+        return;
+      }
+
+      select.innerHTML = '<option value="">Choose a project…</option>' +
+        projects.map(p => `<option value="${p.projectID}">#${p.projectID} — ${p.title}</option>`).join('');
+    } catch (err) {
+      select.innerHTML = '<option value="">Could not load projects</option>';
+    }
+  }
+
+  loadProjectOptions();
+})();
+</script>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Workload and Availability Management</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .tab-pane { width: 100%; min-height: 900px; border: 0; display: block; }
+        .tab-pane[hidden] { display: none; }
+    </style>
+</head>
+<body>
+<header class="ledger-header">
+    <h1>Workload and Availability Management</h1>
+    <p class="subtitle">Faculty Management System &middot; Student 3 &middot; Tristan Lim</p>
+
+    <nav class="tab-nav" aria-label="Feature tabs">
+        <button class="tab-button active" data-tab="normal" type="button">Dashboard</button>
+        <button class="tab-button" data-tab="ai-mode" type="button">AI Mode</button>
+    </nav>
+</header>
+
+<div class="ledger-panel">
+    <iframe id="tab-frame-normal" class="tab-pane"
+            src="tabs/normal.html" title="Workload dashboard"></iframe>
+    <iframe id="tab-frame-ai-mode" class="tab-pane" hidden
+            src="tabs/ai-mode.html" title="AI Mode"></iframe>
+</div>
+
+<script>
+const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+const tabFrames = {
+    normal: document.getElementById("tab-frame-normal"),
+    "ai-mode": document.getElementById("tab-frame-ai-mode"),
+};
+
+function activateTab(tabName) {
+    tabButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.tab === tabName);
+    });
+
+    Object.entries(tabFrames).forEach(([name, frame]) => {
+        frame.hidden = name !== tabName;
+    });
+
+    window.location.hash = tabName;
+}
+
+tabButtons.forEach((button) => {
+    button.addEventListener("click", () => activateTab(button.dataset.tab));
+});
+
+const initialTab = window.location.hash.replace("#", "");
+activateTab(tabFrames[initialTab] ? initialTab : "normal");
+</script>
+</body>
+</html>

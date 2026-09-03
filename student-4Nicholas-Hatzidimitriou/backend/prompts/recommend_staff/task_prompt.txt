@@ -1,0 +1,1 @@
+Given the research opportunity described below, and the list of available staff with their expertise, recommend the 2-3 staff best suited to this opportunity, and explain why - based only on the context provided below.

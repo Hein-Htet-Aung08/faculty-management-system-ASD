@@ -1,0 +1,197 @@
+<section class="panel-section">
+  <h2>Research Projects</h2>
+  <div id="projects-table-wrap">
+    <p class="empty-state">Loading projects…</p>
+  </div>
+</section>
+
+<section class="panel-section">
+  <h2>Add a Research Project</h2>
+  <form id="create-project-form">
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="pf-title">Title</label>
+        <input type="text" id="pf-title" name="title" required>
+      </div>
+      <div class="form-field">
+        <label for="pf-department">Department</label>
+        <input type="text" id="pf-department" name="department" required>
+      </div>
+      <div class="form-field">
+        <label for="pf-status">Status</label>
+        <select id="pf-status" name="status" required>
+          <option value="proposed">Proposed</option>
+          <option value="in progress">In progress</option>
+          <option value="completed">Completed</option>
+          <option value="on hold">On hold</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="pf-lead">Lead Staff ID</label>
+        <input type="number" id="pf-lead" name="leadStaffID">
+      </div>
+      <div class="form-field">
+        <label for="pf-start">Start Date</label>
+        <input type="date" id="pf-start" name="startDate">
+      </div>
+      <div class="form-field">
+        <label for="pf-end">End Date</label>
+        <input type="date" id="pf-end" name="endDate">
+      </div>
+      <div class="form-field span-2">
+        <label for="pf-description">Description</label>
+        <textarea id="pf-description" name="description" rows="2"></textarea>
+      </div>
+    </div>
+    <button type="submit" class="btn">Add Project</button>
+  </form>
+  <div id="create-project-feedback"></div>
+</section>
+
+<script>
+(function () {
+  const wrap = document.getElementById('projects-table-wrap');
+  const form = document.getElementById('create-project-form');
+  const feedback = document.getElementById('create-project-feedback');
+
+  const STAMP_CLASS = {
+    'proposed': 'status-proposed',
+    'in progress': 'status-in-progress',
+    'completed': 'status-completed',
+    'on hold': 'status-on-hold',
+  };
+
+  function statusStamp(status) {
+    const cls = STAMP_CLASS[status] || '';
+    return `<span class="stamp ${cls}">${status}</span>`;
+  }
+
+  async function loadProjects() {
+    wrap.innerHTML = '<p class="empty-state">Loading projects…</p>';
+    try {
+      const res = await fetch(`${API_BASE}/projects`);
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      const projects = await res.json();
+
+      if (projects.length === 0) {
+        wrap.innerHTML = '<p class="empty-state">No projects yet. Add one below.</p>';
+        return;
+      }
+
+      const rows = projects.map(p => `
+        <tr>
+          <td class="project-id">#${p.projectID}</td>
+          <td>${p.title}</td>
+          <td>${p.department}</td>
+          <td>${statusStamp(p.status)}</td>
+          <td>${p.startDate || '—'}</td>
+          <td>
+            <button class="btn secondary" onclick="viewProjectDetail(${p.projectID})">View</button>
+            <button class="btn secondary" onclick="deleteProject(${p.projectID})">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+
+      wrap.innerHTML = `
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Title</th><th>Department</th><th>Status</th><th>Start</th><th></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div id="project-detail"></div>
+      `;
+    } catch (err) {
+      wrap.innerHTML = `<p class="error-state">Could not load projects: ${err.message}. Is the backend running at ${API_BASE}?</p>`;
+    }
+  }
+
+  window.viewProjectDetail = async function (projectId) {
+    const detail = document.getElementById('project-detail');
+    detail.innerHTML = '<p class="empty-state">Loading details…</p>';
+    try {
+      const [grants, publications, staff] = await Promise.all([
+        fetch(`${API_BASE}/projects/${projectId}/grants`).then(r => r.json()),
+        fetch(`${API_BASE}/projects/${projectId}/publications`).then(r => r.json()),
+        fetch(`${API_BASE}/projects/${projectId}/staff`).then(r => r.json()),
+      ]);
+
+      const grantRows = grants.length
+        ? grants.map(g => `<li>${g.fundingBody} — $${g.amountRequested.toLocaleString()} ${statusStamp(g.status)}</li>`).join('')
+        : '<li class="empty-state">No grants recorded.</li>';
+
+      const pubRows = publications.length
+        ? publications.map(p => `<li>${p.title} (${p.publicationType})</li>`).join('')
+        : '<li class="empty-state">No publications recorded.</li>';
+
+      // Enrich each staffID with the real name from Andy's Staff
+      // service. Falls back to "Staff #<id>" if his service is
+      // unreachable, so this never breaks the whole page.
+      const enrichedStaff = await Promise.all(
+        staff.map(async (s) => {
+          try {
+            const res = await fetch(`${STAFF_API_BASE}/api/staff/${s.staffID}`);
+            if (!res.ok) throw new Error('not found');
+            const staffDetail = await res.json();
+            return { ...s, name: staffDetail.name };
+          } catch {
+            return { ...s, name: `Staff #${s.staffID}` };
+          }
+        })
+      );
+
+      const staffRows = enrichedStaff.length
+        ? enrichedStaff.map(s => `<li>${s.name} — ${s.role}</li>`).join('')
+        : '<li class="empty-state">No staff linked yet.</li>';
+
+      detail.innerHTML = `
+        <div class="panel-section" style="margin-top:1.5rem; border-top:1px solid var(--line); padding-top:1rem;">
+          <h2>Project #${projectId} Detail</h2>
+          <p><strong>Grants:</strong></p><ul>${grantRows}</ul>
+          <p><strong>Publications:</strong></p><ul>${pubRows}</ul>
+          <p><strong>Assigned Staff:</strong></p><ul>${staffRows}</ul>
+        </div>
+      `;
+    } catch (err) {
+      detail.innerHTML = `<p class="error-state">Could not load project detail: ${err.message}</p>`;
+    }
+  };
+
+  window.deleteProject = async function (projectId) {
+    if (!confirm(`Delete project #${projectId}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/projects/${projectId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      loadProjects();
+    } catch (err) {
+      alert(`Could not delete project: ${err.message}`);
+    }
+  };
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    if (data.leadStaffID) data.leadStaffID = parseInt(data.leadStaffID, 10);
+
+    try {
+      const res = await fetch(`${API_BASE}/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || `API returned ${res.status}`);
+
+      feedback.innerHTML = `<p style="color: var(--ledger-green-dark);">Project #${result.projectID} created.</p>`;
+      form.reset();
+      loadProjects();
+    } catch (err) {
+      feedback.innerHTML = `<p class="error-state">${err.message}</p>`;
+    }
+  });
+
+  loadProjects();
+})();
+</script>

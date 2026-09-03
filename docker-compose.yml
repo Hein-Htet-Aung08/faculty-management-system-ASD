@@ -1,0 +1,169 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  #Shared unified home page 
+  home:
+    image: nginx:alpine
+    container_name: unified-home
+    ports:
+      - "8000:80"
+    volumes:
+      - ./shared/frontend:/usr/share/nginx/html:ro
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  # ---- Student 1: Andy - Staff Management ----
+  staff-database:
+    build: ./student-1-Andy-Lam/database
+    volumes:
+      - staff-data:/app
+    environment:
+      - DB_PATH=/app/staff.db
+    networks:
+      - faculty-network
+
+  staff-backend:
+    build: ./student-1-Andy-Lam/backend
+    ports:
+      - "5001:5001"
+    volumes:
+      - staff-data:/app/data
+    environment:
+      - DB_PATH=/app/data/staff.db
+      - OLLAMA_BASE_URL=http://ollama:11434/v1
+    depends_on:
+      - staff-database
+      - ollama
+    networks:
+      - faculty-network
+
+  staff-frontend:
+    build: ./student-1-Andy-Lam/frontend
+    ports:
+      - "8001:80"
+    volumes:
+      - ./shared/frontend/css:/usr/share/nginx/html/css:ro
+    depends_on:
+      - staff-backend
+    networks:
+      - faculty-network
+
+  # ---- Student 2: Hein - Teaching Subject and Classroom Allocation ----
+
+  # ---- Student 3: Tristan - Workload and Availability Management ----
+  student3-database:
+    build:
+      context: ./student-3Tristan-Lim/database-service
+    container_name: student3-database
+    ports:
+      - "5103:5103"
+    volumes:
+      - student3_data:/app/data
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student3-backend:
+    build:
+      context: ./student-3Tristan-Lim
+      dockerfile: backend-service/Dockerfile
+    container_name: student3-backend
+    ports:
+      - "5003:5003"
+    environment:
+      DATABASE_SERVICE_URL: http://student3-database:5103
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: llama3.1:8b
+      STAFF_SERVICE_URL: http://staff-backend:5001
+    depends_on:
+      - student3-database
+      - ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student3-frontend:
+    build:
+      context: ./student-3Tristan-Lim/frontend-service
+    container_name: student3-frontend
+    ports:
+      - "8003:80"
+    environment:
+      BACKEND_URL: http://localhost:5003
+    volumes:
+      - ./shared/frontend/css:/usr/share/nginx/html/css:ro
+    depends_on:
+      - student3-backend
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+
+  # ---- Student 4: Nicholas - Research and Grant Management ----
+  student4-frontend:
+    build:
+      context: ./student-4Nicholas-Hatzidimitriou/frontend
+    container_name: student4-frontend
+    ports:
+      - "8004:8004"
+    depends_on:
+      - student4-backend
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student4-backend:
+    build:
+      context: ./student-4Nicholas-Hatzidimitriou/backend
+    container_name: student4-backend
+    ports:
+      - "5004:5004"
+    environment:
+      DATABASE_SERVICE_URL: http://student4-database:5104
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: qwen2.5:0.5b
+      PORT: 5004
+      STAFF_SERVICE_URL: http://staff-backend:5001
+      WORKLOAD_SERVICE_URL: http://student3-backend:5003
+    depends_on:
+      - student4-database
+      - ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student4-database:
+    build:
+      context: ./student-4Nicholas-Hatzidimitriou/database-service
+    container_name: student4-database
+    ports:
+      - "5104:5104"
+    environment:
+      DATA_DIR: /app/data
+      PORT: 5104
+    volumes:
+      - student4_data:/app/data
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  # ---- Student 5: Matthew - Performance and Professional Development ----
+
+volumes:
+  staff-data:
+  student3_data:
+  student4_data:
+  ollama_data:
+  student3_data:
+
+networks:
+  faculty-network:
+    driver: bridge

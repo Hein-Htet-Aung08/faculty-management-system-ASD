@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Workload Report</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .actions .form-field { flex: 0 0 12rem; }
+
+        @media print {
+            @page { margin: 15mm; }
+            .no-print { display: none; }
+            .ledger-header, .ledger-panel { border: none; padding: 0; }
+            .panel-section { page-break-inside: avoid; }
+            h2 { page-break-after: avoid; }
+            table.ledger-table { font-size: 10pt; }
+        }
+    </style>
+</head>
+<body>
+<header class="ledger-header">
+    <h1>Workload and Availability Report</h1>
+    <p class="subtitle">Faculty Management System &middot; generated <span id="generated"></span></p>
+</header>
+
+<div class="ledger-panel">
+    <div class="actions no-print">
+        <div class="form-field">
+            <label for="report-staff">Staff ID (blank for all)</label>
+            <input id="report-staff" type="number" min="1" placeholder="All staff">
+        </div>
+        <button type="button" class="btn" id="refresh-report">Refresh</button>
+        <button type="button" class="btn secondary" onclick="window.print()">Save as PDF</button>
+    </div>
+
+    <section class="panel-section">
+        <h2>Workload overview</h2>
+        <div id="report-analysis"></div>
+    </section>
+
+    <section class="panel-section">
+        <h2>Conflicts</h2>
+        <div id="report-clashes"></div>
+    </section>
+
+    <section class="panel-section">
+        <h2>Open alerts</h2>
+        <div id="report-alerts"></div>
+    </section>
+
+    <section class="panel-section">
+        <h2>Rebalance recommendations</h2>
+        <div id="report-recommendations"></div>
+    </section>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script>
+document.getElementById("generated").textContent = new Date().toLocaleString();
+
+function buildReport() {
+    const staffId = value("report-staff");
+    const staffQuery = staffId ? `?staff_id=${staffId}` : "";
+
+    render("report-analysis", `${BACKEND}/analysis${staffQuery}`);
+    render("report-clashes", `${BACKEND}/clashes${staffQuery}`);
+    render("report-alerts", `${BACKEND}/alerts?status=open${staffId ? `&staff_id=${staffId}` : ""}`);
+    render("report-recommendations", `${BACKEND}/recommendations${staffQuery}`);
+}
+
+document.getElementById("refresh-report").addEventListener("click", buildReport);
+
+// Allow ?staff_id=N so the dashboard can deep-link into a single-staff report.
+const initialStaff = new URLSearchParams(window.location.search).get("staff_id");
+if (initialStaff) document.getElementById("report-staff").value = initialStaff;
+
+buildReport();
+</script>
+</body>
+</html>
