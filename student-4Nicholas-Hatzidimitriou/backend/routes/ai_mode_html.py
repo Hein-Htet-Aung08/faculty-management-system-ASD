@@ -1,6 +1,7 @@
 from flask import Blueprint
 from services import database_api
 from services import staff_client
+from services import workload_client
 from services.prompt_loader import load_prompt
 from services.llm_client import OLLAMA_MODEL, create_chat_completion
 
@@ -162,7 +163,21 @@ def recommend_staff_html(project_id):
         name = s.get("name") or f"Staff #{s.get('staff_id')}"
         expertise = s.get("expertise_area", "unspecified")
         dept = s.get("department_name", "unspecified")
-        staff_roster_lines.append(f"- {name}, expertise: {expertise}, department: {dept}")
+
+        workload_note = "workload unknown"
+        workload = workload_client.get_workload_profile(s.get("staff_id"))
+        if workload:
+            status = workload.get("status", "unknown")
+            current = workload.get("current_total_hours")
+            capacity = workload.get("max_weekly_hours")
+            if current is not None and capacity is not None:
+                workload_note = f"workload: {status} ({current}/{capacity} hrs)"
+            else:
+                workload_note = f"workload: {status}"
+
+        staff_roster_lines.append(
+            f"- {name}, expertise: {expertise}, department: {dept}, {workload_note}"
+        )
 
     already_assigned_lines = []
     for s in all_staff:
