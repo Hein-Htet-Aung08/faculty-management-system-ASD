@@ -64,7 +64,7 @@ SQLite data is retained in the named `matthew-performance-data` volume across or
 
 Both Compose configurations connect the backend to an Ollama container at `http://ollama:11434/v1`. Pull the model into the corresponding Compose stack once with `docker compose exec ollama ollama pull qwen2.5:0.5b`. The normal CRUD feature continues to work if the model is unavailable; the AI panel reports that service separately.
 
-AI output is parsed and checked against database context before it is saved. A generated record remains `Pending` until a person accepts, rejects, or edits it.
+AI output is parsed and checked against database context before it is saved. If both model attempts break a database constraint, the service returns a clearly labelled fallback selected only from the staff member's recorded goal and the training catalogue. A generated record remains `Pending` until a person accepts, rejects, or edits it.
 
 ## API resources
 

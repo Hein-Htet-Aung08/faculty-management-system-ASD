@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import date
 
 from openai import OpenAI
@@ -17,6 +18,10 @@ LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "120"))
 
 client = OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama", timeout=LLM_TIMEOUT)
 RECOMMENDATION_TYPES = {"Training", "Goal", "Mentoring", "Experience"}
+IGNORED_MATCH_WORDS = {
+    "and", "for", "the", "this", "that", "with", "from", "staff", "training",
+    "complete", "develop", "improve", "academic",
+}
 
 
 def _extract_json(text):
@@ -106,6 +111,49 @@ def _validate_recommendation(proposal, context):
     }
 
 
+def _grounded_training_fallback(context):
+    """Build a safe catalogue recommendation after unusable model output."""
+    goals = context["developmentGoals"]
+    programs = context["availableTrainingPrograms"]
+    if not goals or not programs:
+        raise ValueError("not enough database context for a grounded recommendation")
+
+    goal = goals[0]
+    enrolled_ids = {
+        program["trainingID"] for program in context.get("currentTraining", [])
+    }
+    candidates = [
+        program for program in programs if program["trainingID"] not in enrolled_ids
+    ] or programs
+
+    def words(value):
+        return {
+            word for word in re.findall(r"[a-z0-9]+", str(value).lower())
+            if len(word) > 2 and word not in IGNORED_MATCH_WORDS
+        }
+
+    goal_words = words(f"{goal.get('title', '')} {goal.get('description', '')}")
+
+    def relevance(program):
+        program_words = words(
+            f"{program.get('title', '')} {program.get('description', '')} "
+            f"{program.get('skillArea', '')}"
+        )
+        return len(goal_words & program_words)
+
+    selected = max(candidates, key=relevance)
+    proposal = {
+        "goalID": goal["goalID"],
+        "recommendationType": "Training",
+        "recommendation": f"Complete {selected['title']}.",
+        "rationale": (
+            f"This catalogue course supports the current goal '{goal['title']}': "
+            f"{goal.get('description', 'continue the recorded development objective.')}"
+        ),
+    }
+    return _validate_recommendation(proposal, context)
+
+
 def generate_recommendation(staff_id):
     context = build_staff_context(staff_id)
     allowed_goal_ids = [goal["goalID"] for goal in context["developmentGoals"]]
@@ -130,7 +178,7 @@ def generate_recommendation(staff_id):
     # Small local models occasionally ignore a catalogue constraint. Give the
     # model one chance to correct its JSON, while validating both attempts with
     # the same application rules before anything is stored.
-    validation_error = None
+    used_fallback = False
     for attempt in range(2):
         response = client.chat.completions.create(
             model=OLLAMA_MODEL,
@@ -143,9 +191,10 @@ def generate_recommendation(staff_id):
             recommendation = _validate_recommendation(_extract_json(raw), context)
             break
         except ValueError as exc:
-            validation_error = exc
             if attempt == 1:
-                raise
+                recommendation = _grounded_training_fallback(context)
+                used_fallback = True
+                break
             correction_context = {
                 "staffID": context["staffID"],
                 "staffDetails": context["staffDetails"],
@@ -172,15 +221,15 @@ def generate_recommendation(staff_id):
                     ),
                 },
             ]
-    else:
-        raise validation_error
-
     saved_response = database_client.create_resource(
         "development-recommendations", recommendation
     )
     saved = database_client.read_json(saved_response)
     return {
-        "mode": "validated-ai-recommendation",
+        "mode": (
+            "database-grounded-fallback"
+            if used_fallback else "validated-ai-recommendation"
+        ),
         "model": OLLAMA_MODEL,
         "recommendation": saved,
     }
