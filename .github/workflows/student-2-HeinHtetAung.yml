@@ -3,13 +3,19 @@ name: Student 2 CI
 on:
   push:
     branches: [ main, student-2-* ]
-    paths: [ 'student-2-Hein-Htet-Aung/**' ]
+    paths:
+      - 'student-2Hein-Htet-Aung/**'
+      - '.github/workflows/student-2-HeinHtetAung.yml'
+
   pull_request:
-    paths: [ 'student-2-Hein-Htet-Aung/**' ]
+    paths:
+      - 'student-2Hein-Htet-Aung/**'
+      - '.github/workflows/student-2-HeinHtetAung.yml'
 
 jobs:
   build-and-validate:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,16 +25,16 @@ jobs:
           python-version: '3.11'
 
       - name: Install backend dependencies
-        run: pip install -r student-2-Hein-Htet-Aung/backend/requirements.txt
+        run: pip install -r student-2Hein-Htet-Aung/backend/requirements.txt
 
       - name: Check backend imports correctly
-        run: python -c "import sys; sys.path.insert(0, 'student-2-Hein-Htet-Aung/backend'); import app"
+        run: python -c "import sys; sys.path.insert(0, 'student-2Hein-Htet-Aung/backend'); import app"
 
       - name: Build database Docker image
-        run: docker build -t allocation-database student-2-Hein-Htet-Aung/database
+        run: docker build -t allocation-database student-2Hein-Htet-Aung/database
 
       - name: Build backend Docker image
-        run: docker build -t allocation-backend student-2-Hein-Htet-Aung/backend
+        run: docker build -t allocation-backend student-2Hein-Htet-Aung/backend
 
       - name: Build frontend Docker image
-        run: docker build -t allocation-frontend student-2-Hein-Htet-Aung/frontend
+        run: docker build -t allocation-frontend student-2Hein-Htet-Aung/frontend
