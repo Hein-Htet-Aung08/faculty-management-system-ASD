@@ -154,8 +154,6 @@ tbody tr:hover { background: #f9fbfd; }
 .ai-result p { color: #4c5f65; line-height: 1.55; }
 .ai-meta { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
 .ai-meta > span:not(.status-pill) { padding: 4px 8px; border-radius: 999px; background: #e4efed; font-size: 11px; font-weight: 750; }
-.scope-note { margin-top: 24px; padding: 16px; border-left: 4px solid #62a9a0; color: #496065; background: #f2f8f7; line-height: 1.5; }
-
 dialog { width: min(720px, calc(100% - 28px)); padding: 0; border: 0; border-radius: 18px; box-shadow: 0 30px 90px rgba(20,34,52,.3); }
 dialog::backdrop { background: rgba(9, 20, 34, .62); backdrop-filter: blur(3px); }
 #record-form { padding: 28px; }
