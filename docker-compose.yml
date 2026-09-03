@@ -178,7 +178,7 @@ services:
 
   student5-backend:
     build:
-      context: ./student-5Matthew-Barnard/backend
+      context: ./student-5Matthew-Barnard/backend-service
     container_name: student5-backend
     ports:
       - "5005:5005"
@@ -207,7 +207,7 @@ services:
 
   student5-frontend:
     build:
-      context: ./student-5Matthew-Barnard/frontend
+      context: ./student-5Matthew-Barnard/frontend-service
     container_name: student5-frontend
     ports:
       - "8005:80"

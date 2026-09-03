@@ -18,7 +18,7 @@ Suggested commands from `student-5Matthew-Barnard`:
 
 ```powershell
 python -m unittest discover -s database-service/tests -v
-python -m unittest discover -s backend/tests -v
+python -m unittest discover -s backend-service/tests -v
 docker compose up --build -d
 docker compose ps
 docker compose logs --no-color

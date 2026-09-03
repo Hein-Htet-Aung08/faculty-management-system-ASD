@@ -92,12 +92,12 @@ Health endpoints are `/health`, `/api/health`, and `/api/ai/health` on the backe
 Install both requirement sets, then run each suite in its own service directory:
 
 ```powershell
-python -m pip install -r backend/requirements.txt
+python -m pip install -r backend-service/requirements.txt
 python -m pip install -r database-service/requirements.txt
 
 Set-Location database-service
 python -m unittest discover -s tests -v
-Set-Location ../backend
+Set-Location ../backend-service
 python -m unittest discover -s tests -v
 ```
 
