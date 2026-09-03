@@ -1,5 +1,5 @@
 import requests
-from flask import Blueprint, request
+from flask import Blueprint, jsonify, request
 
 from routes.workload_ui import _analyse_all
 from services import staff_api
@@ -23,6 +23,23 @@ def health():
         f"Staff service reachable at {staff_api.STAFF_SERVICE_URL} "
         f"- {len(directory)} staff records.",
     ), 200
+
+
+@staff_bp.get("/expertise-areas")
+def expertise_areas():
+    """Distinct expertise areas across the staff roster, for the filter dropdown."""
+    try:
+        directory = staff_api.staff_directory()
+    except staff_api.StaffServiceUnavailable as exc:
+        return jsonify({"error": str(exc)}), 503
+
+    areas = sorted({
+        area
+        for entry in directory
+        for area in entry.get("expertise", [])
+        if area
+    })
+    return jsonify(areas), 200
 
 
 @staff_bp.get("/directory")
