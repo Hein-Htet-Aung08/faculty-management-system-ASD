@@ -6,6 +6,7 @@ from requests import RequestException
 
 import ai_service
 import database_client
+import staff_client
 
 RESOURCE_FILTERS = {
     "performance-reviews": {"staffID", "reviewerID", "status"},
@@ -27,7 +28,7 @@ def create_app():
         return jsonify({
             "status": "ok",
             "service": "performance-professional-development-backend",
-            "aiMode": "single-pass Ollama recommendation",
+            "aiMode": "validated Ollama recommendation",
         })
 
     def proxy(response):
@@ -111,6 +112,13 @@ def create_app():
                 "error": "Ollama is unavailable or the configured model is not installed",
                 "detail": str(exc),
             }), 503
+
+    @app.get("/api/integration/staff")
+    def staff_directory():
+        try:
+            return jsonify({"staff": staff_client.list_staff()})
+        except (RequestException, ValueError) as exc:
+            return jsonify({"staff": [], "warning": f"staff service unavailable: {exc}"})
 
     @app.post("/api/ai/recommend-development")
     def recommend_development():

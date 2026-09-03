@@ -84,6 +84,7 @@ const resources = {
 let currentResource = 'development-goals';
 let currentRows = [];
 let editingId = null;
+const staffDirectory = new Map();
 
 const $ = (selector) => document.querySelector(selector);
 const escapeHtml = (value) => String(value ?? '')
@@ -109,17 +110,32 @@ function toast(message, isError = false) {
 
 function statusPill(value) {
   const key = String(value || '').toLowerCase().replaceAll(' ', '-');
-  return `<span class="status-pill status-${escapeHtml(key)}">${escapeHtml(value || '—')}</span>`;
+  return `<span class="stamp status-pill status-${escapeHtml(key)}">${escapeHtml(value || '—')}</span>`;
 }
 
 function formatCell(field, value) {
   if (field === 'status') return statusPill(value);
+  if (field === 'staffID' || field === 'reviewerID') {
+    const name = staffDirectory.get(Number(value));
+    return name ? `${escapeHtml(name)} <small class="record-id">#${escapeHtml(value)}</small>` : escapeHtml(value);
+  }
   if (field === 'progress') {
     const progress = Number(value || 0);
     return `<div class="progress-cell"><span>${progress}%</span><div><i style="width:${progress}%"></i></div></div>`;
   }
   if (field === 'rating') return value == null ? '—' : `${escapeHtml(value)} / 5`;
   return escapeHtml(value == null || value === '' ? '—' : value);
+}
+
+async function loadStaffDirectory() {
+  try {
+    const result = await api('/integration/staff');
+    (result.staff || []).forEach((staff) => {
+      staffDirectory.set(Number(staff.staff_id), staff.name);
+    });
+  } catch (_) {
+    // Staff names are an integration enhancement; IDs remain usable standalone.
+  }
 }
 
 async function checkServices() {
@@ -366,6 +382,10 @@ $('#cancel-dialog').addEventListener('click', () => $('#record-dialog').close())
 $('#check-ai').addEventListener('click', checkAi);
 $('#generate-ai').addEventListener('click', generateAiRecommendation);
 
-checkServices();
-loadMetrics();
-activateResource('development-goals');
+async function initialise() {
+  await Promise.all([checkServices(), loadStaffDirectory()]);
+  await loadMetrics();
+  activateResource('development-goals');
+}
+
+initialise();

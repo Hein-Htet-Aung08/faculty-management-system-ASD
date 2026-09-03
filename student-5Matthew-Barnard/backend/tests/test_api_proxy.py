@@ -25,11 +25,11 @@ class ApiProxyTests(unittest.TestCase):
     def test_list_forwards_only_supported_filters(self, list_resource):
         list_resource.return_value = fake_response(200, b"[]")
         response = self.client.get(
-            "/api/development-goals?staffID=101&status=In%20Progress&ignored=value"
+            "/api/development-goals?staffID=1&status=In%20Progress&ignored=value"
         )
         self.assertEqual(response.status_code, 200)
         list_resource.assert_called_once_with(
-            "development-goals", {"staffID": "101", "status": "In Progress"}
+            "development-goals", {"staffID": "1", "status": "In Progress"}
         )
 
     @patch("database_client.create_resource")
@@ -38,7 +38,7 @@ class ApiProxyTests(unittest.TestCase):
             201, b'{"goalID":11,"title":"New goal"}'
         )
         response = self.client.post("/api/development-goals", json={
-            "staffID": 101, "title": "New goal", "status": "Planned"
+            "staffID": 1, "title": "New goal", "status": "Planned"
         })
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json["goalID"], 11)
@@ -61,21 +61,33 @@ class AiModeRouteTests(unittest.TestCase):
     @patch("ai_service.generate_recommendation")
     def test_ai_mode_returns_saved_recommendation(self, generate):
         generate.return_value = {
-            "mode": "single-pass-ai",
+            "mode": "validated-ai-recommendation",
             "model": "qwen2.5:0.5b",
             "recommendation": {"recommendationID": 11, "status": "Pending"},
         }
         response = self.client.post(
-            "/api/ai/recommend-development", json={"staffID": 101}
+            "/api/ai/recommend-development", json={"staffID": 1}
         )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json["mode"], "single-pass-ai")
+        self.assertEqual(response.json["mode"], "validated-ai-recommendation")
 
     def test_ai_mode_requires_positive_staff_id(self):
         response = self.client.post(
             "/api/ai/recommend-development", json={"staffID": 0}
         )
         self.assertEqual(response.status_code, 400)
+
+
+class StaffIntegrationRouteTests(unittest.TestCase):
+    def setUp(self):
+        self.client = create_app().test_client()
+
+    @patch("staff_client.list_staff")
+    def test_staff_directory_is_exposed_through_backend(self, list_staff):
+        list_staff.return_value = [{"staff_id": 1, "name": "John Smith"}]
+        response = self.client.get("/api/integration/staff")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["staff"][0]["name"], "John Smith")
 
 
 if __name__ == "__main__":

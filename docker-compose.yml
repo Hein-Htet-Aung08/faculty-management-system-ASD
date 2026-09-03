@@ -156,13 +156,76 @@ services:
     restart: unless-stopped
 
   # ---- Student 5: Matthew - Performance and Professional Development ----
+  student5-database:
+    build:
+      context: ./student-5Matthew-Barnard/database-service
+    container_name: student5-database
+    ports:
+      - "5105:5105"
+    environment:
+      DATABASE_PATH: /app/data/performance_dev.db
+      PORT: 5105
+    volumes:
+      - student5_data:/app/data
+    networks:
+      - faculty-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5105/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  student5-backend:
+    build:
+      context: ./student-5Matthew-Barnard/backend
+    container_name: student5-backend
+    ports:
+      - "5005:5005"
+    environment:
+      DATABASE_SERVICE_URL: http://student5-database:5105
+      DATABASE_TIMEOUT: 5
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: qwen2.5:0.5b
+      LLM_TIMEOUT: 120
+      PORT: 5005
+      STAFF_SERVICE_URL: http://staff-backend:5001
+      STAFF_TIMEOUT: 3
+    depends_on:
+      student5-database:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - faculty-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5005/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  student5-frontend:
+    build:
+      context: ./student-5Matthew-Barnard/frontend
+    container_name: student5-frontend
+    ports:
+      - "8005:80"
+    volumes:
+      - ./shared/frontend/css:/usr/share/nginx/html/css:ro
+    depends_on:
+      student5-backend:
+        condition: service_healthy
+    networks:
+      - faculty-network
+    restart: unless-stopped
 
 volumes:
   staff-data:
   student3_data:
   student4_data:
+  student5_data:
   ollama_data:
-  student3_data:
 
 networks:
   faculty-network:

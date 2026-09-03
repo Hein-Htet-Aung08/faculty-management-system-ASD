@@ -1,13 +1,25 @@
 services:
-  matthew-frontend:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student5-frontend:
     build: ./frontend
     ports:
       - "8005:80"
+    volumes:
+      - ../shared/frontend/css:/usr/share/nginx/html/css:ro
     depends_on:
-      matthew-backend:
+      student5-backend:
         condition: service_healthy
+    networks:
+      - faculty-network
 
-  matthew-database:
+  student5-database:
     build: ./database-service
     environment:
       DATABASE_PATH: /app/data/performance_dev.db
@@ -25,23 +37,25 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - faculty-network
 
-  matthew-backend:
+  student5-backend:
     build: ./backend
     environment:
-      DATABASE_SERVICE_URL: http://matthew-database:5105
+      DATABASE_SERVICE_URL: http://student5-database:5105
       DATABASE_TIMEOUT: "5"
       PORT: "5005"
-      OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
+      OLLAMA_BASE_URL: http://ollama:11434/v1
       OLLAMA_MODEL: qwen2.5:0.5b
       LLM_TIMEOUT: "120"
     ports:
       - "5005:5005"
     depends_on:
-      matthew-database:
+      student5-database:
         condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      ollama:
+        condition: service_started
     healthcheck:
       test:
         - CMD
@@ -51,6 +65,13 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - faculty-network
 
 volumes:
   matthew-performance-data:
+  ollama_data:
+
+networks:
+  faculty-network:
+    driver: bridge

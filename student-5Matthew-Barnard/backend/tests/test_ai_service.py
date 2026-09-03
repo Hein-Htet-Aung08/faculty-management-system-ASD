@@ -11,7 +11,7 @@ from ai_service import _extract_json, _validate_recommendation
 class AiOutputValidationTests(unittest.TestCase):
     def setUp(self):
         self.context = {
-            "staffID": 101,
+            "staffID": 1,
             "developmentGoals": [{"goalID": 3, "title": "Improve leadership"}],
             "availableTrainingPrograms": [
                 {"trainingID": 8, "title": "Academic Leadership Essentials"}
@@ -26,7 +26,7 @@ class AiOutputValidationTests(unittest.TestCase):
             "rationale": "This supports the existing leadership goal.",
         }, self.context)
 
-        self.assertEqual(record["staffID"], 101)
+        self.assertEqual(record["staffID"], 1)
         self.assertEqual(record["goalID"], 3)
         self.assertEqual(record["status"], "Pending")
 

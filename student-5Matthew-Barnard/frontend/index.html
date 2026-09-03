@@ -5,16 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Academic performance and professional development management" />
     <title>Performance &amp; Development | Faculty Management</title>
+    <link rel="stylesheet" href="/css/styles.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="topbar">
+    <header class="ledger-header topbar">
       <div class="brand-mark" aria-hidden="true">PD</div>
       <div>
         <p class="eyebrow">Faculty Management System</p>
         <h1>Performance &amp; Professional Development</h1>
       </div>
-      <div class="release-badge">Release 0</div>
+      <div class="header-actions">
+        <a class="btn secondary home-link" href="http://localhost:8000">&larr; All features</a>
+        <div class="release-badge">Release 0</div>
+      </div>
     </header>
 
     <main class="page-shell">
@@ -43,13 +47,13 @@
         <article><span>Pending recommendations</span><strong id="count-recommendations">—</strong></article>
       </section>
 
-      <nav class="feature-nav" aria-label="Feature sections">
-        <button class="nav-button active" data-resource="development-goals">Goals</button>
-        <button class="nav-button" data-resource="performance-reviews">Reviews</button>
-        <button class="nav-button" data-resource="training-programs">Training catalogue</button>
-        <button class="nav-button" data-resource="staff-training">Staff training</button>
-        <button class="nav-button" data-resource="development-recommendations">Recommendations</button>
-        <button class="nav-button ai-nav" data-resource="ai-mode">AI-Mode</button>
+      <nav class="tab-nav feature-nav" aria-label="Feature sections">
+        <button class="tab-button nav-button active" data-resource="development-goals">Goals</button>
+        <button class="tab-button nav-button" data-resource="performance-reviews">Reviews</button>
+        <button class="tab-button nav-button" data-resource="training-programs">Training catalogue</button>
+        <button class="tab-button nav-button" data-resource="staff-training">Staff training</button>
+        <button class="tab-button nav-button" data-resource="development-recommendations">Recommendations</button>
+        <button class="tab-button nav-button ai-nav" data-resource="ai-mode">AI-Mode</button>
       </nav>
 
       <section id="resource-panel" class="workspace-card">
@@ -59,7 +63,7 @@
             <h2 id="resource-title">Development goals</h2>
             <p id="resource-description">Track measurable goals and progress for each staff member.</p>
           </div>
-          <button id="add-record" class="primary-button">+ Add goal</button>
+          <button id="add-record" class="btn primary-button">+ Add goal</button>
         </div>
 
         <div class="filters">
@@ -71,12 +75,12 @@
             Status
             <select id="status-filter"><option value="">All statuses</option></select>
           </label>
-          <button id="apply-filters" class="secondary-button">Apply filters</button>
-          <button id="clear-filters" class="text-button">Clear</button>
+          <button id="apply-filters" class="btn secondary secondary-button">Apply filters</button>
+          <button id="clear-filters" class="btn secondary text-button">Clear</button>
         </div>
 
         <div class="table-wrap">
-          <table>
+          <table class="ledger-table">
             <thead><tr id="table-head"></tr></thead>
             <tbody id="table-body"></tbody>
           </table>
@@ -104,10 +108,10 @@
         <div class="ai-workbench">
           <label>
             Staff ID
-            <input id="ai-staff-id" type="number" min="1" value="101" />
+            <input id="ai-staff-id" type="number" min="1" value="1" />
           </label>
-          <button id="generate-ai" class="primary-button ai-button">Generate recommendation</button>
-          <button id="check-ai" class="secondary-button">Check Ollama</button>
+          <button id="generate-ai" class="btn primary-button ai-button">Generate recommendation</button>
+          <button id="check-ai" class="btn secondary secondary-button">Check Ollama</button>
         </div>
 
         <div id="ai-result" class="ai-result" hidden></div>
@@ -130,8 +134,8 @@
         <div id="form-fields" class="form-grid"></div>
         <p id="form-error" class="form-error" hidden></p>
         <div class="dialog-actions">
-          <button type="button" id="cancel-dialog" class="secondary-button">Cancel</button>
-          <button type="submit" class="primary-button">Save record</button>
+          <button type="button" id="cancel-dialog" class="btn secondary secondary-button">Cancel</button>
+          <button type="submit" class="btn primary-button">Save record</button>
         </div>
       </form>
     </dialog>

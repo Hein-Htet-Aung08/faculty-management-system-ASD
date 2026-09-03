@@ -10,11 +10,12 @@ Matthew Barnard's Release 0 feature manages staff reviews, development goals, tr
 - A separate Flask/SQLite database service at `http://localhost:5105`.
 - Relational constraints, validation, and ten seed records per table.
 - Visible AI Mode that uses a local Ollama model to produce a grounded development recommendation and saves it as `Pending` for human review.
-- Three Docker containers coordinated by Docker Compose.
+- Three feature containers coordinated by Docker Compose, plus the team's shared Ollama runtime.
+- The team stylesheet and navigation back to the unified homepage.
 - Automated database, API, and mocked AI-route tests.
 - A GitHub Actions workflow that runs tests and validates/builds the containers.
 
-The AI Mode is deliberately a single model request in the base feature. It is not being represented as the team's shared Plan -> Act -> Observe -> Adapt loop; that integration and its genuine execution logs must be added with the group later.
+AI Mode makes a recommendation request and may make one correction request when the local model breaks a database constraint. This small output-validation step is not being represented as the team's shared Plan -> Act -> Observe -> Adapt software-development loop; that integration and its genuine execution logs must be added with the group later.
 
 ## Architecture
 
@@ -24,17 +25,31 @@ Browser :8005
     v
 Nginx frontend -- /api --> Flask backend :5005 --> database service :5105 --> SQLite
                                   |
-                                  +--> Ollama on host :11434
+                                  +--> shared Ollama service :11434
 ```
 
 Only the database service reads or writes SQLite. The backend performs orchestration and exposes the public API. Nginx serves the browser files and proxies `/api` requests, avoiding hard-coded browser-side service addresses.
 
-## Run with Docker
+In the integrated stack, the backend also reads the Staff Management directory through `STAFF_SERVICE_URL`. The frontend displays matching staff names, and AI Mode can include the staff member's profile and expertise in its grounded context. Both fall back to Matthew's numeric IDs and records if Staff Management is not running.
+
+## Run the integrated group application
+
+From the repository root:
+
+```powershell
+docker compose up --build -d
+docker compose exec ollama ollama pull qwen2.5:0.5b
+```
+
+Open `http://localhost:8000` for the shared homepage or `http://localhost:8005` for this feature directly. The shared Compose file supplies the common stylesheet and connects the backend to the shared Ollama container.
+
+## Run this feature by itself
 
 From this directory:
 
 ```powershell
 docker compose up --build
+docker compose exec ollama ollama pull qwen2.5:0.5b
 ```
 
 Open `http://localhost:8005`. Stop the application with:
@@ -45,16 +60,9 @@ docker compose down
 
 SQLite data is retained in the named `matthew-performance-data` volume across ordinary container restarts.
 
-## Enable AI Mode
+## AI Mode
 
-AI Mode expects Ollama on the Windows host. Install Ollama, then run:
-
-```powershell
-ollama pull qwen2.5:0.5b
-ollama serve
-```
-
-Docker Compose connects the backend to `host.docker.internal:11434`. The configured model can be changed with the `OLLAMA_MODEL` environment variable. The normal CRUD feature continues to work if Ollama is unavailable; the AI panel reports that service separately.
+Both Compose configurations connect the backend to an Ollama container at `http://ollama:11434/v1`. Pull the model into the corresponding Compose stack once with `docker compose exec ollama ollama pull qwen2.5:0.5b`. The normal CRUD feature continues to work if the model is unavailable; the AI panel reports that service separately.
 
 AI output is parsed and checked against database context before it is saved. A generated record remains `Pending` until a person accepts, rejects, or edits it.
 
@@ -71,7 +79,7 @@ Each resource supports `GET` collection, `GET` by ID, `POST`, `PUT`, and `DELETE
 Examples:
 
 ```text
-GET  /api/development-goals?staffID=101&status=In%20Progress
+GET  /api/development-goals?staffID=1&status=In%20Progress
 POST /api/performance-reviews
 PUT  /api/development-recommendations/1
 DELETE /api/staff-training/12

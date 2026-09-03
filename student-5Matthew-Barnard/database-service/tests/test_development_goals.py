@@ -59,15 +59,15 @@ class DevelopmentGoalApiTests(unittest.TestCase):
         self.assertEqual(self.client.get(f"/development-goals/{goal_id}").status_code, 404)
 
     def test_goal_filters(self):
-        response = self.client.get("/development-goals?staffID=101&status=In%20Progress")
+        response = self.client.get("/development-goals?staffID=1&status=In%20Progress")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json)
-        self.assertTrue(all(goal["staffID"] == 101 for goal in response.json))
+        self.assertTrue(all(goal["staffID"] == 1 for goal in response.json))
         self.assertTrue(all(goal["status"] == "In Progress" for goal in response.json))
 
     def test_invalid_goal_is_rejected(self):
         response = self.client.post("/development-goals", json={
-            "staffID": 101,
+            "staffID": 1,
             "title": "Invalid progress",
             "progress": 120,
             "status": "In Progress",

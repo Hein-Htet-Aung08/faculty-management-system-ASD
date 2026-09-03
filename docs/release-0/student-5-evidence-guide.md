@@ -26,20 +26,35 @@ docker compose logs --no-color
 
 Do not place secrets, API keys, private tokens, or unnecessary personal information in screenshots or logs.
 
-## Collect later: shared agentic-loop evidence
+## Collect later: shared software-development agentic-loop evidence
 
-Do not invent this evidence before the loop exists. For each genuine run, preserve:
+The tutor confirmed that this is the shared code-review and improvement loop, not the user-facing AI recommendation feature. It uses an LLM to review areas such as database design, architecture, endpoints, and DevOps; the team applies useful findings and repeats the cycle.
 
-- date/time, feature, user goal, and anonymised input;
-- Plan output and selected actions;
-- Act tool/API calls and their results;
-- Observe output, including validation or test results;
-- Adapt decision and why another iteration was or was not needed;
-- final output and whether a human accepted, edited, or rejected it;
-- model/configuration used and relevant error/retry logs;
-- code revision or commit connected to the run.
+Do not invent this evidence before the shared loop exists. For each genuine run, preserve:
+
+- date/time, model/configuration, starting commit, and the component being reviewed;
+- **Plan:** the review focus and checks to perform;
+- **Act:** the code/configuration supplied to the reviewer and its findings;
+- **Observe:** which findings were accepted or rejected, with test results;
+- **Adapt:** the resulting code change and why it was made;
+- the next iteration, if validation exposed another problem;
+- before/after commits, relevant logs, and a short human reflection.
+
+Matthew should run the shared loop against his own feature after the group agrees on the implementation. Suitable review targets are the SQLite schema and relationships, API validation/error handling, Docker/CI configuration, and AI-output grounding. The evidence must show an actual change or a reasoned decision not to apply a suggestion.
 
 The tutor announcement says the loop execution should **not** consume time in the showcase video. Its technical workflow is assessed from the report evidence and logs, so include a short architecture explanation and selected readable log excerpts in the report.
+
+## Writing the report in your own voice
+
+Use evidence first, then explain your reasoning plainly. A useful paragraph structure is:
+
+1. What you were trying to achieve.
+2. What you implemented and why you chose that design.
+3. What went wrong or what the tests revealed.
+4. What you changed and what evidence shows it worked.
+5. What limitation or next step remains.
+
+Avoid vague claims such as “the system was optimised” or “AI generated the solution.” Name the endpoint, table, container, failed check, or commit. Rewrite notes in language you would naturally use and include one or two genuine decisions you can explain during Q&A.
 
 ## Showcase recording checklist
 

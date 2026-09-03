@@ -5,10 +5,12 @@ from datetime import date
 from openai import OpenAI
 
 import database_client
+import staff_client
 from prompt_loader import load_prompt
+from requests import RequestException
 
 OLLAMA_BASE_URL = os.getenv(
-    "OLLAMA_BASE_URL", "http://host.docker.internal:11434/v1"
+    "OLLAMA_BASE_URL", "http://localhost:11434/v1"
 ).rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:0.5b")
 LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "120"))
@@ -46,8 +48,13 @@ def build_staff_context(staff_id):
         raise ValueError("no performance reviews or development goals exist for this staff member")
 
     enrolled_ids = {row["trainingID"] for row in enrolments}
+    try:
+        staff_details = staff_client.get_staff_context(staff_id)
+    except (RequestException, ValueError):
+        staff_details = None
     return {
         "staffID": staff_id,
+        "staffDetails": staff_details,
         "performanceReviews": reviews,
         "developmentGoals": goals,
         "currentTraining": [
@@ -101,30 +108,79 @@ def _validate_recommendation(proposal, context):
 
 def generate_recommendation(staff_id):
     context = build_staff_context(staff_id)
-    response = client.chat.completions.create(
-        model=OLLAMA_MODEL,
-        messages=[
-            {"role": "system", "content": load_prompt("development_system_prompt.txt")},
-            {
-                "role": "user",
-                "content": (
-                    load_prompt("development_task_prompt.txt")
-                    + "\n\nSUPPLIED RECORDS\n"
-                    + json.dumps(context, indent=2)
-                ),
-            },
-        ],
-        temperature=0.2,
-        max_tokens=350,
-    )
-    raw = response.choices[0].message.content or ""
-    recommendation = _validate_recommendation(_extract_json(raw), context)
+    allowed_goal_ids = [goal["goalID"] for goal in context["developmentGoals"]]
+    allowed_training_titles = [
+        program["title"] for program in context["availableTrainingPrograms"]
+    ]
+    messages = [
+        {"role": "system", "content": load_prompt("development_system_prompt.txt")},
+        {
+            "role": "user",
+            "content": (
+                load_prompt("development_task_prompt.txt")
+                + "\n\nSUPPLIED RECORDS\n"
+                + json.dumps(context, indent=2)
+                + "\n\nALLOWED OUTPUT VALUES (copy exactly)\n"
+                + f"goalID: {json.dumps(allowed_goal_ids)}\n"
+                + f"Training titles: {json.dumps(allowed_training_titles)}"
+            ),
+        },
+    ]
+
+    # Small local models occasionally ignore a catalogue constraint. Give the
+    # model one chance to correct its JSON, while validating both attempts with
+    # the same application rules before anything is stored.
+    validation_error = None
+    for attempt in range(2):
+        response = client.chat.completions.create(
+            model=OLLAMA_MODEL,
+            messages=messages,
+            temperature=0.1,
+            max_tokens=350,
+        )
+        raw = response.choices[0].message.content or ""
+        try:
+            recommendation = _validate_recommendation(_extract_json(raw), context)
+            break
+        except ValueError as exc:
+            validation_error = exc
+            if attempt == 1:
+                raise
+            correction_context = {
+                "staffID": context["staffID"],
+                "staffDetails": context["staffDetails"],
+                "performanceReviews": context["performanceReviews"],
+                "developmentGoals": context["developmentGoals"],
+            }
+            # Use a short fresh correction prompt. This is more dependable for
+            # the team's small local model than extending an already long chat.
+            messages = [
+                {
+                    "role": "system",
+                    "content": "Correct the rejected proposal. Output one JSON object only.",
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Rejected proposal: {raw}\nReason: {exc}. "
+                        "Return keys goalID, recommendationType, recommendation, rationale. "
+                        f"Allowed goal IDs are {json.dumps(allowed_goal_ids)}. If the type is "
+                        "Training, the recommendation must include one title copied exactly "
+                        f"from {json.dumps(allowed_training_titles)}. Otherwise change the type "
+                        "to Goal, Mentoring, or Experience so it accurately describes the action. "
+                        f"Evidence: {json.dumps(correction_context)}"
+                    ),
+                },
+            ]
+    else:
+        raise validation_error
+
     saved_response = database_client.create_resource(
         "development-recommendations", recommendation
     )
     saved = database_client.read_json(saved_response)
     return {
-        "mode": "single-pass-ai",
+        "mode": "validated-ai-recommendation",
         "model": OLLAMA_MODEL,
         "recommendation": saved,
     }
