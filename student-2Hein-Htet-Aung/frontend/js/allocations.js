@@ -25,6 +25,14 @@ function allocationEscapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function showAllocationError(message) {
+  allocationMessage.innerHTML = `
+    <div class="error-state">
+      ${allocationEscapeHtml(message)}
+    </div>
+  `;
+}
+
 function parseAllocationDetails(element) {
   const lines = element.innerHTML
     .split(/<br\s*\/?>/i)
@@ -62,9 +70,15 @@ function parseAllocationDetails(element) {
     }
 
     if (key === "assigned staff member") {
-        allocation.staff_display = value;
+      allocation.staff_display = value;
     }
-    
+
+    if (key === "assigned staff id") {
+      allocation.assigned_staff_member =
+        value === "Unassigned"
+          ? null
+          : Number(value);
+    }
 
     if (key === "classroom id") {
       allocation.classroom_id = value;
@@ -97,13 +111,6 @@ function parseAllocationDetails(element) {
     if (key === "allocation status") {
       allocation.allocation_status = value;
     }
-
-    if (key === "assigned staff id") {
-        allocation.assigned_staff_member =
-            value === "Unassigned"
-            ? null
-            : Number(value);
-    }
   });
 
   return allocation;
@@ -111,11 +118,16 @@ function parseAllocationDetails(element) {
 
 async function getAllocationDetails(allocationId) {
   const html = await apiRequest(
-    `/teaching-allocations/${allocationId}`
+    `/teaching-allocations/${allocationId}?refresh=${Date.now()}`
   );
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
+
+  const doc = parser.parseFromString(
+    html,
+    "text/html"
+  );
+
   const element = doc.querySelector("p");
 
   if (!element) {
@@ -128,22 +140,31 @@ async function getAllocationDetails(allocationId) {
 }
 
 async function loadAllocationOptions() {
-  const [offersHtml, classroomsHtml] = await Promise.all([
-    apiRequest("/subject-offers"),
-    apiRequest("/classrooms")
-  ]);
+  const refresh = Date.now();
+
+  const [offersHtml, classroomsHtml] =
+    await Promise.all([
+      apiRequest(
+        `/subject-offers?refresh=${refresh}`
+      ),
+      apiRequest(
+        `/classrooms?refresh=${refresh}`
+      )
+    ]);
 
   const parser = new DOMParser();
 
-  const offersDoc = parser.parseFromString(
-    offersHtml,
-    "text/html"
-  );
+  const offersDoc =
+    parser.parseFromString(
+      offersHtml,
+      "text/html"
+    );
 
-  const classroomsDoc = parser.parseFromString(
-    classroomsHtml,
-    "text/html"
-  );
+  const classroomsDoc =
+    parser.parseFromString(
+      classroomsHtml,
+      "text/html"
+    );
 
   allocationOfferInput.innerHTML = `
     <option value="">
@@ -151,19 +172,27 @@ async function loadAllocationOptions() {
     </option>
   `;
 
-  offersDoc.querySelectorAll("li").forEach(item => {
-    const offerId = item.textContent
-      .trim()
-      .split(" - ")[0]
-      .trim();
+  offersDoc
+    .querySelectorAll("li")
+    .forEach(item => {
+      const offerId =
+        item.textContent
+          .trim()
+          .split(" - ")[0]
+          .trim();
 
-    const option = document.createElement("option");
+      const option =
+        document.createElement(
+          "option"
+        );
 
-    option.value = offerId;
-    option.textContent = offerId;
+      option.value = offerId;
+      option.textContent = offerId;
 
-    allocationOfferInput.appendChild(option);
-  });
+      allocationOfferInput.appendChild(
+        option
+      );
+    });
 
   allocationClassroomInput.innerHTML = `
     <option value="">
@@ -171,103 +200,205 @@ async function loadAllocationOptions() {
     </option>
   `;
 
-  classroomsDoc.querySelectorAll("li").forEach(item => {
-    const classroomId = item.textContent
-      .trim()
-      .split(" - ")[0]
-      .trim();
+  classroomsDoc
+    .querySelectorAll("li")
+    .forEach(item => {
+      const classroomId =
+        item.textContent
+          .trim()
+          .split(" - ")[0]
+          .trim();
 
-    const option = document.createElement("option");
+      const option =
+        document.createElement(
+          "option"
+        );
 
-    option.value = classroomId;
-    option.textContent = classroomId;
+      option.value = classroomId;
+      option.textContent = classroomId;
 
-    allocationClassroomInput.appendChild(option);
-  });
+      allocationClassroomInput.appendChild(
+        option
+      );
+    });
 }
 
 async function loadAllocations() {
   allocationsTableBody.innerHTML = "";
   allocationsEmpty.hidden = true;
-  allocationMessage.innerHTML = "";
 
   try {
-    const html = await apiRequest("/teaching-allocations");
+    const html = await apiRequest(
+      `/teaching-allocations?refresh=${Date.now()}`
+    );
 
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-    const items = doc.querySelectorAll("li");
+
+    const doc = parser.parseFromString(
+      html,
+      "text/html"
+    );
+
+    const items =
+      doc.querySelectorAll("li");
 
     items.forEach(item => {
-      const parts = item.textContent
-        .trim()
-        .split(" - ")
-        .map(part => part.trim());
+      const parts =
+        item.textContent
+          .trim()
+          .split(" - ")
+          .map(
+            part => part.trim()
+          );
 
       if (parts.length !== 7) {
         return;
       }
 
-      const allocationId = parts[0];
-      const offerId = parts[1];
-      const staff = parts[2];
+      const allocationId =
+        parts[0];
 
-        let staffName = "Unassigned";
-        let staffId = "—";
+      const offerId =
+        parts[1];
 
-        if (staff !== "Unassigned") {
-            const match = staff.match(
-                /^(.*)\s+\((\d+)\)$/
-            );
+      const staff =
+        parts[2];
 
-            if (match) {
-                staffName = match[1].trim();
-                staffId = match[2];
-            } else {
-                staffName = staff;
-            }
+      let staffName =
+        "Unassigned";
+
+      let staffId =
+        "—";
+
+      if (staff !== "Unassigned") {
+        const match = staff.match(
+          /^(.*)\s+\((\d+)\)$/
+        );
+
+        if (match) {
+          staffName =
+            match[1].trim();
+
+          staffId =
+            match[2];
+        } else {
+          staffName = staff;
         }
-      const classroomId = parts[3];
-      const schedule = parts[4];
-      const classType = parts[5];
-      const status = parts[6];
+      }
 
-      const scheduleMatch = schedule.match(
-        /^([A-Z]{3})\s+(\d{2}:\d{2})-(\d{2}:\d{2})$/
-      );
+      const classroomId =
+        parts[3];
 
-      const day = scheduleMatch
-        ? scheduleMatch[1]
-        : "";
+      const schedule =
+        parts[4];
 
-      const startTime = scheduleMatch
-        ? scheduleMatch[2]
-        : "";
+      const classType =
+        parts[5];
 
-      const endTime = scheduleMatch
-        ? scheduleMatch[3]
-        : "";
+      const status =
+        parts[6];
 
-      const row = document.createElement("tr");
+      const scheduleMatch =
+        schedule.match(
+          /^([A-Z]{3})\s+(\d{2}:\d{2})-(\d{2}:\d{2})$/
+        );
+
+      const day =
+        scheduleMatch
+          ? scheduleMatch[1]
+          : "";
+
+      const startTime =
+        scheduleMatch
+          ? scheduleMatch[2]
+          : "";
+
+      const endTime =
+        scheduleMatch
+          ? scheduleMatch[3]
+          : "";
+
+      const row =
+        document.createElement("tr");
+
+      row.dataset.allocationId =
+        allocationId;
 
       row.innerHTML = `
-        <td>${allocationEscapeHtml(allocationId)}</td>
-        <td>${allocationEscapeHtml(offerId)}</td>
-        <td>${allocationEscapeHtml(staffName)}</td>
-        <td>${allocationEscapeHtml(staffId)}</td>
-        <td>${allocationEscapeHtml(classroomId)}</td>
-        <td>${allocationEscapeHtml(day)}</td>
-        <td>View on Edit</td>
-        <td>${allocationEscapeHtml(startTime)} - ${allocationEscapeHtml(endTime)}</td>
-        <td>${allocationEscapeHtml(classType)}</td>
-        <td>View on Edit</td>
-        <td>${allocationEscapeHtml(status)}</td>
+        <td>
+          ${allocationEscapeHtml(
+            allocationId
+          )}
+        </td>
+
+        <td>
+          ${allocationEscapeHtml(
+            offerId
+          )}
+        </td>
+
+        <td>
+          ${allocationEscapeHtml(
+            staffName
+          )}
+        </td>
+
+        <td>
+          ${allocationEscapeHtml(
+            staffId
+          )}
+        </td>
+
+        <td>
+          ${allocationEscapeHtml(
+            classroomId
+          )}
+        </td>
+
+        <td>
+          ${allocationEscapeHtml(
+            day
+          )}
+        </td>
+
+        <td>
+          View on Edit
+        </td>
+
+        <td>
+          ${allocationEscapeHtml(
+            startTime
+          )}
+          -
+          ${allocationEscapeHtml(
+            endTime
+          )}
+        </td>
+
+        <td>
+          ${allocationEscapeHtml(
+            classType
+          )}
+        </td>
+
+        <td>
+          View on Edit
+        </td>
+
+        <td>
+          ${allocationEscapeHtml(
+            status
+          )}
+        </td>
+
         <td>
           <button
             class="btn secondary"
             type="button"
             data-action="edit"
-            data-allocation-id="${allocationEscapeHtml(allocationId)}"
+            data-allocation-id="${allocationEscapeHtml(
+              allocationId
+            )}"
           >
             Edit
           </button>
@@ -276,27 +407,30 @@ async function loadAllocations() {
             class="btn secondary"
             type="button"
             data-action="delete"
-            data-allocation-id="${allocationEscapeHtml(allocationId)}"
+            data-allocation-id="${allocationEscapeHtml(
+              allocationId
+            )}"
           >
             Delete
           </button>
         </td>
       `;
 
-      allocationsTableBody.appendChild(row);
+      allocationsTableBody.appendChild(
+        row
+      );
     });
 
     allocationsEmpty.hidden =
-      allocationsTableBody.children.length > 0;
+      allocationsTableBody.children
+        .length > 0;
 
   } catch (error) {
     allocationsEmpty.hidden = false;
 
-    allocationMessage.innerHTML = `
-      <div class="error-state">
-        ${allocationEscapeHtml(error.message)}
-      </div>
-    `;
+    showAllocationError(
+      error.message
+    );
   }
 }
 
@@ -320,7 +454,9 @@ function getAllocationPayload() {
       allocationDayInput.value,
 
     date_range:
-      allocationDateRangeInput.value.trim(),
+      allocationDateRangeInput
+        .value
+        .trim(),
 
     start_time:
       allocationStartTimeInput.value,
@@ -344,44 +480,70 @@ function getAllocationPayload() {
 async function saveAllocation(event) {
   event.preventDefault();
 
-  const data = getAllocationPayload();
+  allocationMessage.innerHTML = "";
+
+  const data =
+    getAllocationPayload();
 
   try {
+    let result;
+
     if (editingAllocationId) {
-      allocationMessage.innerHTML =
-        await apiRequest(
-          `/teaching-allocations/${editingAllocationId}`,
-          {
-            method: "PUT",
-            body: JSON.stringify(data)
-          }
-        );
+      result = await apiRequest(
+        `/teaching-allocations/${editingAllocationId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(data)
+        }
+      );
     } else {
-      allocationMessage.innerHTML =
-        await apiRequest(
-          "/teaching-allocations",
-          {
-            method: "POST",
-            body: JSON.stringify(data)
-          }
-        );
+      result = await apiRequest(
+        "/teaching-allocations",
+        {
+          method: "POST",
+          body: JSON.stringify(data)
+        }
+      );
     }
 
     resetAllocationForm();
+
     await loadAllocations();
+
+    if (
+      typeof result === "object" &&
+      result !== null &&
+      result.message
+    ) {
+      allocationMessage.innerHTML = `
+        <p>
+          ${allocationEscapeHtml(
+            result.message
+          )}
+        </p>
+      `;
+    } else if (result) {
+      allocationMessage.innerHTML =
+        result;
+    }
+
   } catch (error) {
-    allocationMessage.innerHTML = `
-      <div class="error-state">
-        ${allocationEscapeHtml(error.message)}
-      </div>
-    `;
+    showAllocationError(
+      error.message
+    );
   }
 }
 
-async function startEditingAllocation(allocationId) {
+async function startEditingAllocation(
+  allocationId
+) {
+  allocationMessage.innerHTML = "";
+
   try {
     const allocation =
-      await getAllocationDetails(allocationId);
+      await getAllocationDetails(
+        allocationId
+      );
 
     editingAllocationId =
       allocation.allocation_id;
@@ -390,7 +552,8 @@ async function startEditingAllocation(allocationId) {
       allocation.offer_id || "";
 
     allocationStaffInput.value =
-      allocation.assigned_staff_member ?? "";
+      allocation
+        .assigned_staff_member ?? "";
 
     allocationClassroomInput.value =
       allocation.classroom_id || "";
@@ -411,48 +574,67 @@ async function startEditingAllocation(allocationId) {
       allocation.class_type || "";
 
     allocationClassSizeInput.value =
-      allocation.expected_class_size || "";
+      allocation
+        .expected_class_size || "";
 
     allocationStatusInput.value =
-      allocation.allocation_status || "PENDING";
+      allocation
+        .allocation_status ||
+      "PENDING";
 
     allocationForm.querySelector(
       'button[type="submit"]'
     ).textContent =
       "Update Teaching Allocation";
 
-    allocationCancelButton.hidden = false;
+    allocationCancelButton.hidden =
+      false;
 
     window.scrollTo({
       top: 0,
       behavior: "smooth"
     });
+
   } catch (error) {
-    allocationMessage.innerHTML = `
-      <div class="error-state">
-        ${allocationEscapeHtml(error.message)}
-      </div>
-    `;
+    showAllocationError(
+      error.message
+    );
   }
 }
 
-async function deleteAllocation(allocationId) {
-  const confirmed = window.confirm(
-    `Delete teaching allocation ${allocationId}?`
-  );
+async function deleteAllocation(
+  allocationId
+) {
+  const confirmed =
+    window.confirm(
+      `Delete teaching allocation ${allocationId}?`
+    );
 
   if (!confirmed) {
     return;
   }
 
+  allocationMessage.innerHTML = "";
+
   try {
-    allocationMessage.innerHTML =
+    const result =
       await apiRequest(
         `/teaching-allocations/${allocationId}`,
         {
           method: "DELETE"
         }
       );
+
+    const deletedRow =
+      allocationsTableBody.querySelector(
+        `tr[data-allocation-id="${CSS.escape(
+          String(allocationId)
+        )}"]`
+      );
+
+    if (deletedRow) {
+      deletedRow.remove();
+    }
 
     if (
       String(editingAllocationId) ===
@@ -461,13 +643,33 @@ async function deleteAllocation(allocationId) {
       resetAllocationForm();
     }
 
+    allocationsEmpty.hidden =
+      allocationsTableBody.children
+        .length > 0;
+
     await loadAllocations();
+
+    if (
+      typeof result === "object" &&
+      result !== null &&
+      result.message
+    ) {
+      allocationMessage.innerHTML = `
+        <p>
+          ${allocationEscapeHtml(
+            result.message
+          )}
+        </p>
+      `;
+    } else if (result) {
+      allocationMessage.innerHTML =
+        result;
+    }
+
   } catch (error) {
-    allocationMessage.innerHTML = `
-      <div class="error-state">
-        ${allocationEscapeHtml(error.message)}
-      </div>
-    `;
+    showAllocationError(
+      error.message
+    );
   }
 }
 
@@ -484,7 +686,8 @@ function resetAllocationForm() {
   ).textContent =
     "Add Teaching Allocation";
 
-  allocationCancelButton.hidden = true;
+  allocationCancelButton.hidden =
+    true;
 }
 
 allocationForm.addEventListener(
@@ -500,7 +703,8 @@ allocationCancelButton.addEventListener(
 allocationsTableBody.addEventListener(
   "click",
   async event => {
-    const button = event.target.closest("button");
+    const button =
+      event.target.closest("button");
 
     if (!button) {
       return;
@@ -513,13 +717,19 @@ allocationsTableBody.addEventListener(
       return;
     }
 
-    if (button.dataset.action === "edit") {
+    if (
+      button.dataset.action ===
+      "edit"
+    ) {
       await startEditingAllocation(
         allocationId
       );
     }
 
-    if (button.dataset.action === "delete") {
+    if (
+      button.dataset.action ===
+      "delete"
+    ) {
       await deleteAllocation(
         allocationId
       );
