@@ -1,89 +1,100 @@
-# Performance & Professional Development Management
+# Performance and Professional Development Management
 
-This microservice handles staff performance tracking, development planning, training enrolment, and personalised learning recommendations for the Faculty Management System.
+Matthew Barnard's Release 0 feature manages staff reviews, development goals, training programs, training enrolments, and development recommendations.
 
-## Purpose
+## What is implemented
 
-The feature supports the management of:
+- A responsive frontend dashboard at `http://localhost:8005`.
+- Full create, read, update, delete, and filtering support for all five resources.
+- A Flask backend API at `http://localhost:5005`.
+- A separate Flask/SQLite database service at `http://localhost:5105`.
+- Relational constraints, validation, and ten seed records per table.
+- Visible AI Mode that uses a local Ollama model to produce a grounded development recommendation and saves it as `Pending` for human review.
+- Three Docker containers coordinated by Docker Compose.
+- Automated database, API, and mocked AI-route tests.
+- A GitHub Actions workflow that runs tests and validates/builds the containers.
 
-- Performance reviews
-- Development goals
-- Training programs
-- Staff training enrolments
-- Development recommendations
+The AI Mode is deliberately a single model request in the base feature. It is not being represented as the team's shared Plan -> Act -> Observe -> Adapt loop; that integration and its genuine execution logs must be added with the group later.
 
-This module is designed to help faculty managers and HR staff monitor staff growth, identify skills gaps, and plan suitable professional development activities.
+## Architecture
 
-## Planned API Functionality
+```text
+Browser :8005
+    |
+    v
+Nginx frontend -- /api --> Flask backend :5005 --> database service :5105 --> SQLite
+                                  |
+                                  +--> Ollama on host :11434
+```
 
-The backend will eventually provide CRUD REST endpoints for:
+Only the database service reads or writes SQLite. The backend performs orchestration and exposes the public API. Nginx serves the browser files and proxies `/api` requests, avoiding hard-coded browser-side service addresses.
 
-- Performance Reviews
-- Development Goals
-- Training Programs
-- Staff Training
-- Development Recommendations
+## Run with Docker
 
-## Planned Database Tables
+From this directory:
 
-### PerformanceReviews
-- reviewID
-- staffID
-- reviewDate
-- reviewerID
-- rating
-- feedback
-- status
+```powershell
+docker compose up --build
+```
 
-### DevelopmentGoals
-- goalID
-- staffID
-- title
-- description
-- targetDate
-- progress
-- status
+Open `http://localhost:8005`. Stop the application with:
 
-### TrainingPrograms
-- trainingID
-- title
-- description
-- provider
-- startDate
-- endDate
-- skillArea
+```powershell
+docker compose down
+```
 
-### StaffTraining
-- staffTrainingID
-- staffID
-- trainingID
-- enrolmentDate
-- completionDate
-- status
+SQLite data is retained in the named `matthew-performance-data` volume across ordinary container restarts.
 
-### DevelopmentRecommendations
-- recommendationID
-- staffID
-- goalID
-- recommendationType
-- recommendation
-- rationale
-- dateGenerated
-- status
+## Enable AI Mode
 
-## Future Intelligence Layer
+AI Mode expects Ollama on the Windows host. Install Ollama, then run:
 
-Later, this service may use an approved large language model (LLM) to analyse staff performance, skills, roles, and goals to recommend personalised training and development activities.
+```powershell
+ollama pull qwen2.5:0.5b
+ollama serve
+```
 
-## Current Starter State
+Docker Compose connects the backend to `host.docker.internal:11434`. The configured model can be changed with the `OLLAMA_MODEL` environment variable. The normal CRUD feature continues to work if Ollama is unavailable; the AI panel reports that service separately.
 
-This folder currently contains:
+AI output is parsed and checked against database context before it is saved. A generated record remains `Pending` until a person accepts, rejects, or edits it.
 
-- a Flask backend skeleton with placeholder API routes
-- a SQLite database schema for the required tables
-- a minimal frontend shell for future UI integration
-- a Dockerfile for local containerisation
+## API resources
 
-## Scope
+Each resource supports `GET` collection, `GET` by ID, `POST`, `PUT`, and `DELETE` through `/api/<resource>`:
 
-This microservice is focused only on performance and professional development management within the broader faculty system.
+- `performance-reviews`
+- `development-goals`
+- `training-programs`
+- `staff-training`
+- `development-recommendations`
+
+Examples:
+
+```text
+GET  /api/development-goals?staffID=101&status=In%20Progress
+POST /api/performance-reviews
+PUT  /api/development-recommendations/1
+DELETE /api/staff-training/12
+```
+
+Health endpoints are `/health`, `/api/health`, and `/api/ai/health` on the backend, and `/health` on the database service.
+
+## Run tests without Docker
+
+Install both requirement sets, then run each suite in its own service directory:
+
+```powershell
+python -m pip install -r backend/requirements.txt
+python -m pip install -r database-service/requirements.txt
+
+Set-Location database-service
+python -m unittest discover -s tests -v
+Set-Location ../backend
+python -m unittest discover -s tests -v
+```
+
+The backend AI endpoint is mocked in automated tests, so CI does not need to download or run an LLM. A real local Ollama request is demonstrated separately through the UI.
+
+## Release 0 evidence
+
+See `../docs/release-0/student-5-evidence-guide.md` for what to capture now, what belongs to the later shared agentic-loop work, and a showcase recording checklist.

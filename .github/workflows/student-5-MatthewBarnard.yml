@@ -1,0 +1,57 @@
+name: Matthew - Performance and Professional Development
+
+on:
+  push:
+    paths:
+      - "student-5Matthew-Barnard/**"
+      - ".github/workflows/student-5-MatthewBarnard.yml"
+  pull_request:
+    paths:
+      - "student-5Matthew-Barnard/**"
+      - ".github/workflows/student-5-MatthewBarnard.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Unit and API tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            student-5Matthew-Barnard/backend/requirements.txt
+            student-5Matthew-Barnard/database-service/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r student-5Matthew-Barnard/backend/requirements.txt
+          python -m pip install -r student-5Matthew-Barnard/database-service/requirements.txt
+
+      - name: Test database service
+        working-directory: student-5Matthew-Barnard/database-service
+        run: python -m unittest discover -s tests -v
+
+      - name: Test backend and AI endpoint
+        working-directory: student-5Matthew-Barnard/backend
+        run: python -m unittest discover -s tests -v
+
+  containers:
+    name: Validate container build
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        run: docker compose -f student-5Matthew-Barnard/docker-compose.yml config
+
+      - name: Build all three services
+        run: docker compose -f student-5Matthew-Barnard/docker-compose.yml build

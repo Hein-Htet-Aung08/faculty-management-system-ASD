@@ -1,0 +1,56 @@
+services:
+  matthew-frontend:
+    build: ./frontend
+    ports:
+      - "8005:80"
+    depends_on:
+      matthew-backend:
+        condition: service_healthy
+
+  matthew-database:
+    build: ./database-service
+    environment:
+      DATABASE_PATH: /app/data/performance_dev.db
+      PORT: "5105"
+    ports:
+      - "5105:5105"
+    volumes:
+      - matthew-performance-data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:5105/health')"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  matthew-backend:
+    build: ./backend
+    environment:
+      DATABASE_SERVICE_URL: http://matthew-database:5105
+      DATABASE_TIMEOUT: "5"
+      PORT: "5005"
+      OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
+      OLLAMA_MODEL: qwen2.5:0.5b
+      LLM_TIMEOUT: "120"
+    ports:
+      - "5005:5005"
+    depends_on:
+      matthew-database:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:5005/health')"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  matthew-performance-data:
