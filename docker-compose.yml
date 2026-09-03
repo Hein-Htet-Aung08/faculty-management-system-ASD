@@ -2,8 +2,6 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
-    ports:
-      - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     networks:
@@ -51,6 +49,8 @@ services:
     build: ./student-1-Andy-Lam/frontend
     ports:
       - "8001:80"
+    volumes:
+      - ./shared/frontend/css:/usr/share/nginx/html/css:ro
     depends_on:
       - staff-backend
     networks:
@@ -60,16 +60,16 @@ services:
 
   # ---- Student 3: Tristan - Workload and Availability Management ----
   student3-database:
-      build:
-        context: ./student-3Tristan-Lim/database-service
-      container_name: student3-database
-      ports:
-        - "5103:5103"
-      volumes:
-        - student3_data:/app/data
-      networks:
-        - faculty-network
-      restart: unless-stopped
+    build:
+      context: ./student-3Tristan-Lim/database-service
+    container_name: student3-database
+    ports:
+      - "5103:5103"
+    volumes:
+      - student3_data:/app/data
+    networks:
+      - faculty-network
+    restart: unless-stopped
 
   student3-backend:
     build:
@@ -105,6 +105,7 @@ services:
     networks:
       - faculty-network
     restart: unless-stopped
+
 
   # ---- Student 4: Nicholas - Research and Grant Management ----
   student4-frontend:
@@ -158,6 +159,7 @@ services:
 
 volumes:
   staff-data:
+  student3_data:
   student4_data:
   ollama_data:
   student3_data:
