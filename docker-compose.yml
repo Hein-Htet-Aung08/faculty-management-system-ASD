@@ -59,6 +59,52 @@ services:
   # ---- Student 2: Hein - Teaching Subject and Classroom Allocation ----
 
   # ---- Student 3: Tristan - Workload and Availability Management ----
+  student3-database:
+      build:
+        context: ./student-3Tristan-Lim/database-service
+      container_name: student3-database
+      ports:
+        - "5103:5103"
+      volumes:
+        - student3_data:/app/data
+      networks:
+        - faculty-network
+      restart: unless-stopped
+
+  student3-backend:
+    build:
+      context: ./student-3Tristan-Lim
+      dockerfile: backend-service/Dockerfile
+    container_name: student3-backend
+    ports:
+      - "5003:5003"
+    environment:
+      DATABASE_SERVICE_URL: http://student3-database:5103
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: llama3.1:8b
+      STAFF_SERVICE_URL: http://staff-backend:5001
+    depends_on:
+      - student3-database
+      - ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student3-frontend:
+    build:
+      context: ./student-3Tristan-Lim/frontend-service
+    container_name: student3-frontend
+    ports:
+      - "8003:80"
+    environment:
+      BACKEND_URL: http://localhost:5003
+    volumes:
+      - ./shared/frontend/css:/usr/share/nginx/html/css:ro
+    depends_on:
+      - student3-backend
+    networks:
+      - faculty-network
+    restart: unless-stopped
 
   # ---- Student 4: Nicholas - Research and Grant Management ----
   student4-frontend:
@@ -114,6 +160,7 @@ volumes:
   staff-data:
   student4_data:
   ollama_data:
+  student3_data:
 
 networks:
   faculty-network:
