@@ -8,6 +8,18 @@ services:
       - faculty-network
     restart: unless-stopped
 
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ollama-init
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    command: pull qwen2.5:1.5b
+    networks:
+      - faculty-network
+    restart: "no"
+
   #Shared unified home page 
   home:
     image: nginx:alpine
@@ -57,6 +69,48 @@ services:
       - faculty-network
 
   # ---- Student 2: Hein - Teaching Subject and Classroom Allocation ----
+
+  allocation-database:
+    build:
+      context: ./student-2Hein-Htet-Aung
+      dockerfile: database/Dockerfile
+    volumes:
+      - allocation-data:/app/data
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  allocation-backend:
+    build:
+      context: ./student-2Hein-Htet-Aung
+      dockerfile: backend/Dockerfile
+    ports:
+      - "5002:5002"
+    environment:
+      - DATABASE_SERVICE_URL=http://allocation-database:6002
+      - STAFF_SERVICE_URL=http://staff-backend:5001
+      - WORKLOAD_SERVICE_URL=http://student3-backend:5003
+      - OLLAMA_BASE_URL=http://ollama:11434/v1
+      - OLLAMA_MODEL=qwen2.5:0.5b
+    depends_on:
+      - allocation-database
+      - staff-backend
+      - student3-backend
+      - ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  allocation-frontend:
+    build:
+      context: .
+      dockerfile: ./student-2Hein-Htet-Aung/frontend/Dockerfile
+    ports:
+      - "3002:80"
+    depends_on:
+      - allocation-backend
+    networks:
+      - faculty-network
 
   # ---- Student 3: Tristan - Workload and Availability Management ----
   student3-database:
@@ -226,6 +280,7 @@ volumes:
   student4_data:
   student5_data:
   ollama_data:
+  allocation-data:
 
 networks:
   faculty-network:
