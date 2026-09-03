@@ -503,7 +503,8 @@
             <tr>
             <th>ID</th>
             <th>Offer</th>
-            <th>Staff</th>
+            <th>Staf Name</th>
+            <th>Staf ID</th>
             <th>Classroom</th>
             <th>Day</th>
             <th>Date Range</th>
@@ -530,147 +531,151 @@
     </section>
 
     <section
-    id="ai-recommendations"
-    class="panel-section"
-    hidden
-    >
-    <h2>AI Staff Recommendations</h2>
-
-    <p>
-        Generate suitable teaching staff recommendations using subject expertise,
-        availability and workload context.
-    </p>
-
-    <form id="ai-recommendation-form">
-        <div class="form-grid">
-
-        <div class="form-field">
-            <label for="ai-offer-id">Subject Offer</label>
-            <select id="ai-offer-id" required>
-            <option value="">Select subject offer</option>
-            </select>
-        </div>
-
-        <div class="form-field">
-            <label for="ai-day">Day</label>
-            <select id="ai-day" required>
-            <option value="">Select day</option>
-            <option value="MON">Monday</option>
-            <option value="TUE">Tuesday</option>
-            <option value="WED">Wednesday</option>
-            <option value="THU">Thursday</option>
-            <option value="FRI">Friday</option>
-            </select>
-        </div>
-
-        <div class="form-field span-2">
-            <label for="ai-date-range">Date Range</label>
-            <input
-            id="ai-date-range"
-            type="text"
-            placeholder="03/08 - 20/09"
-            required
-            >
-        </div>
-
-        <div class="form-field">
-            <label for="ai-start-time">Start Time</label>
-            <input
-            id="ai-start-time"
-            type="time"
-            required
-            >
-        </div>
-
-        <div class="form-field">
-            <label for="ai-end-time">End Time</label>
-            <input
-            id="ai-end-time"
-            type="time"
-            required
-            >
-        </div>
-
-        <div class="form-field">
-            <label for="ai-class-type">Class Type</label>
-            <select id="ai-class-type" required>
-            <option value="">Select class type</option>
-            <option value="BCP">BCP</option>
-            <option value="BRK">BRK</option>
-            <option value="CNR">CNR</option>
-            <option value="CMP">CMP</option>
-            <option value="DRP">DRP</option>
-            <option value="INT">INT</option>
-            <option value="LAB">LAB</option>
-            <option value="LDT">LDT</option>
-            <option value="LEC">LEC</option>
-            <option value="PRC">PRC</option>
-            <option value="SEM">SEM</option>
-            <option value="STU">STU</option>
-            <option value="TUT">TUT</option>
-            <option value="UPS">UPS</option>
-            <option value="WRK">WRK</option>
-            </select>
-        </div>
-
-        <div class="form-field">
-            <label for="ai-class-size">Expected Class Size</label>
-            <input
-            id="ai-class-size"
-            type="number"
-            min="1"
-            required
-            >
-        </div>
-
-        </div>
-
-        <button
-        id="ai-generate-button"
-        class="btn"
-        type="submit"
-        >
-        Generate Recommendations
-        </button>
-
-        <button
-        id="ai-generate-again-button"
-        class="btn secondary"
-        type="button"
-        hidden
-        >
-        Generate Again
-        </button>
-    </form>
-
-    <div id="ai-message"></div>
-
-    <div class="panel-section">
-        <h2>Agentic Workflow</h2>
-
-        <div class="ai-result-panel">
-        <p><strong>Plan:</strong> Gather subject, staff, expertise, availability and workload context.</p>
-        <p><strong>Act:</strong> Ask the approved LLM to rank suitable teaching staff.</p>
-        <p><strong>Observe:</strong> Verify returned staff IDs and hard availability constraints.</p>
-        <p><strong>Adapt:</strong> Generate again using previous recommendation outcomes.</p>
-        </div>
-    </div>
-
-    <div class="panel-section">
-        <h2>Recommendations</h2>
-
-        <div id="ai-results" class="ai-result-panel"></div>
-    </div>
-
-    <div
-        id="ai-rejected-section"
+        id="ai-recommendations"
         class="panel-section"
         hidden
-    >
-        <h2>Rejected Recommendations</h2>
+        >
+        <h2>AI Staff Recommendations</h2>
 
-        <div id="ai-rejected-results"></div>
-    </div>
+        <p>
+            Select a teaching allocation that requires staff assignment.
+            Allocation information is read-only.
+        </p>
+
+        <div class="form-field">
+            <label for="ai-allocation-id">Teaching Allocation</label>
+
+            <select id="ai-allocation-id">
+            <option value="">Select an allocation</option>
+            </select>
+        </div>
+
+        <div
+            id="ai-allocation-details"
+            class="panel-section"
+            hidden
+        >
+            <h2>Allocation Details</h2>
+
+            <div class="form-grid">
+
+            <div class="form-field">
+                <label for="ai-offer-id">Subject Offer</label>
+                <input id="ai-offer-id" type="text" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="ai-required-expertise">Required Expertise</label>
+                <input id="ai-required-expertise" type="text" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="ai-classroom-id">Classroom</label>
+                <input id="ai-classroom-id" type="text" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="ai-day">Day</label>
+                <input id="ai-day" type="text" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="ai-date-range">Date Range</label>
+                <input id="ai-date-range" type="text" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="ai-start-time">Start Time</label>
+                <input id="ai-start-time" type="text" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="ai-end-time">End Time</label>
+                <input id="ai-end-time" type="text" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="ai-class-type">Class Type</label>
+                <input id="ai-class-type" type="text" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="ai-class-size">Expected Class Size</label>
+                <input id="ai-class-size" type="text" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="ai-status">Status</label>
+                <input id="ai-status" type="text" readonly>
+            </div>
+
+            </div>
+
+            <button
+            id="ai-generate-button"
+            class="btn"
+            type="button"
+            >
+            Generate Recommendations
+            </button>
+
+            <button
+            id="ai-generate-again-button"
+            class="btn secondary"
+            type="button"
+            hidden
+            >
+            Generate Again
+            </button>
+        </div>
+
+        <div id="ai-message"></div>
+
+        <div class="panel-section">
+            <h2>Agentic Workflow</h2>
+
+            <div class="ai-result-panel">
+            <p>
+                <strong>Plan:</strong>
+                Gather the selected allocation, subject requirements,
+                staff expertise, availability and workload.
+            </p>
+
+            <p>
+                <strong>Act:</strong>
+                Ask the approved LLM to rank suitable teaching staff.
+            </p>
+
+            <p>
+                <strong>Observe:</strong>
+                Verify returned staff members and availability.
+            </p>
+
+            <p>
+                <strong>Adapt:</strong>
+                Generate another recommendation using previous outcomes.
+            </p>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h2>Recommendations</h2>
+
+            <div
+            id="ai-results"
+            class="ai-result-panel"
+            ></div>
+        </div>
+
+        <div
+            id="ai-rejected-section"
+            class="panel-section"
+            hidden
+        >
+            <h2>Rejected Recommendations</h2>
+
+            <div id="ai-rejected-results"></div>
+        </div>
     </section>
 
     </main>

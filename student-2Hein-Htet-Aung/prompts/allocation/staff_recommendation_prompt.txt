@@ -1,5 +1,27 @@
 Rank the most suitable staff members for the supplied teaching allocation.
 
+Use the allocation.required_expertise field as the primary suitability criterion.
+
+Only recommend staff members contained in staff_candidates.
+
+staff_id must be copied exactly from a staff candidate in the supplied context.
+
+Never invent, infer, or reuse a staff ID that is not present in staff_candidates.
+
+All supplied staff candidates have already passed the required availability check.
+
+Compare each candidate's expertise with allocation.required_expertise.
+
+Expertise matching may be semantic rather than exact, but the expertise must be reasonably related.
+
+Do not recommend staff whose expertise is clearly unrelated to the subject.
+
+Use workload_summary as a secondary ranking factor.
+
+A highly loaded or overloaded candidate may still be recommended when their expertise is strongly relevant, but the workload condition must be mentioned in the reason.
+
+If no staff candidate has reasonably relevant expertise, return an empty recommendations array.
+
 Return this exact JSON structure:
 
 {
@@ -7,14 +29,12 @@ Return this exact JSON structure:
     {
       "staff_id": 1,
       "rank": 1,
-      "reason": "Short explanation of why this staff member is suitable."
+      "reason": "Short explanation of why this staff member is suitable based on expertise and workload."
     }
   ]
 }
 
 The recommendations must be ordered from most suitable to least suitable.
-
-staff_id must be copied exactly from the supplied staff data.
 
 rank must begin at 1.
 

@@ -8,6 +8,18 @@ services:
       - faculty-network
     restart: unless-stopped
 
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ollama-init
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    command: pull qwen2.5:1.5b
+    networks:
+      - faculty-network
+    restart: "no"
+
   #Shared unified home page 
   home:
     image: nginx:alpine
@@ -77,13 +89,13 @@ services:
     environment:
       - DATABASE_SERVICE_URL=http://allocation-database:6002
       - STAFF_SERVICE_URL=http://staff-backend:5001
-      #- WORKLOAD_SERVICE_URL=http://<TRISTAN_SERVICE_NAME>:5003 #Needa replace this
+      - WORKLOAD_SERVICE_URL=http://student3-backend:5003
       - OLLAMA_BASE_URL=http://ollama:11434/v1
       - OLLAMA_MODEL=qwen2.5:0.5b
     depends_on:
       - allocation-database
       - staff-backend
-      #- <TRISTAN_SERVICE_NAME> # Needa replace this with Student 3's backend service.
+      - student3-backend
       - ollama
     networks:
       - faculty-network
@@ -205,7 +217,6 @@ volumes:
   student4_data:
   ollama_data:
   allocation-data:
-  student3_data:
 
 networks:
   faculty-network:

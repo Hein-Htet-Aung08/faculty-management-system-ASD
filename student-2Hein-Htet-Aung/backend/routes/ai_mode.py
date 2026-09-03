@@ -126,7 +126,9 @@ def build_recommendation_context(data):
                 staff,
                 data,
             )
-            candidates.append(candidate)
+
+            if candidate["available"]:
+                candidates.append(candidate)
 
         except requests.RequestException:
             continue
