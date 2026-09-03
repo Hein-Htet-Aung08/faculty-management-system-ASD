@@ -31,11 +31,14 @@
             <label for="overview-department">Department</label>
             <select id="overview-department">
                 <option value="">All departments</option>
-                <option>Computing</option>
-                <option>Engineering</option>
-                <option>Design</option>
-                <option>Business</option>
-                <option>Science</option>
+                <option>Accounting</option>
+                <option>Computer Science</option>
+                <option>Information Technology</option>
+                <option>Management</option>
+                <option>Marketing</option>
+                <option>Mechanical Engineering</option>
+                <option>Nursing</option>
+                <option>Psychology</option>
             </select>
         </div>
     </div>
@@ -74,7 +77,9 @@
     <div class="actions">
         <div class="form-field">
             <label for="staff-expertise">Filter by expertise</label>
-            <input id="staff-expertise" type="text" placeholder="e.g. Machine Learning">
+            <select id="staff-expertise">
+                <option value="">All expertise</option>
+            </select>
         </div>
         <button type="button" class="btn" data-action="load-directory">Show staff</button>
         <button type="button" class="btn secondary" data-action="staff-health">Check service</button>
@@ -480,6 +485,24 @@ function loadDirectory() {
     render("staff-panel", `${BACKEND}/staff/directory${query}`);
 }
 
+// Fill the expertise dropdown from the staff service. If it is unreachable the
+// dropdown just stays at "All expertise".
+async function loadExpertiseOptions() {
+    try {
+        const response = await fetch(`${BACKEND}/staff/expertise-areas`);
+        if (!response.ok) return;
+        const areas = await response.json();
+        const select = document.getElementById("staff-expertise");
+        areas.forEach((area) => {
+            const option = document.createElement("option");
+            option.textContent = area;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        /* staff service unavailable - leave the dropdown as-is */
+    }
+}
+
 function staffHealth() {
     render("staff-panel", `${BACKEND}/staff/health`);
 }
@@ -597,6 +620,7 @@ document.querySelectorAll("[data-delete]").forEach((button) => {
 });
 
 loadOverview();
+loadExpertiseOptions();
 </script>
 </body>
 </html>
