@@ -3,13 +3,19 @@ name: Student 2 CI
 on:
   push:
     branches: [ main, student-2-* ]
-    paths: [ 'student-2-Hein-Htet-Aung/**' ]
+    paths:
+      - 'student-2-Hein-Htet-Aung/**'
+      - '.github/workflows/student-2-HeinHtetAung.yml'
+
   pull_request:
-    paths: [ 'student-2-Hein-Htet-Aung/**' ]
+    paths:
+      - 'student-2-Hein-Htet-Aung/**'
+      - '.github/workflows/student-2-HeinHtetAung.yml'
 
 jobs:
   build-and-validate:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
