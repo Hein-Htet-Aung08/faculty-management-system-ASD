@@ -211,6 +211,22 @@ async function loadAllocations() {
       const allocationId = parts[0];
       const offerId = parts[1];
       const staff = parts[2];
+
+        let staffName = "Unassigned";
+        let staffId = "—";
+
+        if (staff !== "Unassigned") {
+            const match = staff.match(
+                /^(.*)\s+\((\d+)\)$/
+            );
+
+            if (match) {
+                staffName = match[1].trim();
+                staffId = match[2];
+            } else {
+                staffName = staff;
+            }
+        }
       const classroomId = parts[3];
       const schedule = parts[4];
       const classType = parts[5];
@@ -237,12 +253,8 @@ async function loadAllocations() {
       row.innerHTML = `
         <td>${allocationEscapeHtml(allocationId)}</td>
         <td>${allocationEscapeHtml(offerId)}</td>
-        <td>${allocationEscapeHtml(staff)}</td>
-            <td>${allocationEscapeHtml(
-        staff === "Unassigned"
-            ? "—"
-            : staff.match(/\d+/)?.[0] || "—"
-        )}</td>
+        <td>${allocationEscapeHtml(staffName)}</td>
+        <td>${allocationEscapeHtml(staffId)}</td>
         <td>${allocationEscapeHtml(classroomId)}</td>
         <td>${allocationEscapeHtml(day)}</td>
         <td>View on Edit</td>

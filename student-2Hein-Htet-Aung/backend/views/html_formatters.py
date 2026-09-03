@@ -80,13 +80,19 @@ def format_teaching_allocations_html(allocations):
         return "<p>No teaching allocations found.</p>"
 
     html = "<ul>"
-    for allocation in allocations:
-        staff = allocation["assigned_staff_member"]
 
-        if staff is None:
+    for allocation in allocations:
+        staff_id = allocation["assigned_staff_member"]
+        staff_name = allocation.get("staff_name")
+
+        if staff_id is None:
             staff_display = "Unassigned"
+        elif staff_name == "Unavailable":
+            staff_display = f"Staff details unavailable ({staff_id})"
+        elif staff_name:
+            staff_display = f"{staff_name} ({staff_id})"
         else:
-            staff_display = f"Staff {staff}"
+            staff_display = f"Staff {staff_id} ({staff_id})"
 
         html += (
             f"<li>{allocation['allocation_id']} - "
@@ -100,6 +106,7 @@ def format_teaching_allocations_html(allocations):
         )
 
     html += "</ul>"
+
     return html
 
 
@@ -117,6 +124,8 @@ def format_teaching_allocation_html(allocation):
         f"<p>Allocation ID: {allocation['allocation_id']}<br>"
         f"Offer ID: {allocation['offer_id']}<br>"
         f"Assigned Staff Member: {staff_display}<br>"
+        f"Assigned Staff ID: "
+        f"{allocation['assigned_staff_member'] if allocation['assigned_staff_member'] is not None else 'Unassigned'}<br>"
         f"Classroom ID: {allocation['classroom_id']}<br>"
         f"Day: {allocation['day']}<br>"
         f"Date Range: {allocation['date_range']}<br>"
