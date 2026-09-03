@@ -5,108 +5,126 @@
     <title>AI Mode</title>
     <link rel="stylesheet" href="/css/styles.css">
     <style>
-        body { margin: 0; min-height: auto; background: transparent; }
-        .app-shell { max-width: none; padding: 0; }
+        body { margin: 0; background: transparent; }
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .actions .form-field { flex: 0 0 9rem; }
     </style>
 </head>
 <body>
-<main class="app-shell">
-    <section class="card">
 
-        <h2>AI service status</h2>
-        <p class="hint">Frontend &rarr; Backend/API &rarr; Ollama &rarr; LLM.</p>
+<section class="panel-section">
+    <h2>AI service status</h2>
+    <p>Frontend &rarr; Backend/API &rarr; Ollama &rarr; LLM.</p>
 
-        <button type="button" data-action="health">Check AI Mode</button>
-        <div id="health-panel" class="panel"></div>
+    <div class="actions">
+        <button type="button" class="btn" data-action="health">Check AI Mode</button>
+    </div>
+    <div id="health-panel" class="ai-result-panel"></div>
+</section>
 
-        <!-- ------------------------------------------------------ rebalance --- -->
+<!-- ---------------------------------------------------------- rebalance --- -->
 
-        <h2>Rebalance workload</h2>
-        <p class="hint">Runs the full Plan &rarr; Act &rarr; Observe &rarr; Adapt cycle.
-           Every proposal the model returns is checked against the workload rules
-           engine before it is shown, so proposals that break a cap are rejected
-           rather than displayed as advice.</p>
+<section class="panel-section">
+    <h2>Rebalance workload</h2>
+    <p>Runs the full Plan &rarr; Act &rarr; Observe &rarr; Adapt cycle. Every
+       proposal the model returns is checked against the workload rules engine
+       before it is shown, so proposals that break a cap are rejected rather
+       than displayed as advice.</p>
 
-        <form id="rebalance-form">
-            <div class="field-grid">
-                <div>
-                    <label for="rebalance-staff">Staff ID</label>
-                    <input id="rebalance-staff" name="staff_id" type="number" min="1"
-                           placeholder="Blank = worst overload">
-                </div>
-                <div>
-                    <label for="rebalance-persist">Save recommendations</label>
-                    <select id="rebalance-persist" name="persist">
-                        <option value="">Preview only</option>
-                        <option value="1">Save for human review</option>
-                    </select>
-                </div>
+    <form id="rebalance-form">
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="rebalance-staff">Staff ID</label>
+                <input id="rebalance-staff" name="staff_id" type="number" min="1"
+                       placeholder="Blank = worst overload">
             </div>
-            <button type="submit">Run rebalance cycle</button>
-            <p class="hint">This calls a local LLM and can take up to a minute.</p>
-        </form>
-
-        <div id="rebalance-panel" class="panel"></div>
-
-        <!-- ------------------------------------------------ recommendations --- -->
-
-        <h2>Recommendations</h2>
-        <p class="hint">Saved proposals await human review. Accept, reject, or
-           override with your own wording.</p>
-
-        <div class="filter-row">
-            <div>
-                <label for="rec-status">Decision status</label>
-                <select id="rec-status">
-                    <option value="">All</option>
-                    <option value="pending">Pending</option>
-                    <option value="accepted">Accepted</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="overridden">Overridden</option>
+            <div class="form-field">
+                <label for="rebalance-persist">Save recommendations</label>
+                <select id="rebalance-persist" name="persist">
+                    <option value="">Preview only</option>
+                    <option value="1">Save for human review</option>
                 </select>
             </div>
-            <button type="button" data-action="recommendations">Show recommendations</button>
         </div>
+        <div class="actions">
+            <button type="submit" class="btn">Run rebalance cycle</button>
+        </div>
+        <p class="project-id">This calls a local LLM and can take up to a minute.</p>
+    </form>
 
-        <div id="recommendations-panel" class="panel"></div>
+    <div id="rebalance-panel" class="ai-result-panel"></div>
+</section>
 
-        <form id="decision-form">
-            <div class="field-grid">
-                <div>
-                    <label for="decision-id">Recommendation ID</label>
-                    <input id="decision-id" name="rec_id" type="number" min="1" required>
-                </div>
-                <div>
-                    <label for="decision-value">Decision</label>
-                    <select id="decision-value" name="decision">
-                        <option value="accepted">Accept</option>
-                        <option value="rejected">Reject</option>
-                        <option value="overridden">Override</option>
-                    </select>
-                </div>
+<!-- ---------------------------------------------------- recommendations --- -->
+
+<section class="panel-section">
+    <h2>Recommendations</h2>
+    <p>Saved proposals await human review. Accept, reject, or override with your
+       own wording.</p>
+
+    <div class="actions">
+        <div class="form-field">
+            <label for="rec-status">Decision status</label>
+            <select id="rec-status">
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+                <option value="overridden">Overridden</option>
+            </select>
+        </div>
+        <button type="button" class="btn" data-action="recommendations">Show recommendations</button>
+    </div>
+
+    <div id="recommendations-panel"></div>
+
+    <form id="decision-form">
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="decision-id">Recommendation ID</label>
+                <input id="decision-id" name="rec_id" type="number" min="1" required>
             </div>
-            <label for="decision-override">Replacement action (override only)</label>
-            <input id="decision-override" name="suggested_action"
-                   placeholder="e.g. Split tutorials 4.5h each between two staff">
-            <button type="submit">Record decision</button>
-        </form>
+            <div class="form-field">
+                <label for="decision-value">Decision</label>
+                <select id="decision-value" name="decision">
+                    <option value="accepted">Accept</option>
+                    <option value="rejected">Reject</option>
+                    <option value="overridden">Override</option>
+                </select>
+            </div>
+            <div class="form-field span-2">
+                <label for="decision-override">Replacement action (override only)</label>
+                <input id="decision-override" name="suggested_action"
+                       placeholder="e.g. Split tutorials 4.5h each between two staff">
+            </div>
+        </div>
+        <div class="actions">
+            <button type="submit" class="btn">Record decision</button>
+        </div>
+    </form>
+</section>
 
-        <!-- ------------------------------------------------------------ ask --- -->
+<!-- ---------------------------------------------------------------- ask --- -->
 
-        <h2>Ask about workload</h2>
-        <p class="hint">Free-text question answered from the current figures. Unlike
-           the rebalance cycle, this answer is not validated by the rules engine.</p>
+<section class="panel-section">
+    <h2>Ask about workload</h2>
+    <p>Free-text question answered from the current figures. Unlike the rebalance
+       cycle, this answer is not validated by the rules engine.</p>
 
-        <form id="ask-form">
-            <label for="question">Question</label>
-            <textarea id="question" name="question" rows="3">Which staff members are overloaded, and which have the most headroom to take work on?</textarea>
-            <button type="submit">Ask</button>
-        </form>
+    <form id="ask-form">
+        <div class="form-grid">
+            <div class="form-field span-2">
+                <label for="question">Question</label>
+                <textarea id="question" name="question" rows="3">Which staff members are overloaded, and which have the most headroom to take work on?</textarea>
+            </div>
+        </div>
+        <div class="actions">
+            <button type="submit" class="btn">Ask</button>
+        </div>
+    </form>
 
-        <div id="ask-panel" class="panel"></div>
-
-    </section>
-</main>
+    <div id="ask-panel" class="ai-result-panel"></div>
+</section>
 
 <script src="/js/config.js"></script>
 <script src="/js/api.js"></script>
