@@ -162,6 +162,7 @@ volumes:
   student3_data:
   student4_data:
   ollama_data:
+  student3_data:
 
 networks:
   faculty-network:
