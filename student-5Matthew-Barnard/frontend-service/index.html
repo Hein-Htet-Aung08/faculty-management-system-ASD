@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Academic performance and professional development management" />
+    <title>Performance &amp; Development | Faculty Management</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="ledger-header topbar">
+      <div class="brand-mark" aria-hidden="true">PD</div>
+      <div>
+        <p class="eyebrow">Faculty Management System</p>
+        <h1>Performance &amp; Professional Development</h1>
+      </div>
+      <div class="header-actions">
+        <a class="btn secondary home-link" href="http://localhost:8000">&larr; All features</a>
+        <div class="release-badge">Release 0</div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow accent">Staff growth, made visible</p>
+          <h2>Turn performance conversations into practical development.</h2>
+          <p class="hero-copy">
+            Manage reviews, goals, training and evidence-based development recommendations
+            from one connected workspace.
+          </p>
+        </div>
+        <div class="service-card">
+          <span id="service-dot" class="status-dot"></span>
+          <div>
+            <strong id="service-status">Checking services…</strong>
+            <small>Backend and database health</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="metrics" aria-label="Record totals">
+        <article><span>Reviews</span><strong id="count-reviews">—</strong></article>
+        <article><span>Active goals</span><strong id="count-goals">—</strong></article>
+        <article><span>Training programs</span><strong id="count-programs">—</strong></article>
+        <article><span>Pending recommendations</span><strong id="count-recommendations">—</strong></article>
+      </section>
+
+      <nav class="tab-nav feature-nav" aria-label="Feature sections">
+        <button class="tab-button nav-button active" data-resource="development-goals">Goals</button>
+        <button class="tab-button nav-button" data-resource="performance-reviews">Reviews</button>
+        <button class="tab-button nav-button" data-resource="training-programs">Training catalogue</button>
+        <button class="tab-button nav-button" data-resource="staff-training">Staff training</button>
+        <button class="tab-button nav-button" data-resource="development-recommendations">Recommendations</button>
+        <button class="tab-button nav-button ai-nav" data-resource="ai-mode">AI-Mode</button>
+      </nav>
+
+      <section id="resource-panel" class="workspace-card">
+        <div class="workspace-heading">
+          <div>
+            <p class="eyebrow accent" id="resource-kicker">Development planning</p>
+            <h2 id="resource-title">Development goals</h2>
+            <p id="resource-description">Track measurable goals and progress for each staff member.</p>
+          </div>
+          <button id="add-record" class="btn primary-button">+ Add goal</button>
+        </div>
+
+        <div class="filters">
+          <label id="staff-filter-label">
+            Staff ID
+            <input id="staff-filter" type="number" min="1" placeholder="All staff" />
+          </label>
+          <label id="status-filter-label">
+            Status
+            <select id="status-filter"><option value="">All statuses</option></select>
+          </label>
+          <button id="apply-filters" class="btn secondary secondary-button">Apply filters</button>
+          <button id="clear-filters" class="btn secondary text-button">Clear</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="ledger-table">
+            <thead><tr id="table-head"></tr></thead>
+            <tbody id="table-body"></tbody>
+          </table>
+          <div id="empty-state" class="empty-state" hidden>
+            <strong>No records found</strong>
+            <p>Add a record or clear the filters to continue.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="ai-panel" class="workspace-card ai-panel" hidden>
+        <div class="workspace-heading">
+          <div>
+            <p class="eyebrow ai-accent">Ollama AI-Mode</p>
+            <h2>Generate a grounded development recommendation</h2>
+            <p>
+              AI-Mode uses the selected staff member’s reviews, goals, enrolments and the
+              real training catalogue. Generated recommendations remain pending until a
+              person accepts, rejects or modifies them.
+            </p>
+          </div>
+          <div id="ai-status" class="ai-status">Not checked</div>
+        </div>
+
+        <div class="ai-workbench">
+          <label>
+            Staff ID
+            <input id="ai-staff-id" type="number" min="1" value="1" />
+          </label>
+          <button id="generate-ai" class="btn primary-button ai-button">Generate recommendation</button>
+          <button id="check-ai" class="btn secondary secondary-button">Check Ollama</button>
+        </div>
+
+        <div id="ai-result" class="ai-result" hidden></div>
+        <aside class="scope-note">
+          <strong>Release 0 scope:</strong> this is a single grounded LLM request for the
+          showcase UI. It is not labelled as the shared Plan → Act → Observe → Adapt loop.
+        </aside>
+      </section>
+    </main>
+
+    <dialog id="record-dialog">
+      <form id="record-form" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow accent" id="form-kicker">New record</p>
+            <h2 id="form-title">Add development goal</h2>
+          </div>
+          <button type="button" id="close-dialog" class="icon-button" aria-label="Close">×</button>
+        </div>
+        <div id="form-fields" class="form-grid"></div>
+        <p id="form-error" class="form-error" hidden></p>
+        <div class="dialog-actions">
+          <button type="button" id="cancel-dialog" class="btn secondary secondary-button">Cancel</button>
+          <button type="submit" class="btn primary-button">Save record</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
