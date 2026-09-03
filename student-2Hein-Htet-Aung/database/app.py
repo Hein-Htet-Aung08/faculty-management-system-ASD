@@ -5,15 +5,18 @@ app = Flask(__name__)
 
 DATABASE_NAME = "/app/data/allocation.db"
 
+
 def get_db_connection():
     conn = sqlite3.connect(DATABASE_NAME)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
+
 @app.get("/")
 def health():
     return jsonify({"service": "database-service", "status": "running"})
+
 
 @app.get("/subjects")
 def get_subjects():
@@ -23,6 +26,7 @@ def get_subjects():
     ).fetchall()
     conn.close()
     return jsonify([dict(row) for row in subjects])
+
 
 @app.get("/subjects/<string:subject_code>")
 def get_subject(subject_code):
@@ -38,6 +42,7 @@ def get_subject(subject_code):
 
     return jsonify(dict(subject))
 
+
 @app.get("/subject-offers")
 def get_subject_offers():
     conn = get_db_connection()
@@ -46,6 +51,7 @@ def get_subject_offers():
     ).fetchall()
     conn.close()
     return jsonify([dict(row) for row in offers])
+
 
 @app.get("/subject-offers/<string:offer_id>")
 def get_subject_offer(offer_id):
@@ -61,6 +67,7 @@ def get_subject_offer(offer_id):
 
     return jsonify(dict(offer))
 
+
 @app.get("/classrooms")
 def get_classrooms():
     conn = get_db_connection()
@@ -69,6 +76,7 @@ def get_classrooms():
     ).fetchall()
     conn.close()
     return jsonify([dict(row) for row in classrooms])
+
 
 @app.get("/classrooms/<string:classroom_id>")
 def get_classroom(classroom_id):
@@ -84,6 +92,7 @@ def get_classroom(classroom_id):
 
     return jsonify(dict(classroom))
 
+
 @app.get("/teaching-allocations")
 def get_teaching_allocations():
     conn = get_db_connection()
@@ -98,6 +107,7 @@ def get_teaching_allocations():
     ).fetchall()
     conn.close()
     return jsonify([dict(row) for row in allocations])
+
 
 @app.get("/teaching-allocations/<int:allocation_id>")
 def get_teaching_allocation(allocation_id):
@@ -119,6 +129,7 @@ def get_teaching_allocation(allocation_id):
         return jsonify({"error": "Teaching allocation not found"}), 404
 
     return jsonify(dict(allocation))
+
 
 @app.post("/subjects")
 def create_subject():
@@ -430,8 +441,11 @@ def create_teaching_allocation():
     assigned_staff_member = data.get("assigned_staff_member")
     allocation_status = data["allocation_status"]
 
+    if allocation_status == "NEEDS_ASSIGNMENT":
+        assigned_staff_member = None
+
     if assigned_staff_member is None:
-        allocation_status = "NEEDS_REASSIGNMENT"
+        allocation_status = "NEEDS_ASSIGNMENT"
 
     conn = get_db_connection()
 
@@ -489,8 +503,11 @@ def update_teaching_allocation(allocation_id):
     assigned_staff_member = data.get("assigned_staff_member")
     allocation_status = data["allocation_status"]
 
+    if allocation_status == "NEEDS_ASSIGNMENT":
+        assigned_staff_member = None
+
     if assigned_staff_member is None:
-        allocation_status = "NEEDS_REASSIGNMENT"
+        allocation_status = "NEEDS_ASSIGNMENT"
 
     conn = get_db_connection()
 
@@ -538,6 +555,7 @@ def update_teaching_allocation(allocation_id):
 
     return jsonify({"message": "Teaching allocation updated"})
 
+
 @app.delete("/teaching-allocations/<int:allocation_id>")
 def delete_teaching_allocation(allocation_id):
     conn = get_db_connection()
@@ -555,6 +573,7 @@ def delete_teaching_allocation(allocation_id):
     conn.close()
 
     return jsonify({"message": "Teaching allocation deleted"})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=6002, debug=True)
