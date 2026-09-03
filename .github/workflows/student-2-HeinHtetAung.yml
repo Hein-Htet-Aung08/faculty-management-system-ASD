@@ -3,9 +3,9 @@ name: Student 2 CI
 on:
   push:
     branches: [ main, student-2-* ]
-    paths: [ 'student-2Hein-Htet-Aung/**' ]
+    paths: [ 'student-2-Hein-Htet-Aung/**' ]
   pull_request:
-    paths: [ 'student-2Hein-Htet-Aung/**' ]
+    paths: [ 'student-2-Hein-Htet-Aung/**' ]
 
 jobs:
   build-and-validate:
