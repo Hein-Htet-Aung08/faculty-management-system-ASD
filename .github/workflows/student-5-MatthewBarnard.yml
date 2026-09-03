@@ -1,0 +1,189 @@
+name: Matthew - Performance and Professional Development
+
+on:
+  push:
+    paths:
+      - "student-5Matthew-Barnard/**"
+      - ".github/workflows/student-5-MatthewBarnard.yml"
+  pull_request:
+    paths:
+      - "student-5Matthew-Barnard/**"
+      - ".github/workflows/student-5-MatthewBarnard.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Unit and API tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            student-5Matthew-Barnard/backend-service/requirements.txt
+            student-5Matthew-Barnard/database-service/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r student-5Matthew-Barnard/backend-service/requirements.txt
+          python -m pip install -r student-5Matthew-Barnard/database-service/requirements.txt
+
+      - name: Test database service
+        working-directory: student-5Matthew-Barnard/database-service
+        run: python -m unittest discover -s tests -v
+
+      - name: Test backend and AI endpoint
+        working-directory: student-5Matthew-Barnard/backend-service
+        run: python -m unittest discover -s tests -v
+
+  smoke-test:
+    name: Build and smoke-test containers
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        run: docker compose -f student-5Matthew-Barnard/docker-compose.yml config
+
+      - name: Build all three feature services
+        run: |
+          docker build -t student5-database:ci student-5Matthew-Barnard/database-service
+          docker build -t student5-backend:ci student-5Matthew-Barnard/backend-service
+          docker build -t student5-frontend:ci student-5Matthew-Barnard/frontend-service
+
+      - name: Start isolated test stack
+        run: |
+          docker network create student5-ci
+          docker run -d --name student5-database --network student5-ci -p 5105:5105 \
+            -e PORT=5105 -e DATABASE_PATH=/app/data/performance_dev.db student5-database:ci
+          docker run -d --name student5-backend --network student5-ci -p 5005:5005 \
+            -e PORT=5005 -e DATABASE_SERVICE_URL=http://student5-database:5105 \
+            -e OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 -e LLM_TIMEOUT=5 student5-backend:ci
+          docker run -d --name student5-frontend --network student5-ci -p 8005:80 \
+            -v "$PWD/shared/frontend/css:/usr/share/nginx/html/css:ro" student5-frontend:ci
+
+      - name: Wait for services
+        run: |
+          wait_for() {
+            name="$1"; url="$2"; container="$3"
+            for attempt in $(seq 1 20); do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url" || true)
+              if [ "$code" = "200" ]; then echo "PASS $name ready"; return 0; fi
+              sleep 2
+            done
+            echo "FAIL $name did not become ready"
+            docker logs "$container" || true
+            return 1
+          }
+          wait_for database http://localhost:5105/health student5-database
+          wait_for backend http://localhost:5005/health student5-backend
+          wait_for frontend http://localhost:8005/ student5-frontend
+
+      - name: Verify seed counts and all resource endpoints
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+
+          expected_tables = {
+              "PerformanceReviews", "DevelopmentGoals", "TrainingPrograms",
+              "StaffTraining", "DevelopmentRecommendations",
+          }
+          with urllib.request.urlopen("http://localhost:5105/health") as response:
+              counts = json.load(response)["tableCounts"]
+          assert set(counts) == expected_tables, counts
+          assert all(count >= 10 for count in counts.values()), counts
+
+          resources = [
+              "performance-reviews", "development-goals", "training-programs",
+              "staff-training", "development-recommendations",
+          ]
+          for resource in resources:
+              with urllib.request.urlopen(f"http://localhost:8005/api/{resource}") as response:
+                  rows = json.load(response)
+              assert len(rows) >= 10, (resource, len(rows))
+              print(f"PASS {resource}: {len(rows)} records")
+          PY
+
+      - name: Verify CRUD through the frontend proxy
+        run: |
+          created=$(curl -fsS -X POST http://localhost:8005/api/development-goals \
+            -H 'Content-Type: application/json' \
+            -d '{"staffID":1,"title":"CI verification goal","status":"Planned","progress":0}')
+          goal_id=$(python -c 'import json,sys; print(json.load(sys.stdin)["goalID"])' <<< "$created")
+
+          updated=$(curl -fsS -X PUT "http://localhost:8005/api/development-goals/$goal_id" \
+            -H 'Content-Type: application/json' -d '{"progress":25,"status":"In Progress"}')
+          python -c 'import json,sys; row=json.load(sys.stdin); assert row["progress"] == 25 and row["status"] == "In Progress"' <<< "$updated"
+
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+            "http://localhost:8005/api/development-goals/$goal_id")
+          [ "$code" = "204" ] || { echo "FAIL delete returned $code"; exit 1; }
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "http://localhost:8005/api/development-goals/$goal_id")
+          [ "$code" = "404" ] || { echo "FAIL deleted record returned $code"; exit 1; }
+          echo "PASS create, read/update, and delete lifecycle"
+
+      - name: Verify frontend and graceful AI failure
+        run: |
+          for asset in / /app.js /styles.css /css/styles.css; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8005$asset")
+            [ "$code" = "200" ] || { echo "FAIL $asset returned $code"; exit 1; }
+          done
+          code=$(curl -s -o /tmp/ai-response -w "%{http_code}" --max-time 15 \
+            http://localhost:8005/api/ai/health || true)
+          [ "$code" = "503" ] || { echo "FAIL expected AI health 503 without Ollama, got $code"; cat /tmp/ai-response; exit 1; }
+          grep -q "Ollama is unavailable" /tmp/ai-response
+          echo "PASS frontend assets and explicit AI unavailable response"
+
+      - name: Show service logs
+        if: always()
+        run: |
+          docker logs student5-database 2>&1 | tail -30 || true
+          docker logs student5-backend 2>&1 | tail -30 || true
+          docker logs student5-frontend 2>&1 | tail -30 || true
+
+      - name: Stop test stack
+        if: always()
+        run: |
+          docker rm -f student5-frontend student5-backend student5-database || true
+          docker network rm student5-ci || true
+
+  evidence:
+    name: Package CI evidence
+    needs: smoke-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create evidence summary
+        run: |
+          mkdir -p evidence
+          cat > evidence/student-5-ci-summary.md <<EOF
+          # Student 5 Release 0 CI evidence
+
+          - Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - Commit: ${{ github.sha }}
+          - Branch: ${{ github.ref_name }}
+          - Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          This run validated Python tests, three Docker image builds, service health,
+          ten-or-more seed records per table, all five resource endpoints, a complete
+          CRUD lifecycle through the frontend proxy, frontend assets, and graceful
+          behaviour when Ollama is unavailable on the CI runner.
+
+          The shared software-development agentic loop is intentionally outside this
+          base-feature evidence and must be documented from genuine loop executions.
+          EOF
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-5-release-0-evidence
+          path: evidence/
