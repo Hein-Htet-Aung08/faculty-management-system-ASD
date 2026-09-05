@@ -1,0 +1,26 @@
+TASK
+
+Review target: {{REVIEW_TARGET}}
+
+From the structural evidence below, give a first-pass architecture critique -
+judge it, do not just list it:
+
+- Per student: are the three required pieces (frontend entrypoint, backend
+  app.py, database service/folder) present? Name what is missing and why it
+  matters.
+- Shared stack: is the Ollama service defined? Does every student folder have a
+  corresponding docker-compose entry? Flag any wiring gap visible in the
+  evidence (missing dependency, missing restart policy, port scheme
+  inconsistency).
+- Say which gaps are genuine integration risks and why (for example: a service
+  with no compose entry cannot be started by the shared stack).
+
+State how many of the five slices are structurally complete AND wired into the
+shared stack. Then give 2-4 concrete, actionable recommendations, one category
+per bullet (see the output contract in your system prompt), each tied directly
+to a gap you identified above. Omit a category if the evidence shows nothing
+wrong in it - do not pad the list to a fixed count.
+
+--- STRUCTURAL EVIDENCE ---
+{{VALIDATION_EVIDENCE}}
+--- END EVIDENCE ---

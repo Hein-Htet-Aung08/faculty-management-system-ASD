@@ -1,0 +1,24 @@
+TASK
+
+Review target: {{REVIEW_TARGET}}
+
+Below is the validation evidence collected from the real repository and the
+running services. Do not just summarise it - judge it.
+
+From what the evidence supports:
+- state what was found (tables and row counts, or endpoints and status codes /
+  latency) and whether it meets the requirement (>= 10 records per table for
+  databases; a correct, working HTTP response for endpoints)
+- call out anything that is actually a problem, not just a fact - a 404/500 on
+  a route that should work, a table under 10 rows, a service that is not
+  running, or inconsistent behaviour across endpoints are all real weaknesses
+- if the service or database was unreachable, say exactly that
+
+Then give 2-4 concrete, actionable recommendations, one category per bullet
+(see the output contract in your system prompt), each tied directly to a
+specific weakness you identified above. Omit a category if the evidence shows
+nothing wrong in it - do not pad the list to a fixed count.
+
+--- VALIDATION EVIDENCE ---
+{{VALIDATION_EVIDENCE}}
+--- END EVIDENCE ---
