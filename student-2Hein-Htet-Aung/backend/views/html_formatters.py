@@ -95,7 +95,9 @@ def format_teaching_allocations_html(allocations):
             staff_display = f"Staff {staff_id} ({staff_id})"
 
         html += (
-            f"<li>{allocation['allocation_id']} - "
+            f"<li data-date-range=\"{allocation['date_range']}\" "
+            f"data-expected-class-size=\"{allocation['expected_class_size']}\">"
+            f"{allocation['allocation_id']} - "
             f"{allocation['offer_id']} - "
             f"{staff_display} - "
             f"{allocation['classroom_id']} - "

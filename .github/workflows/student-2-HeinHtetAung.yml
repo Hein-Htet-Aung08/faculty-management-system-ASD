@@ -30,6 +30,9 @@ jobs:
       - name: Check backend imports correctly
         run: python -c "import sys; sys.path.insert(0, 'student-2Hein-Htet-Aung/backend'); import app"
 
+      - name: Run Student 2 tests
+        run: python -m unittest discover -s student-2Hein-Htet-Aung/tests -p "test_*.py" -v
+
       - name: Build database Docker image
         run: docker build -t allocation-database -f student-2Hein-Htet-Aung/database/Dockerfile student-2Hein-Htet-Aung
 
