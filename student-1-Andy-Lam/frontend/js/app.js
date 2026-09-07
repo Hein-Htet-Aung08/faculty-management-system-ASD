@@ -14,9 +14,11 @@ function renderStaffRows(staffArray) {
             <td>${person.expertise_area || "—"}</td>
             <td>${person.status}</td>
             <td>
-                <button onclick="viewStaffDetail(${person.staff_id})">View</button>
-                <button onclick="editStaff(${person.staff_id})">Edit</button>
-                <button onclick="deleteStaff(${person.staff_id})">Delete</button>
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button class="btn secondary" style="padding: 0.35rem 0.7rem; font-size: 0.8rem;" onclick="viewStaffDetail(${person.staff_id})">View</button>
+                    <button class="btn secondary" style="padding: 0.35rem 0.7rem; font-size: 0.8rem;" onclick="editStaff(${person.staff_id})">Edit</button>
+                    <button class="btn secondary" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; border-color: var(--alert-rust); color: var(--alert-rust);" onclick="deleteStaff(${person.staff_id})">Delete</button>
+                </div>
             </td>
         </tr>
     `).join("");
