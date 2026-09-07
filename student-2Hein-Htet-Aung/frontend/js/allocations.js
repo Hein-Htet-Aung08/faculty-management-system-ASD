@@ -15,6 +15,7 @@ const allocationsTableBody = document.getElementById("allocations-table-body");
 const allocationsEmpty = document.getElementById("allocations-empty");
 
 let editingAllocationId = null;
+let classroomCapacities = {};
 
 function allocationEscapeHtml(value) {
   return String(value ?? "")
@@ -200,14 +201,38 @@ async function loadAllocationOptions() {
     </option>
   `;
 
+  classroomCapacities = {};
+
   classroomsDoc
     .querySelectorAll("li")
     .forEach(item => {
-      const classroomId =
-        item.textContent
-          .trim()
-          .split(" - ")[0]
-          .trim();
+      const parts = item.textContent
+        .trim()
+        .split(" - ")
+        .map(part => part.trim());
+
+      const classroomId = parts[0];
+
+      const capacityPart = parts.find(part =>
+        part.startsWith("Capacity:")
+      );
+
+      const capacity = capacityPart
+        ? Number(
+            capacityPart
+              .split(":")[1]
+              .trim()
+          )
+        : null;
+
+      if (
+        Number.isInteger(capacity) &&
+        capacity > 0
+      ) {
+        classroomCapacities[
+          classroomId
+        ] = capacity;
+      }
 
       const option =
         document.createElement(
@@ -215,12 +240,17 @@ async function loadAllocationOptions() {
         );
 
       option.value = classroomId;
-      option.textContent = classroomId;
 
-      allocationClassroomInput.appendChild(
-        option
-      );
+      option.textContent =
+        capacity === null
+          ? classroomId
+          : `${classroomId} (Capacity: ${capacity})`;
+
+      allocationClassroomInput
+        .appendChild(option);
     });
+
+  updateAllocationClassSizeLimit();
 }
 
 async function loadAllocations() {
@@ -298,6 +328,12 @@ async function loadAllocations() {
       const status =
         parts[6];
 
+      const dateRange =
+        item.dataset.dateRange || "";
+
+      const expectedClassSize =
+        item.dataset.expectedClassSize || "";
+
       const scheduleMatch =
         schedule.match(
           /^([A-Z]{3})\s+(\d{2}:\d{2})-(\d{2}:\d{2})$/
@@ -362,7 +398,9 @@ async function loadAllocations() {
         </td>
 
         <td>
-          View on Edit
+          ${allocationEscapeHtml(
+            dateRange
+          )}
         </td>
 
         <td>
@@ -382,7 +420,9 @@ async function loadAllocations() {
         </td>
 
         <td>
-          View on Edit
+          ${allocationEscapeHtml(
+            expectedClassSize
+          )}
         </td>
 
         <td>
@@ -430,6 +470,56 @@ async function loadAllocations() {
 
     showAllocationError(
       error.message
+    );
+  }
+}
+
+function updateAllocationClassSizeLimit() {
+  const classroomId =
+    allocationClassroomInput.value;
+
+  const capacity =
+    classroomCapacities[classroomId];
+
+  if (
+    Number.isInteger(capacity) &&
+    capacity > 0
+  ) {
+    allocationClassSizeInput.max =
+      String(capacity);
+  } else {
+    allocationClassSizeInput
+      .removeAttribute("max");
+  }
+}
+
+function validateAllocationClassSize() {
+  const classroomId =
+    allocationClassroomInput.value;
+
+  const capacity =
+    classroomCapacities[classroomId];
+
+  const classSize =
+    Number(
+      allocationClassSizeInput.value
+    );
+
+  if (
+    !Number.isInteger(classSize) ||
+    classSize <= 0
+  ) {
+    throw new Error(
+      "Expected class size must be a positive integer."
+    );
+  }
+
+  if (
+    Number.isInteger(capacity) &&
+    classSize > capacity
+  ) {
+    throw new Error(
+      `Expected class size cannot exceed classroom capacity of ${capacity}.`
     );
   }
 }
@@ -486,6 +576,8 @@ async function saveAllocation(event) {
     getAllocationPayload();
 
   try {
+    validateAllocationClassSize();
+
     let result;
 
     if (editingAllocationId) {
@@ -558,6 +650,8 @@ async function startEditingAllocation(
     allocationClassroomInput.value =
       allocation.classroom_id || "";
 
+    updateAllocationClassSizeLimit();
+
     allocationDayInput.value =
       allocation.day || "";
 
@@ -625,16 +719,21 @@ async function deleteAllocation(
         }
       );
 
-    const deletedRow =
-      allocationsTableBody.querySelector(
-        `tr[data-allocation-id="${CSS.escape(
-          String(allocationId)
-        )}"]`
-      );
+    const row =
+      allocationsTableBody
+        .querySelector(
+          `tr[data-allocation-id="${CSS.escape(
+            String(allocationId)
+          )}"]`
+        );
 
-    if (deletedRow) {
-      deletedRow.remove();
+    if (row) {
+      row.remove();
     }
+
+    allocationsEmpty.hidden =
+      allocationsTableBody.children
+        .length > 0;
 
     if (
       String(editingAllocationId) ===
@@ -642,10 +741,6 @@ async function deleteAllocation(
     ) {
       resetAllocationForm();
     }
-
-    allocationsEmpty.hidden =
-      allocationsTableBody.children
-        .length > 0;
 
     await loadAllocations();
 
@@ -681,6 +776,8 @@ function resetAllocationForm() {
   allocationStatusInput.value =
     "PENDING";
 
+  updateAllocationClassSizeLimit();
+
   allocationForm.querySelector(
     'button[type="submit"]'
   ).textContent =
@@ -689,6 +786,11 @@ function resetAllocationForm() {
   allocationCancelButton.hidden =
     true;
 }
+
+allocationClassroomInput.addEventListener(
+  "change",
+  updateAllocationClassSizeLimit
+);
 
 allocationForm.addEventListener(
   "submit",
