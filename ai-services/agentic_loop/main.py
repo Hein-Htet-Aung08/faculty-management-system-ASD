@@ -5,8 +5,8 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 REPO_ROOT = APP_DIR.parent.parent
 
-MENU_TO_MODE = {"1": "db", "2": "endpoints", "3": "architecture"}
-MODE_ORDER = ["db", "endpoints", "architecture"]
+MENU_TO_MODE = {"1": "db", "2": "endpoints", "3": "architecture", "4": "ai_mode"}
+MODE_ORDER = ["db", "endpoints", "architecture", "ai_mode"]
 
 
 def _load_env(env_path: Path) -> None:
@@ -50,7 +50,7 @@ def main() -> None:
             print("Exiting.")
             return
 
-        if choice == "4":
+        if choice == "5":
             for mode_key in MODE_ORDER:
                 print(reporter.divider())
                 print(run_mode(mode_key, str(APP_DIR), str(REPO_ROOT)))

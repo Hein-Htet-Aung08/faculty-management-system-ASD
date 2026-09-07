@@ -44,4 +44,15 @@ def build_mode_config():
             review_prompts=("review/agent_review_prompt.txt",),
             per_student=False,
         ),
+        "ai_mode": ModeConfig(
+            key="ai_mode",
+            label="AI-Mode integration review",
+            prompt_family="service",
+            implementation_prompts=(
+                "ai_mode/system_prompt.txt",
+                "ai_mode/task_prompt.txt",
+                "ai_mode/context_prompt.txt",
+            ),
+            per_student=True,
+        ),
     }

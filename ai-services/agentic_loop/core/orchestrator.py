@@ -1,27 +1,30 @@
-from collectors import architecture_collector, db_collector, endpoints_collector
+from collectors import architecture_collector, db_collector, endpoints_collector, ai_mode_collector
 from collectors.common import find_student_dirs, student_label, student_number
 from config.review_config import build_mode_config
 from core import reporter
 from core.ai_runner import AIRunner
 from core.prompt_registry import PromptRegistry
-from pipelines import architecture_pipeline, db_pipeline, endpoints_pipeline
+from pipelines import architecture_pipeline, db_pipeline, endpoints_pipeline, ai_mode_pipeline
 
 _PER_STUDENT_COLLECTORS = {
     "db": db_collector.collect,
     "endpoints": endpoints_collector.collect,
+    "ai_mode": ai_mode_collector.collect,
 }
 
 _PER_STUDENT_PIPELINES = {
     "db": db_pipeline,
     "endpoints": endpoints_pipeline,
+    "ai_mode": ai_mode_pipeline,
 }
 
 _PER_STUDENT_TARGETS = {
     "db": "student {label}'s microservice database",
     "endpoints": "student {label}'s microservice HTTP API",
+    "ai_mode": "student {label}'s AI-Mode integration",
 }
 
-_MODE_DISPLAY = {"db": "DB", "endpoints": "Endpoints", "architecture": "Architecture"}
+_MODE_DISPLAY = {"db": "DB", "endpoints": "Endpoints", "architecture": "Architecture", "ai_mode": "AI-Mode"}
 
 _ARCHITECTURE_TARGET = "the team's five-microservice system and its shared docker-compose stack"
 

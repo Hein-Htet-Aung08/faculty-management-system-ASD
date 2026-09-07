@@ -27,7 +27,8 @@ def print_menu():
                 "  1) DB            - validate every student's database (real queries)",
                 "  2) Endpoints     - test every student's live endpoints (real HTTP)",
                 "  3) Architecture  - file layout + docker-compose (two-model review)",
-                "  4) Run All",
+                "  4) AI-Mode       - review every student's Ollama integration (static analysis)",
+                "  5) Run All",
                 "  0) Exit",
                 divider(),
             ]
