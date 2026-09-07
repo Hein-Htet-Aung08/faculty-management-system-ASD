@@ -6,12 +6,12 @@ function value(elementId) {
 }
 
 function show(panelId) {
-    document.getElementById(panelId).classList.remove("is-hidden");
+    document.getElementById(panelId).hidden = false;
 }
 
 function message(panelId, text, kind = "warn") {
-    document.getElementById(panelId).innerHTML =
-        `<p class="msg msg-${kind}">${text}</p>`;
+    const css = kind === "info" ? "empty-state" : "error-state";
+    document.getElementById(panelId).innerHTML = `<p class="${css}">${text}</p>`;
 }
 
 async function render(panelId, url, options = {}) {
@@ -22,7 +22,7 @@ async function render(panelId, url, options = {}) {
         panel.innerHTML = await response.text();
     } catch (error) {
         panel.innerHTML =
-            `<p class="msg msg-error">Request failed. Is the backend running at ` +
+            `<p class="error-state">Request failed. Is the backend running at ` +
             `${BACKEND}?</p><pre>${error}</pre>`;
     }
 }

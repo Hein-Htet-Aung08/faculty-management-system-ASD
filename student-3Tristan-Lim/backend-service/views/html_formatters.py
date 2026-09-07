@@ -1,23 +1,48 @@
 from html import escape
 
+STAMP_STATUS = {
+    "ok": "status-active",
+    "accepted": "status-active",
+    "approved": "status-active",
+    "underloaded": "status-applied",
+    "pending": "status-applied",
+    "overridden": "status-in-progress",
+    "overloaded": "status-rejected",
+    "rejected": "status-rejected",
+}
+
+# Availability states drawn with the shared palette rather than custom classes.
+SLOT_COLOUR = {
+    "available": "var(--ledger-green)",
+    "preferred": "var(--gold-seal)",
+    "unavailable": "var(--alert-rust)",
+}
+
 
 def _esc(value):
     return escape("" if value is None else str(value))
 
 
+def stamp(status):
+    """A status badge using the shared stamp element."""
+    css = STAMP_STATUS.get(str(status).lower(), "status-proposed")
+    return f'<span class="stamp {css}">{_esc(status)}</span>'
+
+
 def message(text, kind="info"):
-    return f'<p class="msg msg-{kind}">{_esc(text)}</p>'
+    css = "empty-state" if kind == "info" else "error-state"
+    return f'<p class="{css}">{_esc(text)}</p>'
 
 
 def _table(headers, rows):
     if not rows:
-        return '<p class="msg msg-info">No records.</p>'
+        return '<p class="empty-state">No records.</p>'
     head = "".join(f"<th>{_esc(h)}</th>" for h in headers)
     body = ""
     for row in rows:
         cells = "".join(f"<td>{_esc(c)}</td>" for c in row)
         body += f"<tr>{cells}</tr>"
-    return f'<table class="data-table"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
+    return f'<table class="ledger-table"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
 
 
 def format_profiles_table(profiles):
@@ -45,13 +70,11 @@ def format_profile_detail(timetable):
         return message("No workload profile for that staff member.", "warn")
 
     header = (
-        f'<div class="panel">'
-        f'<h3>{_esc(profile["staff_name"])} '
-        f'<span class="tag tag-{_esc(profile["status"])}">{_esc(profile["status"])}</span></h3>'
-        f'<p>{_esc(profile["department"])} &middot; {_esc(profile["semester"])} &middot; '
+        f'<h3>{_esc(profile["staff_name"])} {stamp(profile["status"])}</h3>'
+        f'<p class="project-id">{_esc(profile["department"])} &middot; '
+        f'{_esc(profile["semester"])} &middot; '
         f'fraction {profile["contracted_fraction"]:.1f} &middot; '
         f'{profile["current_total_hours"]:.1f}h of {profile["max_weekly_hours"]:.1f}h</p>'
-        f"</div>"
     )
 
     entries = _table(
@@ -192,10 +215,6 @@ def format_recommendations(recs):
 
 # ------------------------------------------------- computed workload analysis ---
 
-def _status_badge(status):
-    return f'<span class="badge badge-{_esc(status)}">{_esc(status)}</span>'
-
-
 def format_analysis_table(results):
     rows = [
         (
@@ -223,30 +242,28 @@ def format_analysis_detail(result):
     )
     clash_rows = "".join(
         f'<li>{_esc(c["kind"])}: {_esc(c["detail"])}</li>' for c in result["clashes"]
-    ) or "<li>None detected.</li>"
+    ) or '<li class="empty-state">None detected.</li>'
 
     drift_note = ""
     if result["drift"]:
-        drift_note = (
-            f'<p class="msg msg-warn">Stored profile reads '
-            f'{result["recorded_hours"]:.1f}h but entries total '
-            f'{result["computed_hours"]:.1f}h ({result["drift"]:+.1f}h drift).</p>'
+        drift_note = message(
+            f'Stored profile reads {result["recorded_hours"]:.1f}h but entries total '
+            f'{result["computed_hours"]:.1f}h ({result["drift"]:+.1f}h drift).',
+            "warn",
         )
 
     return f"""
-<section class="analysis">
-  <h3>{_esc(result["staff_name"])} &mdash; staff {result["staff_id"]}
-      {_status_badge(result["status"])}</h3>
-  <p>{_esc(result["department"])} &middot;
-     {result["computed_hours"]:.1f}h of {result["cap"]:.1f}h cap
-     (warning at {result["warning_threshold"]:.1f}h,
-      underload below {result["underload_floor"]:.1f}h)</p>
-  {drift_note}
-  <h4>Hours by activity</h4>
-  <ul>{activity_rows}</ul>
-  <h4>Clashes</h4>
-  <ul>{clash_rows}</ul>
-</section>
+<h3>{_esc(result["staff_name"])} &mdash; staff {result["staff_id"]}
+    {stamp(result["status"])}</h3>
+<p class="project-id">{_esc(result["department"])} &middot;
+   {result["computed_hours"]:.1f}h of {result["cap"]:.1f}h cap
+   (warning at {result["warning_threshold"]:.1f}h,
+    underload below {result["underload_floor"]:.1f}h)</p>
+{drift_note}
+<h4>Hours by activity</h4>
+<ul>{activity_rows}</ul>
+<h4>Clashes</h4>
+<ul>{clash_rows}</ul>
 """.strip()
 
 
@@ -259,8 +276,7 @@ def format_clashes(clashes):
 
 def format_recompute_summary(created, failed, evaluated, drifted):
     lines = [
-        f'<p class="msg msg-info">Evaluated {evaluated} staff profiles. '
-        f'Raised {created} new alert(s).</p>'
+        message(f"Evaluated {evaluated} staff profiles. Raised {created} new alert(s).")
     ]
     if failed:
         lines.append(message(f"{failed} alert(s) could not be written.", "error"))
@@ -275,7 +291,11 @@ def format_recompute_summary(created, failed, evaluated, drifted):
 
 
 def format_calendar(grid, days, start_hour=8, end_hour=20):
-    """Weekly availability grid, one row per hour."""
+    """Weekly availability grid, one row per hour.
+
+    Cell shading uses the shared palette variables inline rather than custom
+    classes, so the grid follows the team theme without adding to the stylesheet.
+    """
     header = "".join(f"<th>{_esc(day)}</th>" for day in days)
 
     rows = ""
@@ -283,20 +303,22 @@ def format_calendar(grid, days, start_hour=8, end_hour=20):
         cells = ""
         for day in days:
             availability = grid[day].get(hour)
-            css = f' class="slot-{_esc(availability)}"' if availability else ""
-            title = f' title="{_esc(availability)}"' if availability else ""
-            cells += f"<td{css}{title}></td>"
-        rows += f'<tr><td class="hour">{hour:02d}:00</td>{cells}</tr>'
+            colour = SLOT_COLOUR.get(availability)
+            attrs = (f' style="background:{colour}" title="{_esc(availability)}"'
+                     if colour else "")
+            cells += f"<td{attrs}></td>"
+        rows += f'<tr><td class="project-id">{hour:02d}:00</td>{cells}</tr>'
 
-    legend = (
-        '<div class="calendar-legend">'
-        '<span><i class="swatch slot-available"></i>available</span>'
-        '<span><i class="swatch slot-preferred"></i>preferred</span>'
-        '<span><i class="swatch slot-unavailable"></i>unavailable</span>'
-        "</div>"
+    swatches = "".join(
+        f'<span class="project-id" style="margin-right:1rem">'
+        f'<span style="display:inline-block;width:.8rem;height:.8rem;'
+        f'background:{colour};vertical-align:middle;margin-right:.3rem"></span>'
+        f"{_esc(name)}</span>"
+        for name, colour in SLOT_COLOUR.items()
     )
 
     return (
-        f'<table class="calendar"><thead><tr><th class="hour"></th>{header}</tr></thead>'
-        f"<tbody>{rows}</tbody></table>{legend}"
+        f'<table class="ledger-table"><thead><tr><th></th>{header}</tr></thead>'
+        f"<tbody>{rows}</tbody></table>"
+        f'<p style="margin-top:.5rem">{swatches}</p>'
     )

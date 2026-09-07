@@ -1,0 +1,103 @@
+name: Student 4 - Nicholas Hatzidimitriou (Research & Grant Management)
+
+on:
+  push:
+    branches: [main, "student-4-*"]
+    paths:
+      - "student-4Nicholas-Hatzidimitriou/**"
+      - ".github/workflows/student-4-NicholasHatzidimitriou.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "student-4Nicholas-Hatzidimitriou/**"
+
+jobs:
+  validate-python:
+    name: Validate Python syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        working-directory: student-4Nicholas-Hatzidimitriou/backend
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Compile-check backend
+        working-directory: student-4Nicholas-Hatzidimitriou/backend
+        run: python -m compileall -q .
+
+      - name: Install database-service dependencies
+        working-directory: student-4Nicholas-Hatzidimitriou/database-service
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Compile-check database-service
+        working-directory: student-4Nicholas-Hatzidimitriou/database-service
+        run: python -m compileall -q .
+
+      - name: Install frontend dependencies
+        working-directory: student-4Nicholas-Hatzidimitriou/frontend
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Compile-check frontend
+        working-directory: student-4Nicholas-Hatzidimitriou/frontend
+        run: python -m compileall -q .
+
+  validate-database-init:
+    name: Validate database initialises and seeds correctly
+    runs-on: ubuntu-latest
+    needs: validate-python
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install database-service dependencies
+        working-directory: student-4Nicholas-Hatzidimitriou/database-service
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Run init_db.py and seed.py
+        working-directory: student-4Nicholas-Hatzidimitriou/database-service
+        run: |
+          mkdir -p /tmp/ci-data
+          DATA_DIR=/tmp/ci-data python init_db.py
+          DATA_DIR=/tmp/ci-data python seed.py
+
+      - name: Verify seeded record counts
+        working-directory: student-4Nicholas-Hatzidimitriou/database-service
+        run: |
+          python -c "
+          import sqlite3
+          conn = sqlite3.connect('/tmp/ci-data/student4.db')
+          tables = ['ResearchProjects', 'Grants', 'Publications', 'ProjectStaff', 'GrantAlerts', 'ResearchAIAnalysis']
+          for t in tables:
+              count = conn.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]
+              assert count >= 10, f'{t} has only {count} records, expected at least 10'
+              print(f'{t}: {count} records OK')
+          "
+
+  build-docker-images:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+    needs: validate-python
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t student4-backend:ci ./student-4Nicholas-Hatzidimitriou/backend
+
+      - name: Build frontend image
+        run: docker build -t student4-frontend:ci ./student-4Nicholas-Hatzidimitriou/frontend
+
+      - name: Build database-service image
+        run: docker build -t student4-database:ci ./student-4Nicholas-Hatzidimitriou/database-service

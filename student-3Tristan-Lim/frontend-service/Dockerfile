@@ -9,6 +9,8 @@ COPY js/ /usr/share/nginx/html/js/
 #   volumes:
 #     - ../shared/css:/usr/share/nginx/html/css:ro
 
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 # nginx:alpine executes every script in this directory before starting.
 COPY docker-entrypoint.sh /docker-entrypoint.d/40-backend-url.sh
 RUN chmod +x /docker-entrypoint.d/40-backend-url.sh

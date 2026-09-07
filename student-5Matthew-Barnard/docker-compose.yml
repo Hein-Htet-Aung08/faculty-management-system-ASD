@@ -1,0 +1,77 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student5-frontend:
+    build: ./frontend-service
+    ports:
+      - "8005:80"
+    volumes:
+      - ../shared/frontend/css:/usr/share/nginx/html/css:ro
+    depends_on:
+      student5-backend:
+        condition: service_healthy
+    networks:
+      - faculty-network
+
+  student5-database:
+    build: ./database-service
+    environment:
+      DATABASE_PATH: /app/data/performance_dev.db
+      PORT: "5105"
+    ports:
+      - "5105:5105"
+    volumes:
+      - matthew-performance-data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:5105/health')"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - faculty-network
+
+  student5-backend:
+    build: ./backend-service
+    environment:
+      DATABASE_SERVICE_URL: http://student5-database:5105
+      DATABASE_TIMEOUT: "5"
+      PORT: "5005"
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: qwen2.5:0.5b
+      LLM_TIMEOUT: "120"
+    ports:
+      - "5005:5005"
+    depends_on:
+      student5-database:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:5005/health')"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - faculty-network
+
+volumes:
+  matthew-performance-data:
+  ollama_data:
+
+networks:
+  faculty-network:
+    driver: bridge

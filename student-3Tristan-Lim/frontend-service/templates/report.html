@@ -6,50 +6,55 @@
     <title>Workload Report</title>
     <link rel="stylesheet" href="/css/styles.css">
     <style>
-        /* Page-specific print rules. The screen appearance comes from the shared
-           team theme; these only apply when the report is printed or saved as PDF. */
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .actions .form-field { flex: 0 0 12rem; }
+
         @media print {
             @page { margin: 15mm; }
-            body { background: none; color: #000; }
-            .card { border: none; box-shadow: none; background: none; }
             .no-print { display: none; }
-            .data-table { font-size: 10pt; }
-            .data-table th, .data-table td { border-bottom: 1px solid #999; }
+            .ledger-header, .ledger-panel { border: none; padding: 0; }
+            .panel-section { page-break-inside: avoid; }
             h2 { page-break-after: avoid; }
-            .panel { page-break-inside: avoid; border: none; background: none; }
+            table.ledger-table { font-size: 10pt; }
         }
     </style>
 </head>
 <body>
-<main class="app-shell">
-    <header class="app-header">
-        <h1>Workload and Availability Report</h1>
-        <p>Faculty Management System &middot; generated <span id="generated"></span></p>
-    </header>
+<header class="ledger-header">
+    <h1>Workload and Availability Report</h1>
+    <p class="subtitle">Faculty Management System &middot; generated <span id="generated"></span></p>
+</header>
 
-    <section class="card">
-        <div class="filter-row no-print">
-            <div>
-                <label for="report-staff">Staff ID (blank for all)</label>
-                <input id="report-staff" type="number" min="1" placeholder="All staff">
-            </div>
-            <button type="button" id="refresh-report">Refresh</button>
-            <button type="button" class="secondary" onclick="window.print()">Save as PDF</button>
+<div class="ledger-panel">
+    <div class="actions no-print">
+        <div class="form-field">
+            <label for="report-staff">Staff ID (blank for all)</label>
+            <input id="report-staff" type="number" min="1" placeholder="All staff">
         </div>
+        <button type="button" class="btn" id="refresh-report">Refresh</button>
+        <button type="button" class="btn secondary" onclick="window.print()">Save as PDF</button>
+    </div>
 
+    <section class="panel-section">
         <h2>Workload overview</h2>
-        <div id="report-analysis" class="panel"></div>
-
-        <h2>Conflicts</h2>
-        <div id="report-clashes" class="panel"></div>
-
-        <h2>Open alerts</h2>
-        <div id="report-alerts" class="panel"></div>
-
-        <h2>Rebalance recommendations</h2>
-        <div id="report-recommendations" class="panel"></div>
+        <div id="report-analysis"></div>
     </section>
-</main>
+
+    <section class="panel-section">
+        <h2>Conflicts</h2>
+        <div id="report-clashes"></div>
+    </section>
+
+    <section class="panel-section">
+        <h2>Open alerts</h2>
+        <div id="report-alerts"></div>
+    </section>
+
+    <section class="panel-section">
+        <h2>Rebalance recommendations</h2>
+        <div id="report-recommendations"></div>
+    </section>
+</div>
 
 <script src="/js/config.js"></script>
 <script src="/js/api.js"></script>

@@ -1,0 +1,23 @@
+# Normalise line endings so Linux containers get LF regardless of the
+# contributor's OS or core.autocrlf setting.
+* text=auto
+
+# Files executed inside containers MUST be LF - a CRLF shebang makes the
+# kernel look for "/bin/sh\r" and the script fails with "not found".
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+*.Dockerfile    text eol=lf
+docker-entrypoint.sh text eol=lf
+
+# Python and container/config files: keep LF everywhere for consistency.
+*.py            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+
+# Binary assets - never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.db  binary

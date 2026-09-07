@@ -2,13 +2,23 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
-    ports:
-      - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     networks:
       - faculty-network
     restart: unless-stopped
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ollama-init
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    command: pull qwen2.5:1.5b
+    networks:
+      - faculty-network
+    restart: "no"
 
   #Shared unified home page 
   home:
@@ -58,7 +68,96 @@ services:
 
   # ---- Student 2: Hein - Teaching Subject and Classroom Allocation ----
 
+  allocation-database:
+    build:
+      context: ./student-2Hein-Htet-Aung
+      dockerfile: database/Dockerfile
+    volumes:
+      - allocation-data:/app/data
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  allocation-backend:
+    build:
+      context: ./student-2Hein-Htet-Aung
+      dockerfile: backend/Dockerfile
+    ports:
+      - "5002:5002"
+    environment:
+      - DATABASE_SERVICE_URL=http://allocation-database:6002
+      - STAFF_SERVICE_URL=http://staff-backend:5001
+      - WORKLOAD_SERVICE_URL=http://student3-backend:5003
+      - OLLAMA_BASE_URL=http://ollama:11434/v1
+      - OLLAMA_MODEL=qwen2.5:0.5b
+    depends_on:
+      - allocation-database
+      - staff-backend
+      - student3-backend
+      - ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  allocation-frontend:
+    build:
+      context: .
+      dockerfile: ./student-2Hein-Htet-Aung/frontend/Dockerfile
+    ports:
+      - "3002:80"
+    depends_on:
+      - allocation-backend
+    networks:
+      - faculty-network
+
   # ---- Student 3: Tristan - Workload and Availability Management ----
+  student3-database:
+    build:
+      context: ./student-3Tristan-Lim/database-service
+    container_name: student3-database
+    ports:
+      - "5103:5103"
+    volumes:
+      - student3_data:/app/data
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student3-backend:
+    build:
+      context: ./student-3Tristan-Lim
+      dockerfile: backend-service/Dockerfile
+    container_name: student3-backend
+    ports:
+      - "5003:5003"
+    environment:
+      DATABASE_SERVICE_URL: http://student3-database:5103
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: qwen2.5:0.5b
+      STAFF_SERVICE_URL: http://staff-backend:5001
+    depends_on:
+      - student3-database
+      - ollama
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  student3-frontend:
+    build:
+      context: ./student-3Tristan-Lim/frontend-service
+    container_name: student3-frontend
+    ports:
+      - "8003:80"
+    environment:
+      BACKEND_URL: http://localhost:5003
+    volumes:
+      - ./shared/frontend/css:/usr/share/nginx/html/css:ro
+    depends_on:
+      - student3-backend
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
 
   # ---- Student 4: Nicholas - Research and Grant Management ----
   student4-frontend:
@@ -109,11 +208,77 @@ services:
     restart: unless-stopped
 
   # ---- Student 5: Matthew - Performance and Professional Development ----
+  student5-database:
+    build:
+      context: ./student-5Matthew-Barnard/database-service
+    container_name: student5-database
+    ports:
+      - "5105:5105"
+    environment:
+      DATABASE_PATH: /app/data/performance_dev.db
+      PORT: 5105
+    volumes:
+      - student5_data:/app/data
+    networks:
+      - faculty-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5105/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  student5-backend:
+    build:
+      context: ./student-5Matthew-Barnard/backend-service
+    container_name: student5-backend
+    ports:
+      - "5005:5005"
+    environment:
+      DATABASE_SERVICE_URL: http://student5-database:5105
+      DATABASE_TIMEOUT: 5
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: qwen2.5:0.5b
+      LLM_TIMEOUT: 120
+      PORT: 5005
+      STAFF_SERVICE_URL: http://staff-backend:5001
+      STAFF_TIMEOUT: 3
+    depends_on:
+      student5-database:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - faculty-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5005/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  student5-frontend:
+    build:
+      context: ./student-5Matthew-Barnard/frontend-service
+    container_name: student5-frontend
+    ports:
+      - "8005:80"
+    volumes:
+      - ./shared/frontend/css:/usr/share/nginx/html/css:ro
+    depends_on:
+      student5-backend:
+        condition: service_healthy
+    networks:
+      - faculty-network
+    restart: unless-stopped
 
 volumes:
   staff-data:
+  student3_data:
   student4_data:
+  student5_data:
   ollama_data:
+  allocation-data:
 
 networks:
   faculty-network:

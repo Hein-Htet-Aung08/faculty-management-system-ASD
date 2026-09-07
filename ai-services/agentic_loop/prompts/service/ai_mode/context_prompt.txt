@@ -1,0 +1,22 @@
+CONTEXT NOTES
+
+This repository is a shared faculty management system. Five students each own one
+vertical microservice slice (frontend + backend API + database), living in
+sibling folders at the repo root:
+
+- student 1  - Staff Management
+- student 2  - Teaching Subject and Classroom Allocation
+- student 3  - Workload and Availability Management
+- student 4  - Research and Grant Management
+- student 5  - Performance and Professional Development
+
+Each student's backend is required to implement an Agentic AI-Mode capability
+that calls a shared Ollama container, following the project's shared
+Plan -> Act -> Observe -> Adapt workflow. A correct implementation should:
+call Ollama from the backend, handle failures/timeouts gracefully, keep
+prompts in external template files rather than hardcoded strings, and persist
+the generated output for later reference.
+
+The evidence below was generated live by statically scanning the actual
+repository - treat it as the only source of truth. It does not call Ollama or
+make any live HTTP requests; it only inspects source files.
