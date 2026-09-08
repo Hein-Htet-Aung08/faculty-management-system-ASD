@@ -75,6 +75,40 @@ class DevelopmentGoalApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("progress", response.json["error"])
 
+    def test_completed_goal_requires_full_progress(self):
+        rejected = self.client.post("/development-goals", json={
+            "staffID": 1,
+            "title": "Incomplete completed goal",
+            "progress": 25,
+            "status": "Completed",
+        })
+        self.assertEqual(rejected.status_code, 400)
+        self.assertIn("progress must be 100", rejected.json["error"])
+
+        accepted = self.client.post("/development-goals", json={
+            "staffID": 1,
+            "title": "Completed goal",
+            "progress": 100,
+            "status": "Completed",
+        })
+        self.assertEqual(accepted.status_code, 201)
+
+    def test_partial_update_cannot_complete_an_incomplete_goal(self):
+        created = self.client.post("/development-goals", json={
+            "staffID": 1,
+            "title": "Goal awaiting completion",
+            "progress": 25,
+            "status": "In Progress",
+        })
+        self.assertEqual(created.status_code, 201)
+
+        response = self.client.put(
+            f"/development-goals/{created.json['goalID']}",
+            json={"status": "Completed"},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("progress must be 100", response.json["error"])
+
     def test_unknown_goal_returns_404(self):
         self.assertEqual(self.client.get("/development-goals/99999").status_code, 404)
         self.assertEqual(

@@ -1,0 +1,13 @@
+CONTEXT NOTES
+
+Student 5 owns the Performance and Professional Development microservice. Its
+database service manages performance reviews, development goals, training
+programs, staff training, and development recommendations.
+
+This review is separate from the shared AI-Mode integration review. It checks
+whether a development goal marked Completed can have progress below 100.
+Evidence is collected from the current Student 5 files on disk. Test inserts run
+only in a disposable in-memory SQLite database. Live API checks, when available,
+are read-only.
+
+Treat the collected evidence as the only source of truth.
