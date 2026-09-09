@@ -5,8 +5,14 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 REPO_ROOT = APP_DIR.parent.parent
 
-MENU_TO_MODE = {"1": "db", "2": "endpoints", "3": "architecture", "4": "ai_mode"}
-MODE_ORDER = ["db", "endpoints", "architecture", "ai_mode"]
+MENU_TO_MODE = {
+    "1": "db",
+    "2": "endpoints",
+    "3": "architecture",
+    "4": "ai_mode",
+    "6": "development_integrity",
+}
+MODE_ORDER = ["db", "endpoints", "architecture", "ai_mode", "development_integrity"]
 
 
 def _load_env(env_path: Path) -> None:
