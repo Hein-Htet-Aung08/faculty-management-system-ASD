@@ -62,7 +62,7 @@ project's **Plan → Act → Observe → Adapt** Agentic AI workflow.
 |---|---|---|
 | Unified home page | http://localhost:8000 | — |
 | Staff Management | http://localhost:8001 | http://localhost:5001 |
-| Teaching Subject & Classroom Allocation | http://localhost:3002 | http://localhost:5002 |
+| Teaching Subject & Classroom Allocation | http://localhost:8002 | http://localhost:5002 |
 | Workload & Availability Management | http://localhost:8003 | http://localhost:5003 |
 | Research & Grant Management | http://localhost:8004 | http://localhost:5004 |
 | Performance & Professional Development | http://localhost:8005 | http://localhost:5005 |
@@ -141,8 +141,6 @@ See the technical report's "Known Issues and Limitations" section for the
 full list. Notable items:
 - Frontend technology is inconsistent across features (HTMX vs. vanilla
   JavaScript) — see report for details.
-- `allocation-frontend` runs on port `3002` while other frontends use the
-  `80xx` range.
 
 ## Project Documentation
 Full technical reports, architecture diagrams, and release evidence for
