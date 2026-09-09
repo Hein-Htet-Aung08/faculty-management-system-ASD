@@ -7,8 +7,10 @@ COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend ./backend
-COPY prompts/allocation ./prompts/allocation
+COPY prompts ./prompts
+
+WORKDIR /app/backend
 
 EXPOSE 5002
 
-CMD ["python", "backend/app.py"]
+CMD ["python", "app.py"]

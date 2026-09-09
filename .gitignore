@@ -10,5 +10,8 @@ venv
 .vscode
 vscode
 
+# Agentic-loop generated evidence/report files
+ai-services/agentic_loop/reports/
+
 # Student 3 personal notes
 student-3Tristan-Lim/README.md

@@ -92,6 +92,16 @@ def _text(value, field, required=False):
     return parsed
 
 
+def validate_record_consistency(resource, values):
+    """Reject valid individual fields that form an invalid combined state."""
+    if (
+        resource == "development-goals"
+        and values.get("status") == "Completed"
+        and values.get("progress") != 100
+    ):
+        raise ValueError("progress must be 100 when status is Completed")
+
+
 def validate_payload(resource, payload, partial=False):
     """Normalize one whitelisted resource payload and reject invalid fields early."""
     spec = RESOURCES.get(resource)
@@ -152,6 +162,9 @@ def validate_payload(resource, payload, partial=False):
         end = normalized.get("endDate", payload.get("endDate"))
         if start and end and end < start:
             raise ValueError("endDate must be on or after startDate")
+
+    if not partial:
+        validate_record_consistency(resource, normalized)
 
     return normalized
 

@@ -1,40 +1,622 @@
-name: Student 2 CI
+name: Student 2 - Teaching, Subject and Classroom Allocation
 
 on:
+  workflow_dispatch:
+
   push:
-    branches: [ main, student-2-* ]
+    branches:
+      - main
+      - 'student-2-*'
     paths:
-      - 'student-2-Hein-Htet-Aung/**'
+      - 'student-2Hein-Htet-Aung/**'
+      - 'shared/frontend/css/styles.css'
+      - 'docker-compose.yml'
       - '.github/workflows/student-2-HeinHtetAung.yml'
 
   pull_request:
     paths:
-      - 'student-2-Hein-Htet-Aung/**'
+      - 'student-2Hein-Htet-Aung/**'
+      - 'shared/frontend/css/styles.css'
+      - 'docker-compose.yml'
       - '.github/workflows/student-2-HeinHtetAung.yml'
 
+env:
+  STUDENT_DIR: student-2Hein-Htet-Aung
+  DATABASE_PORT: '6002'
+  BACKEND_PORT: '5002'
+  FRONTEND_PORT: '8002'
+
 jobs:
-  build-and-validate:
+  test:
+    name: Unit and code validation
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            student-2Hein-Htet-Aung/backend/requirements.txt
+            student-2Hein-Htet-Aung/database/requirements.txt
 
-      - name: Install backend dependencies
-        run: pip install -r student-2-Hein-Htet-Aung/backend/requirements.txt
+      - name: Install Student 2 dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r "$STUDENT_DIR/backend/requirements.txt"
+          python -m pip install -r "$STUDENT_DIR/database/requirements.txt"
 
-      - name: Check backend imports correctly
-        run: python -c "import sys; sys.path.insert(0, 'student-2-Hein-Htet-Aung/backend'); import app"
+      - name: Validate Python syntax
+        run: |
+          python -m compileall -q \
+            "$STUDENT_DIR/backend" \
+            "$STUDENT_DIR/database" \
+            "$STUDENT_DIR/tests"
+
+          echo "PASS: Student 2 Python files compile successfully"
+
+      - name: Validate backend import
+        run: |
+          python - <<'PY'
+          import sys
+
+          sys.path.insert(
+              0,
+              "student-2Hein-Htet-Aung/backend"
+          )
+
+          import app
+
+          print("PASS: Student 2 backend imports successfully")
+          PY
+
+      - name: Verify AI prompt files
+        run: |
+          test -s "$STUDENT_DIR/prompts/allocation/system_prompt.txt"
+          test -s "$STUDENT_DIR/prompts/allocation/staff_recommendation_prompt.txt"
+
+          echo "PASS: Student 2 allocation prompt files exist"
+
+      - name: Run Student 2 automated tests
+        run: |
+          python -m unittest discover \
+            -s "$STUDENT_DIR/tests" \
+            -p "test_*.py" \
+            -v
+
+  build:
+    name: Build Docker images
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
       - name: Build database Docker image
-        run: docker build -t allocation-database student-2-Hein-Htet-Aung/database
+        run: |
+          docker build \
+            -t allocation-database:ci \
+            -f "$STUDENT_DIR/database/Dockerfile" \
+            "$STUDENT_DIR"
 
       - name: Build backend Docker image
-        run: docker build -t allocation-backend student-2-Hein-Htet-Aung/backend
+        run: |
+          docker build \
+            -t allocation-backend:ci \
+            -f "$STUDENT_DIR/backend/Dockerfile" \
+            "$STUDENT_DIR"
 
       - name: Build frontend Docker image
-        run: docker build -t allocation-frontend student-2-Hein-Htet-Aung/frontend
+        run: |
+          docker build \
+            -t allocation-frontend:ci \
+            -f "$STUDENT_DIR/frontend/Dockerfile" \
+            .
+
+      - name: Confirm Docker images exist
+        run: |
+          docker image inspect allocation-database:ci > /dev/null
+          docker image inspect allocation-backend:ci > /dev/null
+          docker image inspect allocation-frontend:ci > /dev/null
+
+          echo "PASS: all three Student 2 Docker images built successfully"
+
+  smoke-test:
+    name: Runtime and API smoke tests
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Student 2 Docker images
+        run: |
+          docker build \
+            -t allocation-database:ci \
+            -f "$STUDENT_DIR/database/Dockerfile" \
+            "$STUDENT_DIR"
+
+          docker build \
+            -t allocation-backend:ci \
+            -f "$STUDENT_DIR/backend/Dockerfile" \
+            "$STUDENT_DIR"
+
+          docker build \
+            -t allocation-frontend:ci \
+            -f "$STUDENT_DIR/frontend/Dockerfile" \
+            .
+
+      - name: Create isolated CI network
+        run: |
+          docker network create student2-ci-network
+
+      - name: Start database service
+        run: |
+          docker run -d \
+            --name allocation-database-ci \
+            --network student2-ci-network \
+            -p ${DATABASE_PORT}:6002 \
+            allocation-database:ci
+
+      - name: Wait for database service
+        run: |
+          for attempt in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              "http://localhost:${DATABASE_PORT}/" || true)
+
+            if [ "$code" = "200" ]; then
+              echo "PASS: database service is ready"
+              exit 0
+            fi
+
+            echo "Waiting for database service... attempt $attempt"
+            sleep 2
+          done
+
+          echo "Database service failed to start"
+          docker logs allocation-database-ci || true
+          exit 1
+
+      - name: Start backend service
+        run: |
+          docker run -d \
+            --name allocation-backend-ci \
+            --network student2-ci-network \
+            -p ${BACKEND_PORT}:5002 \
+            -e DATABASE_SERVICE_URL=http://allocation-database-ci:6002 \
+            -e STAFF_SERVICE_URL=http://unavailable-staff-service:5001 \
+            -e WORKLOAD_SERVICE_URL=http://unavailable-workload-service:5003 \
+            -e OLLAMA_BASE_URL=http://unavailable-ollama:11434/v1 \
+            -e OLLAMA_MODEL=qwen2.5:0.5b \
+            allocation-backend:ci
+
+      - name: Wait for backend service
+        run: |
+          for attempt in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              "http://localhost:${BACKEND_PORT}/" || true)
+
+            if [ "$code" = "200" ]; then
+              echo "PASS: backend service is ready"
+              exit 0
+            fi
+
+            echo "Waiting for backend service... attempt $attempt"
+            sleep 2
+          done
+
+          echo "Backend service failed to start"
+          docker logs allocation-backend-ci || true
+          exit 1
+
+      - name: Start frontend service
+        run: |
+          docker run -d \
+            --name allocation-frontend-ci \
+            --network student2-ci-network \
+            -p ${FRONTEND_PORT}:80 \
+            allocation-frontend:ci
+
+      - name: Wait for frontend service
+        run: |
+          for attempt in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              "http://localhost:${FRONTEND_PORT}/" || true)
+
+            if [ "$code" = "200" ]; then
+              echo "PASS: frontend service is ready"
+              exit 0
+            fi
+
+            echo "Waiting for frontend service... attempt $attempt"
+            sleep 2
+          done
+
+          echo "Frontend service failed to start"
+          docker logs allocation-frontend-ci || true
+          exit 1
+
+      - name: Verify seeded database records
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+
+          resources = [
+              "subjects",
+              "subject-offers",
+              "classrooms",
+              "teaching-allocations",
+          ]
+
+          for resource in resources:
+              url = f"http://localhost:6002/{resource}"
+
+              with urllib.request.urlopen(url) as response:
+                  rows = json.load(response)
+
+              count = len(rows)
+
+              print(f"{resource}: {count} records")
+
+              if count < 10:
+                  raise SystemExit(
+                      f"FAIL: {resource} has fewer than 10 seeded records"
+                  )
+
+          print("PASS: all Student 2 tables contain at least 10 seeded records")
+          PY
+
+      - name: Verify backend resource endpoints
+        run: |
+          check_endpoint() {
+            name="$1"
+            url="$2"
+
+            code=$(curl -s -o /tmp/student2-response \
+              -w '%{http_code}' \
+              "$url" || true)
+
+            if [ "$code" != "200" ]; then
+              echo "FAIL: $name returned HTTP $code"
+              cat /tmp/student2-response || true
+              exit 1
+            fi
+
+            echo "PASS: $name returned HTTP 200"
+          }
+
+          check_endpoint \
+            "Subjects API" \
+            "http://localhost:${BACKEND_PORT}/subjects"
+
+          check_endpoint \
+            "Subject Offers API" \
+            "http://localhost:${BACKEND_PORT}/subject-offers"
+
+          check_endpoint \
+            "Classrooms API" \
+            "http://localhost:${BACKEND_PORT}/classrooms"
+
+      - name: Verify Subject CRUD lifecycle
+        run: |
+          BASE_URL="http://localhost:${BACKEND_PORT}"
+          SUBJECT_CODE="49999"
+
+          echo "Creating CI subject"
+
+          code=$(curl -s \
+            -o /tmp/create-subject \
+            -w '%{http_code}' \
+            -X POST \
+            "$BASE_URL/subjects" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "subject_code": "49999",
+              "name": "CI Verification Subject",
+              "required_expertise": "Testing,DevOps"
+            }')
+
+          if [ "$code" != "201" ]; then
+            echo "FAIL: create returned HTTP $code"
+            cat /tmp/create-subject
+            exit 1
+          fi
+
+          echo "PASS: CREATE subject"
+
+          code=$(curl -s \
+            -o /tmp/read-subject \
+            -w '%{http_code}' \
+            "$BASE_URL/subjects/$SUBJECT_CODE")
+
+          if [ "$code" != "200" ]; then
+            echo "FAIL: read returned HTTP $code"
+            cat /tmp/read-subject
+            exit 1
+          fi
+
+          grep -q "CI Verification Subject" /tmp/read-subject
+
+          echo "PASS: READ subject"
+
+          code=$(curl -s \
+            -o /tmp/update-subject \
+            -w '%{http_code}' \
+            -X PUT \
+            "$BASE_URL/subjects/$SUBJECT_CODE" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "subject_code": "49999",
+              "name": "CI Verification Subject Updated",
+              "required_expertise": "Testing,DevOps"
+            }')
+
+          if [ "$code" != "200" ]; then
+            echo "FAIL: update returned HTTP $code"
+            cat /tmp/update-subject
+            exit 1
+          fi
+
+          echo "PASS: UPDATE subject"
+
+          curl -fsS \
+            "$BASE_URL/subjects/$SUBJECT_CODE" \
+            > /tmp/updated-subject
+
+          grep -q \
+            "CI Verification Subject Updated" \
+            /tmp/updated-subject
+
+          code=$(curl -s \
+            -o /tmp/delete-subject \
+            -w '%{http_code}' \
+            -X DELETE \
+            "$BASE_URL/subjects/$SUBJECT_CODE")
+
+          if [ "$code" != "200" ]; then
+            echo "FAIL: delete returned HTTP $code"
+            cat /tmp/delete-subject
+            exit 1
+          fi
+
+          echo "PASS: DELETE subject"
+
+          code=$(curl -s \
+            -o /dev/null \
+            -w '%{http_code}' \
+            "$BASE_URL/subjects/$SUBJECT_CODE")
+
+          if [ "$code" != "404" ]; then
+            echo "FAIL: deleted subject still exists"
+            exit 1
+          fi
+
+          echo "PASS: deleted subject returns HTTP 404"
+
+      - name: Verify invalid Subject validation
+        run: |
+          code=$(curl -s \
+            -o /tmp/invalid-subject \
+            -w '%{http_code}' \
+            -X POST \
+            "http://localhost:${BACKEND_PORT}/subjects" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "subject_code": "12",
+              "name": "Invalid Subject",
+              "required_expertise": "Testing"
+            }')
+
+          if [ "$code" != "400" ]; then
+            echo "FAIL: invalid Subject returned HTTP $code"
+            cat /tmp/invalid-subject
+            exit 1
+          fi
+
+          grep -q \
+            "exactly 5 digits" \
+            /tmp/invalid-subject
+
+          echo "PASS: invalid Subject rejected with HTTP 400"
+
+      - name: Verify classroom capacity validation
+        run: |
+          curl -fsS \
+            -X POST \
+            "http://localhost:${BACKEND_PORT}/teaching-allocations/validate" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "offer_id": "41114_SPR_2026",
+              "assigned_staff_member": null,
+              "classroom_id": "CB10.02.301",
+              "day": "THU",
+              "date_range": "03/08 - 20/09",
+              "start_time": "14:00",
+              "end_time": "16:00",
+              "class_type": "TUT",
+              "expected_class_size": 31,
+              "allocation_status": "NEEDS_ASSIGNMENT"
+            }' \
+            > /tmp/capacity-result.json
+
+          python - <<'PY'
+          import json
+
+          with open(
+              "/tmp/capacity-result.json",
+              encoding="utf-8"
+          ) as file:
+              result = json.load(file)
+
+          expected_error = (
+              "Classroom capacity is smaller than "
+              "the expected class size."
+          )
+
+          assert result["valid"] is False, result
+          assert expected_error in result["errors"], result
+
+          print(
+              "PASS: oversized class rejected "
+              "by classroom capacity rule"
+          )
+          PY
+
+      - name: Verify back-to-back scheduling rule
+        run: |
+          curl -fsS \
+            -X POST \
+            "http://localhost:${BACKEND_PORT}/teaching-allocations/validate" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "offer_id": "31271_SPR_2026",
+              "assigned_staff_member": null,
+              "classroom_id": "CB10.02.301",
+              "day": "FRI",
+              "date_range": "03/08 - 20/09",
+              "start_time": "12:00",
+              "end_time": "14:00",
+              "class_type": "LAB",
+              "expected_class_size": 30,
+              "allocation_status": "NEEDS_ASSIGNMENT"
+            }' \
+            > /tmp/back-to-back-result.json
+
+          python - <<'PY'
+          import json
+
+          with open(
+              "/tmp/back-to-back-result.json",
+              encoding="utf-8"
+          ) as file:
+              result = json.load(file)
+
+          assert result["valid"] is True, result
+          assert result["errors"] == [], result
+
+          print(
+              "PASS: back-to-back allocation "
+              "is accepted"
+          )
+          PY
+
+      - name: Verify frontend files are served
+        run: |
+          for asset in \
+            "/" \
+            "/index.html" \
+            "/js/api.js" \
+            "/js/tabs.js" \
+            "/js/subjects.js" \
+            "/js/subject_offers.js" \
+            "/js/classrooms.js" \
+            "/js/allocations.js" \
+            "/js/ai.js" \
+            "/css/styles.css"
+          do
+            code=$(curl -s \
+              -o /dev/null \
+              -w '%{http_code}' \
+              "http://localhost:${FRONTEND_PORT}${asset}")
+
+            if [ "$code" != "200" ]; then
+              echo "FAIL: $asset returned HTTP $code"
+              exit 1
+            fi
+
+            echo "PASS: $asset"
+          done
+
+      - name: Collect container logs
+        if: always()
+        run: |
+          mkdir -p ci-evidence
+
+          docker logs allocation-database-ci \
+            > ci-evidence/database.log \
+            2>&1 || true
+
+          docker logs allocation-backend-ci \
+            > ci-evidence/backend.log \
+            2>&1 || true
+
+          docker logs allocation-frontend-ci \
+            > ci-evidence/frontend.log \
+            2>&1 || true
+
+      - name: Create CI evidence summary
+        if: always()
+        run: |
+          cat > ci-evidence/student-2-ci-summary.md <<EOF
+          # Student 2 Release 0 CI Evidence
+
+          Repository: ${{ github.repository }}
+
+          Branch: ${{ github.ref_name }}
+
+          Commit: ${{ github.sha }}
+
+          Workflow Run:
+          https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          ## Validation performed
+
+          - Python syntax validation
+          - Backend import validation
+          - Prompt file validation
+          - Automated backend and database unit tests
+          - Database Docker image build
+          - Backend Docker image build
+          - Frontend Docker image build
+          - Database runtime health check
+          - Backend runtime health check
+          - Frontend runtime health check
+          - Minimum ten seeded records per Student 2 table
+          - Backend resource endpoint checks
+          - Subject CRUD lifecycle
+          - Invalid input validation
+          - Classroom capacity business-rule validation
+          - Back-to-back scheduling validation
+          - Static frontend asset validation
+
+          ## Scope
+
+          This workflow validates Student 2 independently.
+
+          Student 1 Academic Staff Management,
+          Student 3 Workload and Availability,
+          and the shared Ollama runtime are not started
+          by this individual CI workflow.
+
+          Full cross-service AI behaviour is validated
+          separately in the integrated project environment.
+          EOF
+
+          cat ci-evidence/student-2-ci-summary.md
+
+      - name: Upload CI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-2-ci-evidence
+          path: ci-evidence/
+
+      - name: Clean up CI containers
+        if: always()
+        run: |
+          docker rm -f \
+            allocation-frontend-ci \
+            allocation-backend-ci \
+            allocation-database-ci \
+            2>/dev/null || true
+
+          docker network rm \
+            student2-ci-network \
+            2>/dev/null || true
