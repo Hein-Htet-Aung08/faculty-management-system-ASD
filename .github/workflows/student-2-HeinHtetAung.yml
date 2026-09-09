@@ -435,7 +435,7 @@ jobs:
             -d '{
               "offer_id": "41114_SPR_2026",
               "assigned_staff_member": null,
-              "classroom_id": "CB11.04.406",
+              "classroom_id": "CB10.02.301",
               "day": "THU",
               "date_range": "03/08 - 20/09",
               "start_time": "14:00",
