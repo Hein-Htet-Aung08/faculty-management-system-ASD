@@ -11,7 +11,7 @@ project's **Plan → Act → Observe → Adapt** Agentic AI workflow.
 | Student | Feature | Folder |
 |---|---|---|
 | Andy Lam | Staff Management | `student-1-Andy-Lam/` |
-| Hein Htet Aung | Teaching Subject & Classroom Allocation | `student-2Hein-Htet-Aung/` |
+| Hein Htet Aung | Teaching, Subject & Classroom Allocation | `student-2Hein-Htet-Aung/` |
 | Tristan Lim | Workload & Availability Management | `student-3Tristan-Lim/` |
 | Nicholas Hatzidimitriou | Research & Grant Management | `student-4Nicholas-Hatzidimitriou/` |
 | Matthew Barnard | Performance & Professional Development | `student-5Matthew-Barnard/` |
