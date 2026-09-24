@@ -9,6 +9,8 @@ from routes.project_staff_routes import project_staff_bp
 from routes.grant_alerts_routes import grant_alerts_bp
 from routes.ai_analysis_routes import ai_analysis_bp
 from routes.ai_mode_html import ai_mode_html_bp
+from routes.mcp_mode import mcp_bp
+from routes.rag_mode import rag_bp
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -23,6 +25,8 @@ app.register_blueprint(project_staff_bp)
 app.register_blueprint(grant_alerts_bp)
 app.register_blueprint(ai_analysis_bp)
 app.register_blueprint(ai_mode_html_bp, url_prefix="/htmx")
+app.register_blueprint(mcp_bp)
+app.register_blueprint(rag_bp)
 
 @app.route("/health", methods=["GET"])
 def health():
