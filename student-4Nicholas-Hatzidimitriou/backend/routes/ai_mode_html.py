@@ -2,6 +2,7 @@ from flask import Blueprint
 from services import database_api
 from services import staff_client
 from services import workload_client
+from services import rag_client
 from services.prompt_loader import load_prompt
 from services.llm_client import OLLAMA_MODEL, create_chat_completion
 
@@ -18,6 +19,13 @@ def generate_summary_html(project_id):
     publications = database_api.list_publications(project_id=project_id)
     pub_titles = [p["title"] for p in publications]
 
+    retrieved = rag_client.get_retrieved_context(project_id)
+    retrieved_context = (
+        "\n".join(f"- {snippet}" for snippet in retrieved)
+        if retrieved
+        else "No relevant historical context was found."
+    )
+
     try:
         system_prompt = load_prompt("generate_summary/system_prompt.txt")
         task_prompt = load_prompt("generate_summary/task_prompt.txt")
@@ -28,6 +36,7 @@ def generate_summary_html(project_id):
             department=project["department"],
             status=project["status"],
             publications=", ".join(pub_titles) if pub_titles else "None yet",
+            retrieved_context=retrieved_context,
         )
 
         final_prompt = f"""

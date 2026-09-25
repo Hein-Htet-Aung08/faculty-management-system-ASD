@@ -3,3 +3,6 @@ Description: {description}
 Department: {department}
 Status: {status}
 Publications produced: {publications}
+
+Retrieved historical context (similar past projects/publications in this department):
+{retrieved_context}
