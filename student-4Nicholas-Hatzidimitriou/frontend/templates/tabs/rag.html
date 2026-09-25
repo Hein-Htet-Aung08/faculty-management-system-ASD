@@ -1,0 +1,105 @@
+<section class="panel-section" id="rag-panel">
+  <h2>Ask the Research Assistant</h2>
+  <p style="color: var(--line-strong); font-size: 0.9rem;">
+    Ask a natural-language question about research projects, grants, or
+    publications. The answer is grounded in retrieved evidence from the
+    real corpus, with citations and a confidence rating shown alongside it -
+    not just a bare answer.
+  </p>
+
+  <div class="form-field" style="margin-bottom:1.25rem;">
+    <button id="rag-refresh-btn" class="btn secondary" type="button">Refresh Corpus</button>
+    <span id="rag-refresh-status" style="margin-left:0.75rem; font-size:0.85rem; color: var(--line-strong);"></span>
+  </div>
+
+  <form id="rag-ask-form" class="form-grid" style="margin-bottom:0.5rem;">
+    <div class="form-field span-2">
+      <label for="rag-question">Question</label>
+      <input
+        type="text"
+        id="rag-question"
+        name="query"
+        placeholder="e.g. Which grants are linked to active research projects?"
+        required
+      >
+    </div>
+    <button type="submit" class="btn">Ask</button>
+  </form>
+
+  <span id="rag-loading" class="loading-indicator">Thinking…</span>
+
+  <div id="rag-result" class="ai-result-panel"></div>
+</section>
+
+<script>
+(function () {
+  const form = document.getElementById('rag-ask-form');
+  const questionInput = document.getElementById('rag-question');
+  const result = document.getElementById('rag-result');
+  const loading = document.getElementById('rag-loading');
+  const refreshBtn = document.getElementById('rag-refresh-btn');
+  const refreshStatus = document.getElementById('rag-refresh-status');
+
+  function confidenceLabel(category) {
+    const labels = {
+      high: 'High confidence',
+      medium: 'Medium confidence',
+      low: 'Low confidence',
+      unavailable: 'RAG server unavailable',
+    };
+    return labels[category] || category || 'Unknown confidence';
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const query = questionInput.value.trim();
+    if (!query) return;
+
+    loading.style.display = 'inline';
+    result.innerHTML = '';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/rag/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        result.innerHTML = `<p class="error-state">${data.error}</p>`;
+        return;
+      }
+
+      const citations = (data.citations || []).map((c) => `<code>${c}</code>`).join(', ') || 'none';
+      result.innerHTML = `
+        <p>${data.answer || 'No answer returned.'}</p>
+        <p style="margin-top:0.75rem; font-size:0.85rem; color: var(--line-strong);">
+          <strong>Confidence:</strong> ${confidenceLabel(data.confidence_category)}<br>
+          <strong>Citations:</strong> ${citations}
+        </p>
+      `;
+    } catch (err) {
+      result.innerHTML = `<p class="error-state">Request failed: ${err.message}</p>`;
+    } finally {
+      loading.style.display = 'none';
+    }
+  });
+
+  refreshBtn.addEventListener('click', async function () {
+    refreshStatus.textContent = 'Refreshing…';
+    try {
+      const res = await fetch(`${API_BASE}/api/rag/refresh`, { method: 'POST' });
+      const data = await res.json();
+      if (data && data.error) {
+        refreshStatus.textContent = data.error;
+        return;
+      }
+      const count = Array.isArray(data) ? data.length : 'unknown';
+      refreshStatus.textContent = `Corpus refreshed (${count} chunks indexed).`;
+    } catch (err) {
+      refreshStatus.textContent = `Refresh failed: ${err.message}`;
+    }
+  });
+})();
+</script>
