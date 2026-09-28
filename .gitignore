@@ -10,8 +10,7 @@ venv
 .vscode
 vscode
 
-# Agentic-loop generated evidence/report files
 ai-services/agentic_loop/reports/
-
-# Student 3 personal notes
-student-3Tristan-Lim/README.md
+ai-services/rag-server/corpus/
+ai-services/rag-server/chroma_db/
+ai-services/rag-server/rag-audit.jsonl
