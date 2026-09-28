@@ -1,1 +1,10 @@
-{}
+{
+  "mcpServers": {
+    "faculty-management-rag": {
+      "command": "python",
+      "args": [
+        "rag_server.py"
+      ]
+    }
+  }
+}

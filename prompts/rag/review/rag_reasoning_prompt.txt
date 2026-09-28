@@ -1,0 +1,19 @@
+Evaluate the shared Faculty Management System RAG architecture.
+
+Check:
+- corpus design
+- student feature context boundaries
+- chunking
+- embedding strategy
+- vector-store usage
+- retrieval quality
+- grounding
+- governance risks
+
+Return exactly:
+
+Strengths:
+Risks:
+Recommendations:
+
+Maximum 45 words.

@@ -1,0 +1,23 @@
+Review the local shared RAG pipeline implementation.
+
+Constraints:
+- local open-source stack only
+- Python + ChromaDB + MCP
+- no hosted commercial AI APIs
+- one shared RAG service for all student features
+
+Required tools:
+- refresh_corpus
+- retrieve_context
+- answer_question
+
+Requirements:
+- structured outputs
+- structured errors
+- grounded answers
+- citations
+- confidence category
+- insufficient-context handling
+- audit logging
+
+Maximum 60 words.
