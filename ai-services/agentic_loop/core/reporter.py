@@ -29,6 +29,7 @@ def print_menu():
                 "  3) Architecture  - file layout + docker-compose (two-model review)",
                 "  4) AI-Mode       - review every student's Ollama integration (static analysis)",
                 "  5) Run All",
+                "  6) Student 5     - review development goal integrity",
                 "  0) Exit",
                 divider(),
             ]
@@ -132,6 +133,41 @@ def write_student_report(app_dir, mode_key, student_name, number, evidence, revi
         "timestamp": timestamp,
         "evidence": evidence,
         "review": review,
+    }
+    return _write_pair(reports_dir, stem, markdown, payload)
+
+
+def write_development_integrity_report(app_dir, student_name, number, evidence, review):
+    reports_dir = _reports_dir(app_dir)
+    timestamp = _timestamp()
+    stem = f"development-integrity-student-{number}-{timestamp}"
+
+    markdown = (
+        f"# Development goal integrity review - {student_name}\n\n"
+        f"Generated: {timestamp}\n\n"
+        "## PLAN\n\n"
+        "Review lifecycle integrity between a development goal's status and "
+        "progress.\n\n"
+        "## ACT (real evidence collection)\n\n"
+        "The collector inspected the current validation/schema files, ran "
+        "disposable in-memory SQLite probes, and attempted read-only API checks.\n\n"
+        f"```text\n{evidence}\n```\n\n"
+        "## OBSERVE (model recommendations)\n\n"
+        f"{review}\n\n"
+        "## ADAPT (human validation required)\n\n"
+        "The recommendations above are candidates only. Confirm each finding "
+        "against the collected evidence and add a focused test before changing "
+        "the feature. No feature code is modified by this review mode.\n"
+    )
+    payload = {
+        "mode": "development_integrity",
+        "student": student_name,
+        "student_number": number,
+        "timestamp": timestamp,
+        "plan": "Review lifecycle integrity between development goal status and progress.",
+        "evidence": evidence,
+        "review": review,
+        "adaptation_status": "awaiting human validation; no feature change applied",
     }
     return _write_pair(reports_dir, stem, markdown, payload)
 

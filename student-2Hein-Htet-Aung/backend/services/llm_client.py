@@ -16,10 +16,18 @@ OLLAMA_MODEL = os.getenv(
     "qwen2.5:0.5b",
 )
 
+OLLAMA_TIMEOUT = float(
+    os.getenv(
+        "OLLAMA_TIMEOUT",
+        "120",
+    )
+)
+
 
 client = OpenAI(
     base_url=OLLAMA_BASE_URL,
     api_key="ollama",
+    timeout=OLLAMA_TIMEOUT,
 )
 
 
@@ -39,7 +47,10 @@ def extract_json(content):
 
 
 def recommend_teaching_staff(context):
-    system_prompt = load_prompt("allocation/system_prompt.txt")
+    system_prompt = load_prompt(
+        "allocation/system_prompt.txt"
+    )
+
     task_prompt = load_prompt(
         "allocation/staff_recommendation_prompt.txt"
     )
@@ -50,20 +61,25 @@ def recommend_teaching_staff(context):
         f"{json.dumps(context, indent=2)}"
     )
 
-    response = client.chat.completions.create(
-        model=OLLAMA_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": system_prompt,
-            },
-            {
-                "role": "user",
-                "content": user_prompt,
-            },
-        ],
-        temperature=0.2,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=OLLAMA_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt,
+                },
+            ],
+            temperature=0.2,
+        )
+    except Exception as exc:
+        raise ValueError(
+            "The Ollama request failed."
+        ) from exc
 
     content = response.choices[0].message.content
 

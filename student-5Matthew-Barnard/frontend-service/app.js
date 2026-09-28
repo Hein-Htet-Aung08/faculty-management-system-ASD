@@ -138,36 +138,22 @@ async function loadStaffDirectory() {
   }
 }
 
-async function checkServices() {
-  try {
-    await api('/health');
-    $('#service-status').textContent = 'Services online';
-    $('#service-dot').classList.add('online');
-  } catch (_) {
-    try {
-      const response = await fetch('/api/development-goals');
-      if (!response.ok) throw new Error();
-      $('#service-status').textContent = 'Services online';
-      $('#service-dot').classList.add('online');
-    } catch (_) {
-      $('#service-status').textContent = 'Services unavailable';
-      $('#service-dot').classList.add('offline');
-    }
-  }
-}
-
 async function loadMetrics() {
-  try {
-    const [reviews, goals, programs, recommendations] = await Promise.all([
-      api('/performance-reviews'), api('/development-goals'), api('/training-programs'),
-      api('/development-recommendations')
-    ]);
-    $('#count-reviews').textContent = reviews.length;
-    $('#count-goals').textContent = goals.filter((goal) => !['Completed', 'Cancelled'].includes(goal.status)).length;
-    $('#count-programs').textContent = programs.length;
-    $('#count-recommendations').textContent = recommendations.filter((row) => row.status === 'Pending').length;
-  } catch (error) {
-    toast(error.message, true);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const [reviews, goals, programs, recommendations] = await Promise.all([
+        api('/performance-reviews'), api('/development-goals'), api('/training-programs'),
+        api('/development-recommendations')
+      ]);
+      $('#count-reviews').textContent = reviews.length;
+      $('#count-goals').textContent = goals.filter((goal) => !['Completed', 'Cancelled'].includes(goal.status)).length;
+      $('#count-programs').textContent = programs.length;
+      $('#count-recommendations').textContent = recommendations.filter((row) => row.status === 'Pending').length;
+      return;
+    } catch (error) {
+      if (attempt === 2) toast(error.message, true);
+      else await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    }
   }
 }
 
@@ -383,7 +369,7 @@ $('#check-ai').addEventListener('click', checkAi);
 $('#generate-ai').addEventListener('click', generateAiRecommendation);
 
 async function initialise() {
-  await Promise.all([checkServices(), loadStaffDirectory()]);
+  await loadStaffDirectory();
   await loadMetrics();
   activateResource('development-goals');
 }

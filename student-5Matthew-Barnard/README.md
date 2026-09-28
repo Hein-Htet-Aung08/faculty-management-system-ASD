@@ -1,21 +1,22 @@
 # Performance and Professional Development Management
 
-Matthew Barnard's Release 0 feature manages staff reviews, development goals, training programs, training enrolments, and development recommendations.
+This is Matthew Barnard's feature for managing staff performance and
+professional development. It includes performance reviews, development goals,
+training programs, staff enrolments, and development recommendations.
 
-## What is implemented
+## Features
 
-- A responsive frontend dashboard at `http://localhost:8005`.
-- Full create, read, update, delete, and filtering support for all five resources.
-- A Flask backend API at `http://localhost:5005`.
-- A separate Flask/SQLite database service at `http://localhost:5105`.
-- Relational constraints, validation, and ten seed records per table.
-- Visible AI Mode that uses a local Ollama model to produce a grounded development recommendation and saves it as `Pending` for human review.
-- Three feature containers coordinated by Docker Compose, plus the team's shared Ollama runtime.
-- The team stylesheet and navigation back to the unified homepage.
-- Automated database, API, and mocked AI-route tests.
-- A GitHub Actions workflow that runs tests and validates/builds the containers.
+- Create, view, update, delete, and filter records from the frontend
+- Ten example records in each database table
+- Validation and relationships between related records
+- AI-assisted training recommendations using the shared Ollama service
+- Staff names and details loaded from the Staff Management service
+- Automated tests for the database, API, and AI route
+- A GitHub Actions workflow that runs the tests and checks the Docker builds
+- Separate frontend, backend, and database containers
 
-AI Mode makes a recommendation request and may make one correction request when the local model breaks a database constraint. This small output-validation step is not being represented as the team's shared Plan -> Act -> Observe -> Adapt software-development loop; that integration and its genuine execution logs must be added with the group later.
+The main dashboard is available at `http://localhost:8005`. The backend API
+runs on port `5005`, and the database service runs on port `5105`.
 
 ## Architecture
 
@@ -23,52 +24,75 @@ AI Mode makes a recommendation request and may make one correction request when 
 Browser :8005
     |
     v
-Nginx frontend -- /api --> Flask backend :5005 --> database service :5105 --> SQLite
+Nginx frontend -- /api --> Flask backend :5005 --> Database service :5105 --> SQLite
                                   |
-                                  +--> shared Ollama service :11434
+                                  +--> Shared Ollama service :11434
 ```
 
-Only the database service reads or writes SQLite. The backend performs orchestration and exposes the public API. Nginx serves the browser files and proxies `/api` requests, avoiding hard-coded browser-side service addresses.
+The frontend is served by Nginx, which also sends `/api` requests to the
+backend. The backend handles the feature logic and communicates with the
+database and Ollama services. Only the database service directly accesses the
+SQLite database.
 
-In the integrated stack, the backend also reads the Staff Management directory through `STAFF_SERVICE_URL`. The frontend displays matching staff names, and AI Mode can include the staff member's profile and expertise in its grounded context. Both fall back to Matthew's numeric IDs and records if Staff Management is not running.
+When the full group application is running, the backend also gets staff names
+and details from the Staff Management service. If that service is unavailable,
+the feature can still display and manage records using their staff IDs.
 
-## Run the integrated group application
+## Running the Full Application
 
-From the repository root:
+From the repository root, run:
 
 ```powershell
 docker compose up --build -d
 docker compose exec ollama ollama pull qwen2.5:0.5b
 ```
 
-Open `http://localhost:8000` for the shared homepage or `http://localhost:8005` for this feature directly. The shared Compose file supplies the common stylesheet and connects the backend to the shared Ollama container.
+Open `http://localhost:8000` for the group homepage, or
+`http://localhost:8005` to open this feature directly.
 
-## Run this feature by itself
+To stop the application, run:
 
-From this directory:
+```powershell
+docker compose down
+```
+
+## Running This Feature by Itself
+
+From the `student-5Matthew-Barnard` folder, run:
 
 ```powershell
 docker compose up --build
 docker compose exec ollama ollama pull qwen2.5:0.5b
 ```
 
-Open `http://localhost:8005`. Stop the application with:
+Open `http://localhost:8005`. To stop the containers, run:
 
 ```powershell
 docker compose down
 ```
 
-SQLite data is retained in the named `matthew-performance-data` volume across ordinary container restarts.
+The SQLite data is stored in the `matthew-performance-data` Docker volume, so
+it remains available after the containers are restarted.
 
 ## AI Mode
 
-Both Compose configurations connect the backend to an Ollama container at `http://ollama:11434/v1`. Pull the model into the corresponding Compose stack once with `docker compose exec ollama ollama pull qwen2.5:0.5b`. The normal CRUD feature continues to work if the model is unavailable; the AI panel reports that service separately.
+AI Mode uses `qwen2.5:0.5b` through the shared Ollama container. It combines a
+staff member's details, current goal, and the available training programs to
+suggest a suitable development activity.
 
-AI output is parsed and checked against database context before it is saved. If both model attempts break a database constraint, the service returns a clearly labelled fallback selected only from the staff member's recorded goal and the training catalogue. A generated record remains `Pending` until a person accepts, rejects, or edits it.
+The backend checks the response before saving it. If the response contains
+invalid database values, it asks the model to correct them once. If the second
+response is also invalid, it creates a basic recommendation from existing
+database records instead. New recommendations are saved as `Pending` so they
+can be reviewed, edited, accepted, or rejected by a user.
 
-## API resources
+The normal management pages continue to work when Ollama is unavailable. Only
+the AI recommendation request will show an error.
 
-Each resource supports `GET` collection, `GET` by ID, `POST`, `PUT`, and `DELETE` through `/api/<resource>`:
+## API Endpoints
+
+Each resource supports `GET`, `POST`, `PUT`, and `DELETE` requests through
+`/api/<resource>`:
 
 - `performance-reviews`
 - `development-goals`
@@ -76,33 +100,40 @@ Each resource supports `GET` collection, `GET` by ID, `POST`, `PUT`, and `DELETE
 - `staff-training`
 - `development-recommendations`
 
-Examples:
+Example requests:
 
 ```text
-GET  /api/development-goals?staffID=1&status=In%20Progress
-POST /api/performance-reviews
-PUT  /api/development-recommendations/1
+GET    /api/development-goals?staffID=1&status=In%20Progress
+POST   /api/performance-reviews
+PUT    /api/development-recommendations/1
 DELETE /api/staff-training/12
 ```
 
-Health endpoints are `/health`, `/api/health`, and `/api/ai/health` on the backend, and `/health` on the database service.
+The backend health endpoints are `/health`, `/api/health`, and
+`/api/ai/health`. The database service also has a `/health` endpoint.
 
-## Run tests without Docker
+## Running the Tests
 
-Install both requirement sets, then run each suite in its own service directory:
+The tests can be run without Docker. Install the requirements first:
 
 ```powershell
 python -m pip install -r backend-service/requirements.txt
 python -m pip install -r database-service/requirements.txt
+```
 
+Then run the database and backend test suites:
+
+```powershell
 Set-Location database-service
 python -m unittest discover -s tests -v
 Set-Location ../backend-service
 python -m unittest discover -s tests -v
 ```
 
-The backend AI endpoint is mocked in automated tests, so CI does not need to download or run an LLM. A real local Ollama request is demonstrated separately through the UI.
+The automated tests use a mocked Ollama response, so the AI model does not
+need to be downloaded in GitHub Actions.
 
-## Release 0 evidence
+## Release 0 Evidence
 
-See `../docs/release-0/student-5-evidence-guide.md` for what to capture now, what belongs to the later shared agentic-loop work, and a showcase recording checklist.
+The Release 0 evidence checklist is in
+[`../docs/release-0/student-5-evidence-guide.md`](../docs/release-0/student-5-evidence-guide.md).

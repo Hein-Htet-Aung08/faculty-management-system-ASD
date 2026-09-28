@@ -10,6 +10,7 @@ class ModeConfig:
     implementation_prompts: Tuple[str, ...]
     review_prompts: Tuple[str, ...] = field(default_factory=tuple)
     per_student: bool = False
+    student_numbers: Tuple[str, ...] = field(default_factory=tuple)
 
 
 def build_mode_config():
@@ -54,5 +55,17 @@ def build_mode_config():
                 "ai_mode/context_prompt.txt",
             ),
             per_student=True,
+        ),
+        "development_integrity": ModeConfig(
+            key="development_integrity",
+            label="Student 5 development goal integrity review",
+            prompt_family="service",
+            implementation_prompts=(
+                "development_integrity/system_prompt.txt",
+                "development_integrity/task_prompt.txt",
+                "development_integrity/context_prompt.txt",
+            ),
+            per_student=True,
+            student_numbers=("5",),
         ),
     }

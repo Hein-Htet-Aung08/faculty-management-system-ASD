@@ -175,9 +175,6 @@ def generate_recommendation(staff_id):
         },
     ]
 
-    # Small local models occasionally ignore a catalogue constraint. Give the
-    # model one chance to correct its JSON, while validating both attempts with
-    # the same application rules before anything is stored.
     used_fallback = False
     for attempt in range(2):
         response = client.chat.completions.create(

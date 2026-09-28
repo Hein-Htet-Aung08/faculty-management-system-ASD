@@ -1,30 +1,51 @@
-from collectors import architecture_collector, db_collector, endpoints_collector, ai_mode_collector
+from collectors import (
+    ai_mode_collector,
+    architecture_collector,
+    db_collector,
+    development_integrity_collector,
+    endpoints_collector,
+)
 from collectors.common import find_student_dirs, student_label, student_number
 from config.review_config import build_mode_config
 from core import reporter
 from core.ai_runner import AIRunner
 from core.prompt_registry import PromptRegistry
-from pipelines import architecture_pipeline, db_pipeline, endpoints_pipeline, ai_mode_pipeline
+from pipelines import (
+    ai_mode_pipeline,
+    architecture_pipeline,
+    db_pipeline,
+    development_integrity_pipeline,
+    endpoints_pipeline,
+)
 
 _PER_STUDENT_COLLECTORS = {
     "db": db_collector.collect,
     "endpoints": endpoints_collector.collect,
     "ai_mode": ai_mode_collector.collect,
+    "development_integrity": development_integrity_collector.collect,
 }
 
 _PER_STUDENT_PIPELINES = {
     "db": db_pipeline,
     "endpoints": endpoints_pipeline,
     "ai_mode": ai_mode_pipeline,
+    "development_integrity": development_integrity_pipeline,
 }
 
 _PER_STUDENT_TARGETS = {
     "db": "student {label}'s microservice database",
     "endpoints": "student {label}'s microservice HTTP API",
     "ai_mode": "student {label}'s AI-Mode integration",
+    "development_integrity": "student {label}'s development goal lifecycle integrity",
 }
 
-_MODE_DISPLAY = {"db": "DB", "endpoints": "Endpoints", "architecture": "Architecture", "ai_mode": "AI-Mode"}
+_MODE_DISPLAY = {
+    "db": "DB",
+    "endpoints": "Endpoints",
+    "architecture": "Architecture",
+    "ai_mode": "AI-Mode",
+    "development_integrity": "Student 5 Development Integrity",
+}
 
 _ARCHITECTURE_TARGET = "the team's five-microservice system and its shared docker-compose stack"
 
@@ -54,6 +75,11 @@ def _run_per_student(cfg, app_dir, repo_root, registry, runner):
     target_template = _PER_STUDENT_TARGETS[mode_key]
 
     students = find_student_dirs(repo_root)
+    if cfg.student_numbers:
+        students = [
+            student for student in students
+            if student_number(student) in cfg.student_numbers
+        ]
     if not students:
         return f"[{cfg.label}]\nOBSERVE FAILED: no student-* folders found at the repo root."
 
@@ -71,8 +97,12 @@ def _run_per_student(cfg, app_dir, repo_root, registry, runner):
         label = student_label(student_dir)
         tag = f"{mode_key.upper()} - {student_dir.name}"
 
-        _log(tag, "START", cfg.label)
-        _log(tag, "OBSERVE", "Collecting evidence.")
+        if mode_key == "development_integrity":
+            _log(tag, "PLAN", "Review development goal status/progress integrity.")
+            _log(tag, "ACT", "Collecting evidence from Student 5 without changing its database.")
+        else:
+            _log(tag, "START", cfg.label)
+            _log(tag, "OBSERVE", "Collecting evidence.")
         try:
             ok, evidence = collector(student_dir, number)
         except Exception as exc:
@@ -95,12 +125,17 @@ def _run_per_student(cfg, app_dir, repo_root, registry, runner):
             )
             summary_rows.append((student_dir.name, "OBSERVE FAILED", evidence.splitlines()[-1]))
             continue
-        _log(tag, "OBSERVE", "Evidence collected.")
+        if mode_key == "development_integrity":
+            _log(tag, "ACT", "Evidence collected.")
+        else:
+            _log(tag, "OBSERVE", "Evidence collected.")
 
         _log(tag, "PROMPTS", f"Loaded '{cfg.prompt_family}' prompt family.")
         target = target_template.format(label=f"{number} ({student_dir.name})")
         user_prompt = pipeline.build_user_prompt(task_prompt, context_prompt, target, evidence)
 
+        if mode_key == "development_integrity":
+            _log(tag, "OBSERVE", "Sending only the collected evidence to the LLM.")
         _log(tag, "LLM", f"Implementation model ({runner.model_for(False)}).")
         review, error = runner.call(system_prompt, user_prompt, review=False)
         _log(tag, "DONE", "error" if error else "ok")
@@ -108,9 +143,15 @@ def _run_per_student(cfg, app_dir, repo_root, registry, runner):
         full_review = review if not error else f"[LLM ERROR: {error}]"
         reporter.print_student_result(label, evidence, full_review)
 
-        report_path = reporter.write_student_report(
-            app_dir, mode_key, student_dir.name, number, evidence, full_review
-        )
+        if mode_key == "development_integrity":
+            _log(tag, "ADAPT", "Recommendations recorded for human validation; no feature change applied.")
+            report_path = reporter.write_development_integrity_report(
+                app_dir, student_dir.name, number, evidence, full_review
+            )
+        else:
+            report_path = reporter.write_student_report(
+                app_dir, mode_key, student_dir.name, number, evidence, full_review
+            )
         report_paths.append(report_path)
 
         summary_rows.append(

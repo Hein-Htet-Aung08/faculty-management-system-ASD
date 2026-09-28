@@ -5,7 +5,11 @@ from flask import Flask, jsonify, request
 
 from database import get_connection, initialize_database, table_counts
 from resource_config import RESOURCES, get_resource
-from validation import validate_filter, validate_payload
+from validation import (
+    validate_filter,
+    validate_payload,
+    validate_record_consistency,
+)
 
 
 def create_app(test_config=None):
@@ -113,11 +117,18 @@ def create_app(test_config=None):
 
         connection = get_connection()
         try:
-            exists = connection.execute(
-                f"SELECT 1 FROM {spec['table']} WHERE {spec['pk']} = ?", (row_id,)
+            existing = connection.execute(
+                f"SELECT * FROM {spec['table']} WHERE {spec['pk']} = ?", (row_id,)
             ).fetchone()
-            if exists is None:
+            if existing is None:
                 return jsonify({"error": f"{resource} record not found"}), 404
+
+            try:
+                validate_record_consistency(
+                    resource, {**dict(existing), **changes}
+                )
+            except ValueError as exc:
+                return jsonify({"error": str(exc)}), 400
 
             assignments = ", ".join(f"{column} = ?" for column in changes)
             connection.execute(

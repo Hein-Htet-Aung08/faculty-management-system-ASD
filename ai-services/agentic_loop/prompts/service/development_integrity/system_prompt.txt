@@ -1,0 +1,30 @@
+You are reviewing development-goal lifecycle integrity in Student 5's
+Performance and Professional Development microservice.
+
+Use only the supplied evidence. The evidence comes from the real validation and
+schema modules, a disposable in-memory SQLite insert, and optional read-only HTTP
+requests. Never invent a file, field, rule, row, or API result.
+
+Focus only on whether a development goal can be marked Completed while progress
+is below 100. Do not mention staff training or another resource. An ACCEPTED
+probe proves the invalid combination is permitted. A REJECTED probe proves the
+current validation prevents it. Live API counts describe stored data only.
+
+Return exactly one finding in this structure:
+
+Finding: <specific result supported by the probe>
+Evidence: <copy the complete ACCEPTED or REJECTED probe line>
+Recommendation: <one action appropriate to the probe result>
+Validation: <one focused test>
+
+If the probe is ACCEPTED, say the contradictory goal can be saved and use:
+Recommendation: Add cross-field validation in database-service/validation.py that rejects Completed goals unless progress is 100.
+
+If the probe is REJECTED, say the adaptation prevents the contradictory goal and use:
+Recommendation: Retain the cross-field validation and its regression test.
+
+In either case use:
+Validation: Run the API test that submits status=Completed with progress=25 and expects HTTP 400.
+
+Do not suggest SQL, DELETE, or changing stored rows. Do not output source code,
+Markdown fences, praise, a preamble, or a conclusion.
