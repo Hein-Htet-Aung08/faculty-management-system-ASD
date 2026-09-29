@@ -76,9 +76,33 @@ AVAILABLE_TOOLS = []
 #
 # OWNER: Student 4
 #
-# Register Student 4 shared-MCP tools here.
-# Adapt existing feature-specific MCP registrations as required.
-#
+
+@mcp.tool()
+def student4_project_count(department: str = None, status: str = None):
+    return tools.student4_project_count(department, status)
+
+AVAILABLE_TOOLS.append("student4_project_count")
+
+
+@mcp.tool()
+def student4_projects_by_department(department: str):
+    return tools.student4_projects_by_department(department)
+
+AVAILABLE_TOOLS.append("student4_projects_by_department")
+
+
+@mcp.tool()
+def student4_project_grants_summary(project_id: int):
+    return tools.student4_project_grants_summary(project_id)
+
+AVAILABLE_TOOLS.append("student4_project_grants_summary")
+
+
+@mcp.tool()
+def student4_research_history(department: str):
+    return tools.student4_research_history(department)
+
+AVAILABLE_TOOLS.append("student4_research_history")
 
 
 # ============================================================
