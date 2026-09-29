@@ -71,7 +71,7 @@
         return;
       }
 
-      const citations = (data.citations || []).map((c) => `<code>${c}</code>`).join(', ') || 'none';
+      const citations = (data.citations || []).map((c) => `<code>${c.source_id || c.chunk_id || c}</code>`).join(', ') || 'none';
       result.innerHTML = `
         <p>${data.answer || 'No answer returned.'}</p>
         <p style="margin-top:0.75rem; font-size:0.85rem; color: var(--line-strong);">

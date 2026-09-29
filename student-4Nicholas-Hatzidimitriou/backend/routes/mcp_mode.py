@@ -1,22 +1,10 @@
 import json
 import os
-import sys
 from functools import wraps
 
 from flask import Blueprint, request
 
-_MCP_SERVER_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "mcp-server")
-)
-if _MCP_SERVER_DIR not in sys.path:
-    sys.path.insert(0, _MCP_SERVER_DIR)
-
-from tools import (
-    get_project_count,
-    get_project_grants_summary,
-    get_research_history_for_department,
-    search_projects_by_department,
-)
+from services.mcp_client import mcp_invoke
 
 mcp_bp = Blueprint("mcp_mode", __name__)
 
@@ -46,14 +34,20 @@ def require_mcp_mode(fn):
     return wrapper
 
 
+def _render_invoke(title, tool_name, args):
+    response = mcp_invoke(tool_name, args)
+    if response.get("status") == "error":
+        status = response.get("http_status") or response.get("_mcp_http_status") or 503
+        data = response.get("data")
+        message = response.get("error") or (data or {}).get("error") or "unknown error"
+        return f"<p>MCP tool failed: {message}</p>", status
+    return mcp_render_json(title, response.get("data")), 200
+
+
 @mcp_bp.post("/mcp/project-count")
 @require_mcp_mode
 def mcp_project_count():
-    try:
-        count = get_project_count()
-        return mcp_render_json("Project Count", {"count": count}), 200
-    except Exception as exc:
-        return f"<p>MCP tool failed: {exc}</p>", 503
+    return _render_invoke("Project Count", "student4_project_count", {})
 
 
 @mcp_bp.post("/mcp/projects-by-department")
@@ -62,11 +56,9 @@ def mcp_projects_by_department():
     department = request.form.get("department", "").strip()
     if not department:
         return "<p>Missing required field: department.</p>", 400
-    try:
-        projects = search_projects_by_department(department)
-        return mcp_render_json(f"Projects in {department}", projects), 200
-    except Exception as exc:
-        return f"<p>MCP tool failed: {exc}</p>", 503
+    return _render_invoke(
+        f"Projects in {department}", "student4_projects_by_department", {"department": department}
+    )
 
 
 @mcp_bp.post("/mcp/project-grants-summary")
@@ -79,14 +71,11 @@ def mcp_project_grants_summary():
         project_id = int(project_id_raw)
     except ValueError:
         return "<p>project_id must be an integer.</p>", 400
-
-    try:
-        summary = get_project_grants_summary(project_id)
-        return mcp_render_json(f"Grants Summary for Project #{project_id}", summary), 200
-    except ValueError as exc:
-        return f"<p>{exc}</p>", 404
-    except Exception as exc:
-        return f"<p>MCP tool failed: {exc}</p>", 503
+    return _render_invoke(
+        f"Grants Summary for Project #{project_id}",
+        "student4_project_grants_summary",
+        {"project_id": project_id},
+    )
 
 
 @mcp_bp.post("/mcp/research-history")
@@ -95,8 +84,6 @@ def mcp_research_history():
     department = request.form.get("department", "").strip()
     if not department:
         return "<p>Missing required field: department.</p>", 400
-    try:
-        history = get_research_history_for_department(department)
-        return mcp_render_json(f"Research History for {department}", history), 200
-    except Exception as exc:
-        return f"<p>MCP tool failed: {exc}</p>", 503
+    return _render_invoke(
+        f"Research History for {department}", "student4_research_history", {"department": department}
+    )

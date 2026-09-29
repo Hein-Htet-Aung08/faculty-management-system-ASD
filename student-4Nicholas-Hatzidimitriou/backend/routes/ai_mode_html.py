@@ -2,7 +2,7 @@ from flask import Blueprint
 from services import database_api
 from services import staff_client
 from services import workload_client
-from services import rag_client
+from services.rag_api import rag_retrieve
 from services.prompt_loader import load_prompt
 from services.llm_client import OLLAMA_MODEL, create_chat_completion
 
@@ -19,9 +19,9 @@ def generate_summary_html(project_id):
     publications = database_api.list_publications(project_id=project_id)
     pub_titles = [p["title"] for p in publications]
 
-    retrieved = rag_client.get_retrieved_context(project_id)
+    retrieved = rag_retrieve(project["title"])
     retrieved_context = (
-        "\n".join(f"- {snippet}" for snippet in retrieved)
+        "\n".join(f"- {chunk.get('text', '')}" for chunk in retrieved)
         if retrieved
         else "No relevant historical context was found."
     )
