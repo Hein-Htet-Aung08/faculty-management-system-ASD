@@ -14,3 +14,7 @@ ai-services/agentic_loop/reports/
 ai-services/rag-server/corpus/
 ai-services/rag-server/chroma_db/
 ai-services/rag-server/rag-audit.jsonl
+ai-services/rag-server/corpus/
+ai-services/rag-server/chroma/
+ai-services/rag-server/chroma_db/
+ai-services/rag-server/rag-audit.jsonl

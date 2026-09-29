@@ -58,7 +58,46 @@ STUDENT3_BENCHMARKS = [
 # ============================================================
 
 STUDENT4_BENCHMARKS = [
-    # Add Student 4 benchmark queries here.
+    {
+        "query": "What grants and publications are attached to the Financial Risk Modelling with AI project?",
+        "relevant_keywords": ["Financial Risk Modelling", "Fintech Research Partnership"],
+        "expected_relevant": 4,
+    },
+    {
+        "query": "What research project is studying renewable energy on campus?",
+        "relevant_keywords": ["Sustainable Campus Energy", "renewable energy"],
+        "expected_relevant": 1,
+    },
+    {
+        "query": "What funding body is backing the Sustainable Campus Energy Systems project?",
+        "relevant_keywords": ["CSIRO Energy Fund", "Sustainable Campus Energy"],
+        "expected_relevant": 2,
+    },
+    {
+        "query": "What publications came out of the AI-Driven Curriculum Analytics project?",
+        "relevant_keywords": ["Analysing Curriculum Effectiveness", "AI-Driven Curriculum Analytics"],
+        "expected_relevant": 1,
+    },
+    {
+        "query": "What research project uses CNNs for medical diagnosis?",
+        "relevant_keywords": ["Diabetic Retinopathy", "Medical Diagnostics"],
+        "expected_relevant": 2,
+    },
+    {
+        "query": "What is the status of the Urban Transport Optimisation project?",
+        "relevant_keywords": ["Urban Transport Optimisation", "on hold"],
+        "expected_relevant": 1,
+    },
+    {
+        "query": "How many research projects, grants and publications does the Research and Grant Management feature track?",
+        "relevant_keywords": ["Research and Grant Management feature currently tracks"],
+        "expected_relevant": 1,
+    },
+    {
+        "query": "What project is investigating low-cost water purification?",
+        "relevant_keywords": ["Renewable Water Purification", "water purification"],
+        "expected_relevant": 1,
+    },
 ]
 
 
