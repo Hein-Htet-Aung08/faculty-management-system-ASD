@@ -83,6 +83,7 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434/v1
       OLLAMA_MODEL: qwen2.5:0.5b
       STAFF_SERVICE_URL: http://staff-backend:5001
+      MCP_ENABLED: "true"
     depends_on:
       - student3-database
       - ollama
