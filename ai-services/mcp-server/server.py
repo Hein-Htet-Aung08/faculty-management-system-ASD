@@ -33,6 +33,41 @@ AVAILABLE_TOOLS = []
 # )
 #
 
+@mcp.tool()
+def student1_get_staff_profile(
+    staff_id: int,
+):
+    """
+    Get a staff member's full profile (details, expertise,
+    qualifications, availability) by staff ID.
+    """
+    return tools.student1_get_staff_profile(
+        staff_id,
+    )
+
+
+AVAILABLE_TOOLS.append(
+    "student1_get_staff_profile"
+)
+
+
+@mcp.tool()
+def student1_search_staff_by_expertise(
+    expertise: str,
+):
+    """
+    Search staff by expertise area (partial, case-insensitive
+    match), e.g. "machine learning" or "database".
+    """
+    return tools.student1_search_staff_by_expertise(
+        expertise,
+    )
+
+
+AVAILABLE_TOOLS.append(
+    "student1_search_staff_by_expertise"
+)
+
 
 # ============================================================
 # Student 2 - Teaching, Subject & Classroom Allocation

@@ -133,6 +133,109 @@ def call_feature_api(
 #     )
 #
 
+def student1_get_staff_profile(
+    staff_id,
+):
+    """
+    Return one staff member's full profile: core details,
+    expertise, qualifications and weekly availability.
+
+    Read only. Combines four Staff Management API calls into
+    one structured result.
+    """
+
+    if (
+        not isinstance(staff_id, int)
+        or isinstance(staff_id, bool)
+        or staff_id < 1
+    ):
+        return {
+            "status": "error",
+            "error": "invalid_input",
+            "details": "staff_id must be a positive integer.",
+        }
+
+    profile = call_feature_api(
+        "GET",
+        STUDENT1_BACKEND_URL,
+        f"/api/staff/{staff_id}",
+    )
+
+    if profile["status"] != "success":
+        return profile
+
+    sections = {}
+
+    for section in (
+        "expertise",
+        "qualifications",
+        "availability",
+    ):
+        result = call_feature_api(
+            "GET",
+            STUDENT1_BACKEND_URL,
+            f"/api/staff/{staff_id}/{section}",
+        )
+
+        if result["status"] != "success":
+            return result
+
+        sections[section] = result["data"]
+
+    return {
+        "status": "success",
+        "tool": "student1_get_staff_profile",
+        "data": {
+            "staff": profile["data"],
+            **sections,
+        },
+    }
+
+
+def student1_search_staff_by_expertise(
+    expertise,
+):
+    """
+    Find staff whose expertise area matches the given text
+    (case-insensitive partial match).
+
+    Read only. Returns each match's department, position,
+    status, expertise area and skill level (1-5).
+    """
+
+    expertise = (
+        expertise
+        if isinstance(expertise, str)
+        else ""
+    ).strip()
+
+    if not expertise:
+        return {
+            "status": "error",
+            "error": "invalid_input",
+            "details": "expertise must be a non-empty string.",
+        }
+
+    result = call_feature_api(
+        "GET",
+        STUDENT1_BACKEND_URL,
+        "/api/staff/search",
+        params={
+            "expertise": expertise,
+        },
+    )
+
+    if result["status"] != "success":
+        return result
+
+    return {
+        "status": "success",
+        "tool": "student1_search_staff_by_expertise",
+        "query": expertise,
+        "match_count": len(result["data"]),
+        "data": result["data"],
+    }
+
 
 # ============================================================
 # Student 2 - Teaching, Subject & Classroom Allocation
