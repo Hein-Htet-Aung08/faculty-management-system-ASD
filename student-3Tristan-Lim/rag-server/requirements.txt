@@ -1,3 +1,0 @@
-mcp<2
-chromadb
-requests==2.32.3
