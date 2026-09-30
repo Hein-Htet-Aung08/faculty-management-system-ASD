@@ -8,7 +8,9 @@ import tools
 # ============================================================
 
 mcp = FastMCP(
-    "Faculty Management System MCP"
+    "Faculty Management System MCP",
+    host="0.0.0.0",
+    port=5201,
 )
 
 AVAILABLE_TOOLS = []
@@ -111,9 +113,33 @@ AVAILABLE_TOOLS.append(
 #
 # OWNER: Student 4
 #
-# Register Student 4 shared-MCP tools here.
-# Adapt existing feature-specific MCP registrations as required.
-#
+
+@mcp.tool()
+def student4_project_count(department: str = None, status: str = None):
+    return tools.student4_project_count(department, status)
+
+AVAILABLE_TOOLS.append("student4_project_count")
+
+
+@mcp.tool()
+def student4_projects_by_department(department: str):
+    return tools.student4_projects_by_department(department)
+
+AVAILABLE_TOOLS.append("student4_projects_by_department")
+
+
+@mcp.tool()
+def student4_project_grants_summary(project_id: int):
+    return tools.student4_project_grants_summary(project_id)
+
+AVAILABLE_TOOLS.append("student4_project_grants_summary")
+
+
+@mcp.tool()
+def student4_research_history(department: str):
+    return tools.student4_research_history(department)
+
+AVAILABLE_TOOLS.append("student4_research_history")
 
 
 # ============================================================
@@ -152,7 +178,8 @@ if __name__ == "__main__":
             "- No feature tools registered yet."
         )
 
-    # Lab 07 uses the MCP SDK's default local transport.
-    # Transport may be updated later when final group backend
-    # integration is implemented and validated.
-    mcp.run()
+    # Real MCP protocol over HTTP, so containerised backends can
+    # reach this shared, non-containerised server - agreed with
+    # Hein since this is shared server code. Served at /mcp on
+    # this host/port (FastMCP's default streamable_http_path).
+    mcp.run(transport="streamable-http")

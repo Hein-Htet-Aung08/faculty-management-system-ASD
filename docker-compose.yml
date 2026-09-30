@@ -168,6 +168,8 @@ services:
     container_name: student4-frontend
     ports:
       - "8004:8004"
+    volumes:
+      - ./shared/frontend/css:/shared/frontend/css:ro
     depends_on:
       - student4-backend
     networks:
@@ -187,6 +189,11 @@ services:
       PORT: 5004
       STAFF_SERVICE_URL: http://staff-backend:5001
       WORKLOAD_SERVICE_URL: http://student3-backend:5003
+      MCP_ENABLED: "true"
+      MCP_SERVER_URL: http://host.docker.internal:5201/mcp
+      RAG_SERVER_URL: http://host.docker.internal:5200
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - student4-database
       - ollama

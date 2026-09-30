@@ -1,5 +1,6 @@
 import hashlib
 import json
+import math
 import os
 import re
 import time
@@ -49,11 +50,17 @@ CHROMA_PATH = (
     / "chroma"
 )
 
+IDF_PATH = (
+    BASE_DIR
+    / "corpus"
+    / "idf.json"
+)
+
 COLLECTION_NAME = (
     "faculty_management_context"
 )
 
-EMBED_VECTOR_SIZE = 256
+EMBED_VECTOR_SIZE = 1024
 
 
 STUDENT1_BACKEND_URL = os.getenv(
@@ -94,6 +101,7 @@ REPORT_FILES = [
 
 _collection = None
 _last_corpus_chunks = []
+_idf = None
 
 
 STOP_WORDS = {
@@ -152,6 +160,91 @@ def tokenize(text):
             and token not in STOP_WORDS
         )
     }
+
+
+def tokenize_ordered(text):
+    tokens = re.findall(
+        r"[A-Za-z0-9_]+",
+        (text or "").lower(),
+    )
+
+    return [
+        token
+        for token in tokens
+        if (
+            len(token) > 2
+            and token not in STOP_WORDS
+        )
+    ]
+
+
+def bigrams(text):
+    words = tokenize_ordered(text)
+
+    return [
+        f"{words[index]}_{words[index + 1]}"
+        for index in range(len(words) - 1)
+    ]
+
+
+def compute_idf(chunks):
+    """
+    Document-frequency-weighted term importance across the corpus,
+    so rare, topic-specific words (e.g. a project title) count for
+    more in similarity scoring than common ones (e.g. "project").
+    Without this, a short irrelevant chunk that happens to share a
+    few common words with the query can outrank the genuinely
+    relevant one.
+    """
+
+    document_count = len(chunks) or 1
+    document_frequency = {}
+
+    for chunk in chunks:
+        for token in tokenize(chunk.get("text", "")):
+            document_frequency[token] = (
+                document_frequency.get(token, 0) + 1
+            )
+
+    return {
+        token: math.log((1 + document_count) / (1 + df)) + 1.0
+        for token, df in document_frequency.items()
+    }
+
+
+def load_idf():
+    global _idf
+
+    if _idf is not None:
+        return _idf
+
+    if IDF_PATH.exists():
+        try:
+            _idf = json.loads(
+                IDF_PATH.read_text(encoding="utf-8")
+            )
+            return _idf
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    _idf = {}
+    return _idf
+
+
+def write_idf(idf):
+    global _idf
+
+    _idf = idf
+
+    IDF_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    IDF_PATH.write_text(
+        json.dumps(idf),
+        encoding="utf-8",
+    )
 
 
 def make_chunk(
@@ -554,20 +647,161 @@ def load_student3_context():
 # Student 4 - Research & Grant Management Context
 # ============================================================
 
+def _student4_resolve_staff(staff_id, cache):
+    if staff_id is None:
+        return "unassigned"
+
+    if staff_id in cache:
+        return cache[staff_id]
+
+    display = f"staff ID {staff_id} (name unavailable)"
+
+    try:
+        staff = call_feature_api(
+            "GET",
+            STUDENT1_BACKEND_URL,
+            f"/api/staff/{staff_id}",
+        )
+        name = staff.get("name")
+        if name:
+            display = f"{name} (staff ID {staff_id})"
+    except requests.RequestException:
+        pass
+
+    cache[staff_id] = display
+    return display
+
+
 def load_student4_context():
     """
     OWNER: Student 4
 
-    Return RAG chunks for Research and Grant Management.
-
-    Existing Student 4 RAG corpus-loading work can be adapted into
-    this section instead of operating as a separate production
-    RAG server.
-
-    Each returned item should use make_chunk(...).
+    Return RAG chunks for Research and Grant Management, sourced from
+    the Student 4 backend/API (STUDENT4_BACKEND_URL) rather than its
+    database directly.
     """
 
-    return []
+    chunks = []
+
+    try:
+        projects = call_feature_api("GET", STUDENT4_BACKEND_URL, "/projects")
+    except requests.RequestException as exc:
+        print(f"[rag_pipeline] student4 backend unreachable: {exc}")
+        return chunks
+
+    staff_cache = {}
+    grant_count = 0
+    publication_count = 0
+
+    for project in projects:
+        project_id = project.get("projectID")
+        lead_id = project.get("leadStaffID")
+        lead_display = (
+            _student4_resolve_staff(lead_id, staff_cache)
+            if lead_id is not None
+            else "unassigned"
+        )
+
+        text = (
+            f"Research Project: {project.get('title')}. "
+            f"Department: {project.get('department')}. "
+            f"Status: {project.get('status')}. "
+            f"Lead staff: {lead_display}. "
+            f"Start date: {project.get('startDate', 'unspecified')}. "
+            f"End date: {project.get('endDate', 'ongoing')}. "
+            f"Description: {project.get('description', 'no description provided')}."
+        )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student4_project_{project_id}",
+                source_id=f"student4/projects/{project_id}",
+                authority_tier="tier_1",
+                feature="research_grant_management",
+                student=4,
+                text=text,
+            )
+        )
+
+        try:
+            grants = call_feature_api(
+                "GET", STUDENT4_BACKEND_URL, f"/projects/{project_id}/grants"
+            )
+        except requests.RequestException:
+            grants = []
+
+        for grant in grants:
+            grant_count += 1
+            awarded = grant.get("amountAwarded")
+            text = (
+                f"Grant from {grant.get('fundingBody')} for project {project_id} "
+                f"({project.get('title')}). "
+                f"Amount requested: {grant.get('amountRequested')}. "
+                f"Amount awarded: {awarded if awarded is not None else 'not yet awarded'}. "
+                f"Application deadline: {grant.get('applicationDeadline')}. "
+                f"Status: {grant.get('status')}."
+            )
+            chunks.append(
+                make_chunk(
+                    chunk_id=f"student4_grant_{grant.get('grantID')}",
+                    source_id=f"student4/grants/{grant.get('grantID')}",
+                    authority_tier="tier_1",
+                    feature="research_grant_management",
+                    student=4,
+                    text=text,
+                )
+            )
+
+        try:
+            publications = call_feature_api(
+                "GET", STUDENT4_BACKEND_URL, f"/projects/{project_id}/publications"
+            )
+        except requests.RequestException:
+            publications = []
+
+        for publication in publications:
+            publication_count += 1
+            staff_id = publication.get("staffID")
+            staff_display = (
+                _student4_resolve_staff(staff_id, staff_cache)
+                if staff_id is not None
+                else "unspecified"
+            )
+            text = (
+                f"Publication: {publication.get('title')}. "
+                f"Linked project: {project.get('title')} (project ID {project_id}). "
+                f"Type: {publication.get('publicationType')}. "
+                f"Journal/venue: {publication.get('journalOrVenue', 'unspecified')}. "
+                f"Date published: {publication.get('datePublished', 'unpublished/pending')}. "
+                f"Staff: {staff_display}."
+            )
+            chunks.append(
+                make_chunk(
+                    chunk_id=f"student4_publication_{publication.get('publicationID')}",
+                    source_id=f"student4/publications/{publication.get('publicationID')}",
+                    authority_tier="tier_1",
+                    feature="research_grant_management",
+                    student=4,
+                    text=text,
+                )
+            )
+
+    chunks.append(
+        make_chunk(
+            chunk_id="student4_summary_counts",
+            source_id="student4/summary",
+            authority_tier="tier_1",
+            feature="research_grant_management",
+            student=4,
+            text=(
+                f"The Research and Grant Management feature currently tracks "
+                f"{len(projects)} research project(s), {grant_count} grant(s), "
+                f"and {publication_count} publication(s)."
+            ),
+        )
+    )
+
+    return chunks
 
 
 # ============================================================
@@ -805,7 +1039,22 @@ def read_corpus():
 # Common Embedding and Chroma Logic
 # ============================================================
 
-def embed_texts(texts):
+def _hash_into(values, term, weight):
+    digest = hashlib.sha256(
+        term.encode("utf-8")
+    ).digest()
+
+    for index, byte in enumerate(digest):
+        vector_index = index % EMBED_VECTOR_SIZE
+
+        values[vector_index] += (
+            ((byte / 255.0) - 0.5) * weight
+        )
+
+
+def embed_texts(texts, idf=None):
+    idf = idf or {}
+    default_idf = 1.0
     vectors = []
 
     for text in texts:
@@ -825,25 +1074,16 @@ def embed_texts(texts):
             continue
 
         for token in tokens:
-            digest = hashlib.sha256(
-                token.encode(
-                    "utf-8"
-                )
-            ).digest()
+            _hash_into(
+                values,
+                token,
+                idf.get(token, default_idf),
+            )
 
-            for index, byte in enumerate(
-                digest
-            ):
-                vector_index = (
-                    index
-                    % EMBED_VECTOR_SIZE
-                )
-
-                values[
-                    vector_index
-                ] += (
-                    byte / 255.0
-                ) - 0.5
+        # Bigrams carry word-order signal that a bag-of-unigrams
+        # loses, at a lower weight since they are a secondary signal.
+        for bigram in bigrams(text):
+            _hash_into(values, bigram, 0.5)
 
         norm = (
             sum(
@@ -998,9 +1238,13 @@ def refresh_corpus(
                     for chunk in chunks
                 ]
 
+                idf = compute_idf(chunks)
+                write_idf(idf)
+
                 embeddings = (
                     embed_texts(
-                        documents
+                        documents,
+                        idf=idf,
                     )
                 )
 
@@ -1276,7 +1520,8 @@ def retrieve_context(
 
                 query_embedding = (
                     embed_texts(
-                        [query]
+                        [query],
+                        idf=load_idf(),
                     )
                 )
 

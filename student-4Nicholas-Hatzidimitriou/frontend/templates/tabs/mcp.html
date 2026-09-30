@@ -1,0 +1,123 @@
+<section class="panel-section" id="mcp-tools-panel">
+  <h2>MCP Tools</h2>
+  <p style="color: var(--line-strong); font-size: 0.9rem;">
+    Model Context Protocol tools for this feature's research and grant data.
+    The server requires <code>MCP_ENABLED</code> to be set AND this toggle to
+    be on - both switches must be on for requests to succeed.
+  </p>
+
+  <label style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.25rem;">
+    <input type="checkbox" id="mcp-mode-toggle">
+    <span id="mcp-mode-status">MCP Mode: OFF</span>
+  </label>
+
+  <div class="form-field" style="margin-bottom:1.25rem;">
+    <button
+      id="mcp-count-btn"
+      class="btn"
+      hx-post="/mcp/project-count"
+      hx-target="#mcp-result"
+      hx-swap="innerHTML"
+      hx-indicator="#mcp-loading"
+    >
+      Get Project Count
+    </button>
+  </div>
+
+  <form
+    id="mcp-department-form"
+    class="form-grid"
+    hx-post="/mcp/projects-by-department"
+    hx-target="#mcp-result"
+    hx-swap="innerHTML"
+    hx-indicator="#mcp-loading"
+    style="margin-bottom:1.25rem;"
+  >
+    <div class="form-field">
+      <label for="mcp-department">Department</label>
+      <input type="text" id="mcp-department" name="department" required>
+    </div>
+    <button type="submit" class="btn secondary">Search Projects by Department</button>
+  </form>
+
+  <form
+    id="mcp-grants-form"
+    class="form-grid"
+    hx-post="/mcp/project-grants-summary"
+    hx-target="#mcp-result"
+    hx-swap="innerHTML"
+    hx-indicator="#mcp-loading"
+    style="margin-bottom:0.5rem;"
+  >
+    <div class="form-field">
+      <label for="mcp-project-id">Project ID</label>
+      <input type="number" id="mcp-project-id" name="project_id" required>
+    </div>
+    <button type="submit" class="btn secondary">Get Grants Summary</button>
+  </form>
+
+  <form
+    id="mcp-history-form"
+    class="form-grid"
+    hx-post="/mcp/research-history"
+    hx-target="#mcp-result"
+    hx-swap="innerHTML"
+    hx-indicator="#mcp-loading"
+    style="margin-bottom:0.5rem;"
+  >
+    <div class="form-field">
+      <label for="mcp-history-department">Department</label>
+      <input type="text" id="mcp-history-department" name="department" required>
+    </div>
+    <button type="submit" class="btn secondary">Get Research History</button>
+  </form>
+
+  <span id="mcp-loading" class="loading-indicator">Thinking…</span>
+
+  <div id="mcp-result" class="ai-result-panel"></div>
+</section>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'mcpMode';
+  const toggle = document.getElementById('mcp-mode-toggle');
+  const statusLabel = document.getElementById('mcp-mode-status');
+  const panel = document.getElementById('mcp-tools-panel');
+
+  function currentMode() {
+    return localStorage.getItem(STORAGE_KEY) === 'on' ? 'on' : 'off';
+  }
+
+  function applyMode(mode) {
+    localStorage.setItem(STORAGE_KEY, mode);
+    toggle.checked = mode === 'on';
+    statusLabel.textContent = mode === 'on' ? 'MCP Mode: ON' : 'MCP Mode: OFF';
+  }
+
+  toggle.addEventListener('change', () => applyMode(toggle.checked ? 'on' : 'off'));
+  applyMode(currentMode());
+
+  const countBtn = document.getElementById('mcp-count-btn');
+  const deptForm = document.getElementById('mcp-department-form');
+  const grantsForm = document.getElementById('mcp-grants-form');
+  const historyForm = document.getElementById('mcp-history-form');
+
+  countBtn.setAttribute('hx-post', `${API_BASE}/mcp/project-count`);
+  deptForm.setAttribute('hx-post', `${API_BASE}/mcp/projects-by-department`);
+  grantsForm.setAttribute('hx-post', `${API_BASE}/mcp/project-grants-summary`);
+  historyForm.setAttribute('hx-post', `${API_BASE}/mcp/research-history`);
+  htmx.process(countBtn);
+  htmx.process(deptForm);
+  htmx.process(grantsForm);
+  htmx.process(historyForm);
+
+  if (!window.__mcpConfigListenerAttached) {
+    document.body.addEventListener('htmx:configRequest', function (evt) {
+      if (evt.detail.elt.closest('#mcp-tools-panel')) {
+        evt.detail.headers['X-MCP-Mode'] = localStorage.getItem(STORAGE_KEY) === 'on' ? 'on' : 'off';
+      }
+    });
+    window.__mcpConfigListenerAttached = true;
+  }
+})();
+</script>
