@@ -52,7 +52,8 @@ Student 1 contributes Staff Management context through `load_student1_context()`
 |---|---|---|
 | Staff profile | `student1_staff_<id>` / `student1/staff/<id>` | Name, position, employment type, department, status, expertise (skill level /5), qualifications |
 | Availability | `student1_availability_<id>` / `student1/staff/<id>/availability` | Day, time slot and status for each availability entry |
-| Department roster | `student1_department_<slug>` / `student1/departments/<slug>` | Staff in the department with position and status |
+| Department roster | `student1_department_<slug>` / `student1/departments/<slug>` | Names of all staff in the department (kept short so it ranks for "who is in X?") |
+| Status roster | `student1_status_<slug>` / `student1/status/<slug>` | Names of all staff with that employment status (Active, On Leave, ...) |
 | Summary | `student1_summary_counts` / `student1/summary` | Total staff, department count, headcount by status |
 
 - Excluded: email and phone (contact details are not needed for grounded answers).

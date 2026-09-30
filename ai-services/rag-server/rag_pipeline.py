@@ -431,7 +431,7 @@ def load_student1_context():
 
     chunks = []
     departments = {}
-    status_counts = {}
+    status_members = {}
 
     for staff_id in staff_ids:
         try:
@@ -468,14 +468,12 @@ def load_student1_context():
         departments.setdefault(
             department,
             [],
-        ).append(
-            f"{name} ({staff['position']}, {staff['status']})"
-        )
+        ).append(name)
 
-        status_counts[staff["status"]] = (
-            status_counts.get(staff["status"], 0)
-            + 1
-        )
+        status_members.setdefault(
+            staff["status"],
+            [],
+        ).append(name)
 
         expertise_text = (
             "; ".join(
@@ -558,13 +556,14 @@ def load_student1_context():
                 authority_tier="tier_1",
                 feature="staff_management",
                 student=1,
-                # Worded as a roster rather than "has N staff member(s)":
-                # that phrasing matched the filler words of almost any
-                # "which staff member has..." question and outranked
-                # the profile that actually answered it.
+                # Names only, kept short: this is the one chunk that
+                # answers "who is in X?" in full, and extra words
+                # dilute its similarity so single-person chunks
+                # outranked it. Avoids "has N staff member(s)", which
+                # matched the filler words of most questions.
                 text=(
-                    f"{department} department roster ({len(members)}): "
-                    f"{', '.join(members)}."
+                    f"{department} department roster "
+                    f"({len(members)}): {', '.join(members)}."
                 ),
                 metadata={
                     "source_type": "department_roster",
@@ -573,10 +572,38 @@ def load_student1_context():
             )
         )
 
+    # One roster per employment status, so "which staff are active /
+    # on leave?" has a single chunk holding the complete answer --
+    # otherwise top-k retrieval only surfaces a few individual profiles.
+    for status, members in sorted(status_members.items()):
+        slug = re.sub(
+            r"[^a-z0-9]+",
+            "_",
+            status.lower(),
+        ).strip("_")
+
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student1_status_{slug}",
+                source_id=f"student1/status/{slug}",
+                authority_tier="tier_1",
+                feature="staff_management",
+                student=1,
+                text=(
+                    f"{status} staff roster "
+                    f"({len(members)}): {', '.join(members)}."
+                ),
+                metadata={
+                    "source_type": "status_roster",
+                    "status": status,
+                },
+            )
+        )
+
     status_text = (
         ", ".join(
-            f"{count} {status}"
-            for status, count in sorted(status_counts.items())
+            f"{len(members)} {status}"
+            for status, members in sorted(status_members.items())
         )
         or "no staff recorded"
     )

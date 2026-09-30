@@ -114,12 +114,13 @@ def test_loader_builds_profile_availability_roster_and_summary_chunks(rag_pipeli
     by_id = {chunk["chunk_id"]: chunk for chunk in chunks}
 
     # 2 unique staff (duplicate /api/staff row ignored): 2 profiles + 2 availability
-    # + 2 department rosters + 1 summary
-    assert len(chunks) == 7
+    # + 2 department rosters + 2 status rosters + 1 summary
+    assert len(chunks) == 9
     assert set(by_id) == {
         "student1_staff_1", "student1_staff_5",
         "student1_availability_1", "student1_availability_5",
         "student1_department_computer_science", "student1_department_mechanical_engineering",
+        "student1_status_active", "student1_status_on_leave",
         "student1_summary_counts",
     }
 
@@ -136,6 +137,8 @@ def test_loader_builds_profile_availability_roster_and_summary_chunks(rag_pipeli
     assert "none recorded" in by_id["student1_staff_5"]["text"]
     assert "no availability recorded" in by_id["student1_availability_5"]["text"]
     assert "1 Active, 1 On Leave" in by_id["student1_summary_counts"]["text"]
+    assert by_id["student1_department_computer_science"]["text"] == "Computer Science department roster (1): John Smith."
+    assert by_id["student1_status_on_leave"]["text"] == "On Leave staff roster (1): David Kim."
 
 
 def test_loader_excludes_contact_details(rag_pipeline):
