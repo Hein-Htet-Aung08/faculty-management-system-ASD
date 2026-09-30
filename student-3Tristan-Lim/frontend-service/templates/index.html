@@ -19,6 +19,7 @@
         <button class="tab-button active" data-tab="normal" type="button">Dashboard</button>
         <button class="tab-button" data-tab="ai-mode" type="button">AI Mode</button>
         <button class="tab-button" data-tab="mcp" type="button">MCP Mode</button>
+        <button class="tab-button" data-tab="rag" type="button">RAG Mode</button>
     </nav>
 </header>
 
@@ -29,6 +30,8 @@
             src="tabs/ai-mode.html" title="AI Mode"></iframe>
     <iframe id="tab-frame-mcp" class="tab-pane" hidden
             src="tabs/mcp.html" title="MCP Mode"></iframe>
+    <iframe id="tab-frame-rag" class="tab-pane" hidden
+            src="tabs/rag.html" title="RAG Mode"></iframe>
 </div>
 
 <script>
@@ -37,6 +40,7 @@ const tabFrames = {
     normal: document.getElementById("tab-frame-normal"),
     "ai-mode": document.getElementById("tab-frame-ai-mode"),
     mcp: document.getElementById("tab-frame-mcp"),
+    rag: document.getElementById("tab-frame-rag"),
 };
 
 function activateTab(tabName) {
