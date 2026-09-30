@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>RAG Mode</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        body { margin: 0; background: transparent; }
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: end; margin-bottom: 1rem; }
+        .actions .form-field { flex: 1 1 16rem; }
+        .rag-toggle { display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; }
+        .rag-toggle input { width: 1.1rem; height: 1.1rem; }
+        pre.tool-result { overflow-x: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+<section class="panel-section">
+    <h2>RAG Mode</h2>
+    <p>Refreshes the corpus from live staff workload data, retrieves relevant chunks by
+       vector similarity, and answers questions grounded only in what was retrieved -
+       with citations and a confidence category. Gated behind this toggle, same as
+       MCP Mode.</p>
+
+    <div class="rag-toggle">
+        <input id="rag-mode-toggle" type="checkbox" checked>
+        <label for="rag-mode-toggle">Enable RAG Mode (sends X-RAG-Mode: on)</label>
+    </div>
+
+    <div class="actions">
+        <button type="button" class="btn" data-action="health">Check server status</button>
+    </div>
+    <div id="health-panel" class="ai-result-panel"></div>
+</section>
+
+<!-- ----------------------------------------------------------- tools --- -->
+
+<section class="panel-section">
+    <h2>refresh_corpus</h2>
+    <p>Rebuilds the corpus and vector index from staff workload data, CI reports,
+       and a repository file listing.</p>
+    <div class="actions">
+        <button type="button" class="btn" data-action="refresh">Refresh Corpus</button>
+    </div>
+    <div id="refresh-panel" class="ai-result-panel"></div>
+</section>
+
+<section class="panel-section">
+    <h2>retrieve_context</h2>
+    <p>Retrieves the top-k chunks most relevant to a query.</p>
+    <div class="actions">
+        <div class="form-field">
+            <label for="retrieve-query">Query</label>
+            <input id="retrieve-query" value="staff overloaded in Computer Science">
+        </div>
+        <button type="button" class="btn" data-action="retrieve">Retrieve Context</button>
+    </div>
+    <div id="retrieve-panel" class="ai-result-panel"></div>
+</section>
+
+<section class="panel-section">
+    <h2>answer_question</h2>
+    <p>Answers a question using only retrieved evidence, with citations and a confidence category.</p>
+    <div class="actions">
+        <div class="form-field">
+            <label for="answer-query">Question</label>
+            <input id="answer-query" value="Which staff members are overloaded?">
+        </div>
+        <button type="button" class="btn" data-action="answer">Answer with Citations</button>
+    </div>
+    <div id="answer-panel" class="ai-result-panel"></div>
+</section>
+
+<script src="/js/config.js"></script>
+<script>
+const toggle = document.getElementById("rag-mode-toggle");
+
+function ragHeaders() {
+    return toggle.checked ? { "X-RAG-Mode": "on" } : {};
+}
+
+function showResult(panelId, data, ok) {
+    const panel = document.getElementById(panelId);
+    const css = ok ? "empty-state" : "error-state";
+    panel.innerHTML =
+        `<pre class="tool-result ${css}">${JSON.stringify(data, null, 2)}</pre>`;
+}
+
+async function callTool(panelId, path, options = {}) {
+    const panel = document.getElementById(panelId);
+    panel.innerHTML = '<p class="empty-state">Calling tool... this can take up to a minute.</p>';
+
+    try {
+        const response = await fetch(`${BACKEND_URL}${path}`, {
+            method: options.method || "POST",
+            headers: { ...ragHeaders(), ...(options.headers || {}) },
+            body: options.body,
+        });
+        showResult(panelId, await response.json(), response.ok);
+    } catch (error) {
+        panel.innerHTML =
+            `<p class="error-state">Request failed. Is the backend running at ` +
+            `${BACKEND_URL}, and is rag-server running locally on port 5303?</p><pre>${error}</pre>`;
+    }
+}
+
+document.querySelector('[data-action="health"]').addEventListener("click", () => {
+    callTool("health-panel", "/rag/health", { method: "GET" });
+});
+
+document.querySelector('[data-action="refresh"]').addEventListener("click", () => {
+    callTool("refresh-panel", "/rag/refresh");
+});
+
+document.querySelector('[data-action="retrieve"]').addEventListener("click", () => {
+    const query = document.getElementById("retrieve-query").value;
+    callTool("retrieve-panel", "/rag/retrieve", {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ query, k: "5" }),
+    });
+});
+
+document.querySelector('[data-action="answer"]').addEventListener("click", () => {
+    const query = document.getElementById("answer-query").value;
+    callTool("answer-panel", "/rag/answer", {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ query, k: "5" }),
+    });
+});
+</script>
+</body>
+</html>

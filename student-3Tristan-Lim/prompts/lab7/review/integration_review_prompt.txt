@@ -1,0 +1,18 @@
+You are reviewing whether the HTTP-facing MCP Mode endpoints in
+backend-service/routes/mcp_mode.py stay faithful to the real MCP tools in
+mcp-server/tools.py.
+
+For each of the 4 tools (staff_count, staff_by_status, project_files,
+ci_report), check:
+
+- The tool name is identical in both places.
+- The argument names are identical in both places (e.g. "status",
+  "directory_path", "report_path").
+- The shape of the returned data is identical - same keys, same types - for
+  the same input.
+- Any validation rule enforced in one (e.g. status must be "overloaded",
+  "underloaded" or "ok") is enforced identically in the other.
+
+Flag any tool where the HTTP mirror has drifted from the real MCP tool -
+missing a field, renaming an argument, or applying a different validation
+rule. If all 4 match, say so explicitly rather than leaving it ambiguous.
