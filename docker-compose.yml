@@ -52,8 +52,8 @@ services:
       - staff-data:/app/data
     environment:
       - DB_PATH=/app/data/staff.db
-      - OLLAMA_BASE_URL=http://ollama:11434/v1
-      # Shared MCP/RAG servers run on the host, outside Docker
+      # AI-Mode (Ollama), MCP and RAG all run on the host, outside Docker
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
       - MCP_ENABLED=true
       - MCP_SERVER_URL=http://host.docker.internal:5201/mcp
       - RAG_ENABLED=true
@@ -62,7 +62,6 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - staff-database
-      - ollama
     networks:
       - faculty-network
 
