@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from llm_client import generate_response
+import ai_services_client as ai_services
 from flask_cors import CORS
 from datetime import date
 import sqlite3
@@ -323,6 +324,84 @@ def generate_staff_analysis(staff_id):
         "generated_summary": summary,
         "suitability_score": suitability_score
     }), 201
+
+# ---------- SHARED MCP / RAG INTEGRATION (Release 1) ----------
+
+@app.route("/api/ai-services/status")
+def get_ai_services_status():
+    # Lets the frontend show or hide the MCP/RAG panel
+    return jsonify({
+        "mcp_enabled": ai_services.MCP_ENABLED,
+        "rag_enabled": ai_services.RAG_ENABLED
+    })
+
+def run_mcp_tool(tool_name, arguments):
+    if not ai_services.MCP_ENABLED:
+        return jsonify({"error": "MCP integration is disabled"}), 503
+
+    try:
+        result = ai_services.call_mcp_tool(tool_name, arguments)
+    except ai_services.AIServiceError as e:
+        return jsonify({"error": str(e)}), 503
+
+    # Tool ran but reported a problem (bad input, staff not found, backend down)
+    if result.get("status") == "error":
+        if result.get("error") == "invalid_input":
+            status_code = 400
+        elif result.get("http_status") == 404:
+            status_code = 404
+        else:
+            status_code = 502
+        return jsonify(result), status_code
+
+    return jsonify(result), 200
+
+@app.route("/api/mcp/staff-profile", methods=["POST"])
+def mcp_staff_profile():
+    data = request.get_json(silent=True) or {}
+
+    try:
+        staff_id = int(data["staff_id"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "staff_id must be a whole number"}), 400
+
+    return run_mcp_tool("student1_get_staff_profile", {"staff_id": staff_id})
+
+@app.route("/api/mcp/search-expertise", methods=["POST"])
+def mcp_search_expertise():
+    data = request.get_json(silent=True) or {}
+    expertise = str(data.get("expertise", "")).strip()
+
+    if not expertise:
+        return jsonify({"error": "expertise is required"}), 400
+
+    return run_mcp_tool("student1_search_staff_by_expertise", {"expertise": expertise})
+
+@app.route("/api/rag/ask", methods=["POST"])
+def rag_ask():
+    if not ai_services.RAG_ENABLED:
+        return jsonify({"error": "RAG integration is disabled"}), 503
+
+    data = request.get_json(silent=True) or {}
+    question = str(data.get("question", "")).strip()
+
+    if not question:
+        return jsonify({"error": "question is required"}), 400
+
+    try:
+        return jsonify(ai_services.ask_rag(question)), 200
+    except ai_services.AIServiceError as e:
+        return jsonify({"error": str(e)}), 503
+
+@app.route("/api/rag/refresh", methods=["POST"])
+def rag_refresh():
+    if not ai_services.RAG_ENABLED:
+        return jsonify({"error": "RAG integration is disabled"}), 503
+
+    try:
+        return jsonify(ai_services.refresh_rag_corpus()), 200
+    except ai_services.AIServiceError as e:
+        return jsonify({"error": str(e)}), 503
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
