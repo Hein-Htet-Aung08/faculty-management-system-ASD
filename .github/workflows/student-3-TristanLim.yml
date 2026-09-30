@@ -74,6 +74,7 @@ jobs:
             -e OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 \
             -e LLM_TIMEOUT=5 \
             -e MCP_ENABLED=false \
+            -e RAG_ENABLED=false \
             s3-be:ci
           docker run -d --name s3-fe --network s3-net -p ${FRONTEND_PORT}:80 \
             -e BACKEND_URL=http://localhost:${BACKEND_PORT} s3-fe:ci
@@ -219,9 +220,9 @@ jobs:
           # Per the Release 1 spec, the shared MCP and RAG servers are
           # non-containerised and run only on a developer's own machine, so
           # CI/CD must retain the integration but never depend on either
-          # being reachable. MCP is explicitly gated off (MCP_ENABLED=false
-          # above); RAG has no such gate by design, so this proves it
-          # degrades to a clear error instead of failing the build.
+          # being reachable. Both are explicitly gated off (MCP_ENABLED=false,
+          # RAG_ENABLED=false above), proving the switch works rather than
+          # just relying on the shared servers being unreachable.
           code=$(curl -s -o /tmp/mcp -w "%{http_code}" --max-time 10 \
                  -X POST -H "X-MCP-Mode: on" "http://localhost:${BACKEND_PORT}/mcp/staff-count" || true)
           [ "$code" = "403" ] || { echo "FAIL expected 403 with MCP disabled, got $code"; cat /tmp/mcp; exit 1; }
@@ -231,9 +232,9 @@ jobs:
           code=$(curl -s -o /tmp/rag -w "%{http_code}" --max-time 10 \
                  -X POST -H "Content-Type: application/json" \
                  -d '{"query":"staff overloaded"}' "http://localhost:${BACKEND_PORT}/rag/ask" || true)
-          [ "$code" = "200" ] || { echo "FAIL expected 200 with a graceful error body, got $code"; cat /tmp/rag; exit 1; }
-          grep -q "RAG server unavailable" /tmp/rag || { echo "FAIL unexpected body"; cat /tmp/rag; exit 1; }
-          echo "PASS RAG degrades cleanly (no live server in CI) instead of failing the build"
+          [ "$code" = "403" ] || { echo "FAIL expected 403 with RAG disabled, got $code"; cat /tmp/rag; exit 1; }
+          grep -q "RAG mode is off" /tmp/rag || { echo "FAIL unexpected body"; cat /tmp/rag; exit 1; }
+          echo "PASS RAG correctly reports disabled (403) during CI"
 
       - name: Verify prompts are packaged in the backend image
         run: |
@@ -315,8 +316,7 @@ jobs:
           - Alert recomputation is idempotent
           - AI-Mode degrades cleanly when no LLM runtime is reachable
           - MCP correctly reports disabled (403) with MCP_ENABLED=false
-          - RAG degrades to a clear error rather than failing the build, with
-            no live RAG server reachable in CI
+          - RAG correctly reports disabled (403) with RAG_ENABLED=false
           - Prompt files are packaged inside the backend image
           - Frontend assets served and backend URL injected at container start
 
