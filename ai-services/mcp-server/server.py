@@ -8,7 +8,9 @@ import tools
 # ============================================================
 
 mcp = FastMCP(
-    "Faculty Management System MCP"
+    "Faculty Management System MCP",
+    host="0.0.0.0",
+    port=5201,
 )
 
 AVAILABLE_TOOLS = []
@@ -141,7 +143,8 @@ if __name__ == "__main__":
             "- No feature tools registered yet."
         )
 
-    # Lab 07 uses the MCP SDK's default local transport.
-    # Transport may be updated later when final group backend
-    # integration is implemented and validated.
-    mcp.run()
+    # Real MCP protocol over HTTP, so containerised backends can
+    # reach this shared, non-containerised server - agreed with
+    # Hein since this is shared server code. Served at /mcp on
+    # this host/port (FastMCP's default streamable_http_path).
+    mcp.run(transport="streamable-http")
