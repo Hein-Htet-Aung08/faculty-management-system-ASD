@@ -73,6 +73,13 @@
             MCP Tools
         </button>
 
+        <button
+            class="tab-button"
+            data-tab="rag-tools"
+        >
+            RAG Tools
+        </button>
+
     </nav>
 
 </header>
@@ -1573,6 +1580,191 @@
 
     </section>
 
+    <!-- ===================================================== -->
+    <!-- RAG Tools -->
+    <!-- ===================================================== -->
+
+    <section
+        id="rag-tools"
+        class="panel-section"
+        hidden
+    >
+
+        <h2>RAG Tools</h2>
+
+        <p>
+            The shared Retrieval-Augmented Generation service retrieves
+            grounded Faculty Management System context before generating
+            answers. Responses include citations and a confidence category.
+        </p>
+
+
+        <!-- Refresh corpus -->
+
+        <div class="panel-section">
+
+            <h2>Refresh Shared Corpus</h2>
+
+            <p>
+                Rebuilds the shared RAG corpus from the current feature data.
+            </p>
+
+            <button
+                id="rag-refresh-button"
+                class="btn secondary"
+                type="button"
+            >
+                Refresh Corpus
+            </button>
+
+            <div
+                id="rag-refresh-result"
+                class="rag-result-panel"
+            ></div>
+
+        </div>
+
+
+        <!-- Retrieve context -->
+
+        <div class="panel-section">
+
+            <h2>Retrieve Context</h2>
+
+            <p>
+                Retrieves the most relevant corpus chunks without asking the
+                language model to generate an answer.
+            </p>
+
+            <form
+                id="rag-retrieve-form"
+                class="form-grid"
+            >
+
+                <div class="form-field span-2">
+
+                    <label for="rag-retrieve-query">
+                        Query
+                    </label>
+
+                    <input
+                        id="rag-retrieve-query"
+                        type="text"
+                        value="What expertise is required for Advanced Software Development?"
+                        required
+                    >
+
+                </div>
+
+                <div class="form-field">
+
+                    <label for="rag-retrieve-k">
+                        Number of Chunks
+                    </label>
+
+                    <input
+                        id="rag-retrieve-k"
+                        type="number"
+                        min="1"
+                        max="20"
+                        value="5"
+                        required
+                    >
+
+                </div>
+
+                <div class="form-field">
+
+                    <button
+                        class="btn"
+                        type="submit"
+                    >
+                        Retrieve Context
+                    </button>
+
+                </div>
+
+            </form>
+
+            <div
+                id="rag-retrieve-result"
+                class="rag-result-panel"
+            ></div>
+
+        </div>
+
+
+        <!-- Grounded question answering -->
+
+        <div class="panel-section">
+
+            <h2>Ask Grounded Question</h2>
+
+            <p>
+                Retrieves relevant evidence and sends only that context to the
+                local language model. The answer includes its retrieved
+                citations and confidence category.
+            </p>
+
+            <form
+                id="rag-ask-form"
+                class="form-grid"
+            >
+
+                <div class="form-field span-2">
+
+                    <label for="rag-ask-query">
+                        Question
+                    </label>
+
+                    <input
+                        id="rag-ask-query"
+                        type="text"
+                        value="What expertise is required for Advanced Software Development?"
+                        required
+                    >
+
+                </div>
+
+                <div class="form-field">
+
+                    <label for="rag-ask-k">
+                        Number of Chunks
+                    </label>
+
+                    <input
+                        id="rag-ask-k"
+                        type="number"
+                        min="1"
+                        max="20"
+                        value="5"
+                        required
+                    >
+
+                </div>
+
+                <div class="form-field">
+
+                    <button
+                        class="btn"
+                        type="submit"
+                    >
+                        Answer with Citations
+                    </button>
+
+                </div>
+
+            </form>
+
+            <div
+                id="rag-ask-result"
+                class="rag-result-panel"
+            ></div>
+
+        </div>
+
+    </section>
+
 </main>
 
 
@@ -1583,6 +1775,7 @@
 <script src="js/allocations.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/mcp.js"></script>
+<script src="js/rag.js"></script>
 <script src="js/tabs.js"></script>
 
 </body>
