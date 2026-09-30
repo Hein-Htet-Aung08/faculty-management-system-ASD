@@ -1,0 +1,11 @@
+Review the implementation assessment against the supplied evidence.
+
+Do not introduce facts that are not present in the evidence.
+
+Return exactly:
+
+Risk: <contradiction or unsupported conclusion, or "None observed">
+Correction: <required correction, or "None">
+Retest: <specific validation to rerun, or "No additional retest required">
+
+Maximum 50 words.

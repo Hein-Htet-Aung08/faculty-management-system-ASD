@@ -30,6 +30,7 @@ def print_menu():
                 "  4) AI-Mode       - review every student's Ollama integration (static analysis)",
                 "  5) Run All",
                 "  6) Student 5     - review development goal integrity",
+                "  7) RAG           - validate shared RAG integration",
                 "  0) Exit",
                 divider(),
             ]
@@ -197,3 +198,41 @@ def write_architecture_report(app_dir, evidence, proposal, critique):
         "critique": critique,
     }
     return _write_pair(reports_dir, stem, markdown, payload)
+
+def write_rag_validation_report(
+    repo_root,
+    evidence,
+    implementation,
+    review,
+):
+    reports_dir = (
+        Path(repo_root)
+        / "reports"
+    )
+
+    reports_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    path = (
+        reports_dir
+        / "rag-validation-report.md"
+    )
+
+    body = (
+        "# RAG Validation Report\n\n"
+        "## OBSERVE\n\n"
+        f"```text\n{evidence}\n```\n\n"
+        "## IMPLEMENTATION ASSESSMENT\n\n"
+        f"{implementation}\n\n"
+        "## REVIEW\n\n"
+        f"{review}\n"
+    )
+
+    path.write_text(
+        body,
+        encoding="utf-8",
+    )
+
+    return path

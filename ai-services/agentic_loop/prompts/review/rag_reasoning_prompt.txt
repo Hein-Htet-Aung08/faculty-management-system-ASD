@@ -1,0 +1,3 @@
+When reviewing, consider retrieval quality, corpus design,
+grounding, citations, confidence, unsupported claims,
+and whether the evidence actually supports the assessment.

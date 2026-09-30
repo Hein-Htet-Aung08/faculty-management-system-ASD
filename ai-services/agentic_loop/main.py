@@ -11,8 +11,9 @@ MENU_TO_MODE = {
     "3": "architecture",
     "4": "ai_mode",
     "6": "development_integrity",
+    "7": "rag",
 }
-MODE_ORDER = ["db", "endpoints", "architecture", "ai_mode", "development_integrity"]
+MODE_ORDER = ["db", "endpoints", "architecture", "ai_mode", "development_integrity", "rag",]
 
 
 def _load_env(env_path: Path) -> None:

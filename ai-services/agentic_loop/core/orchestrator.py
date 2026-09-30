@@ -4,7 +4,9 @@ from collectors import (
     db_collector,
     development_integrity_collector,
     endpoints_collector,
+    rag_collector,
 )
+from pathlib import Path
 from collectors.common import find_student_dirs, student_label, student_number
 from config.review_config import build_mode_config
 from core import reporter
@@ -16,6 +18,7 @@ from pipelines import (
     db_pipeline,
     development_integrity_pipeline,
     endpoints_pipeline,
+    rag_pipeline,
 )
 
 _PER_STUDENT_COLLECTORS = {
@@ -45,6 +48,7 @@ _MODE_DISPLAY = {
     "architecture": "Architecture",
     "ai_mode": "AI-Mode",
     "development_integrity": "Student 5 Development Integrity",
+    "rag": "RAG",
 }
 
 _ARCHITECTURE_TARGET = "the team's five-microservice system and its shared docker-compose stack"
@@ -62,6 +66,15 @@ def run_mode(mode_key, app_dir, repo_root, *, modes=None, registry=None, runner=
     cfg = modes.get(mode_key)
     if cfg is None:
         return f"OBSERVE FAILED: unknown mode {mode_key!r}"
+
+    if mode_key == "rag":
+        return _run_rag(
+            cfg,
+            app_dir,
+            repo_root,
+            registry,
+            runner,
+        )
 
     if cfg.per_student:
         return _run_per_student(cfg, app_dir, repo_root, registry, runner)
@@ -166,6 +179,180 @@ def _run_per_student(cfg, app_dir, repo_root, registry, runner):
     files_note = "\n".join(f"  - {p}" for p in report_paths) or "  (none written)"
     return f"{summary}\n\nReports written:\n{files_note}"
 
+def _run_rag(
+    cfg,
+    app_dir,
+    repo_root,
+    registry,
+    runner,
+):
+    tag = "RAG"
+
+    reporter.print_running_header(
+        "RAG"
+    )
+
+    _log(
+        tag,
+        "OBSERVE",
+        "Collecting shared RAG evidence.",
+    )
+
+    try:
+        ok, evidence = (
+            rag_collector.collect(
+                app_dir,
+                repo_root,
+            )
+        )
+
+    except Exception as exc:
+        return (
+            "OBSERVE FAILED: "
+            f"{type(exc).__name__}: {exc}"
+        )
+
+    if not ok:
+        return (
+            "OBSERVE FAILED:\n"
+            + evidence
+        )
+
+    _log(
+        tag,
+        "ACT",
+        "Running implementation assessment.",
+    )
+
+    shared_prompts = (
+        Path(app_dir)
+        / "prompts"
+    )
+
+    task_prompt = (
+        shared_prompts
+        / "implementation"
+        / "rag_implementation_prompt.txt"
+    ).read_text(
+        encoding="utf-8"
+    ).strip()
+
+    user_prompt = (
+        rag_pipeline
+        .build_implementation_prompt(
+            task_prompt,
+            evidence,
+        )
+    )
+
+    system_prompt = (
+        "You are a precise RAG implementation validator. "
+        "Use only supplied evidence."
+    )
+
+    implementation, error = (
+        runner.call(
+            system_prompt,
+            user_prompt,
+            review=False,
+        )
+    )
+
+    if error:
+        implementation = (
+            f"[LLM ERROR: {error}]"
+        )
+
+        review = (
+            "[SKIPPED - implementation "
+            "assessment failed]"
+        )
+
+    else:
+        _log(
+            tag,
+            "ADAPT",
+            "Running review model.",
+        )
+
+        review_prompt = (
+            shared_prompts
+            / "review"
+            / "rag_review_prompt.txt"
+        ).read_text(
+            encoding="utf-8"
+        ).strip()
+
+        reasoning_prompt = (
+            shared_prompts
+            / "review"
+            / "rag_reasoning_prompt.txt"
+        ).read_text(
+            encoding="utf-8"
+        ).strip()
+
+        review_system = (
+            f"{review_prompt}\n\n"
+            f"{reasoning_prompt}"
+        )
+
+        review_user = (
+            rag_pipeline
+            .build_review_prompt(
+                implementation,
+                evidence,
+            )
+        )
+
+        review, review_error = (
+            runner.call(
+                review_system,
+                review_user,
+                review=True,
+            )
+        )
+
+        if review_error:
+            review = (
+                f"[LLM ERROR: "
+                f"{review_error}]"
+            )
+
+    print(
+        "\nOBSERVE:\n"
+        f"{evidence}\n"
+    )
+
+    print(
+        "IMPLEMENTATION:\n"
+        f"{implementation}\n"
+    )
+
+    print(
+        "REVIEW:\n"
+        f"{review}\n"
+    )
+
+    report_path = (
+        reporter
+        .write_rag_validation_report(
+            repo_root,
+            evidence,
+            implementation,
+            review,
+        )
+    )
+
+    _log(
+        tag,
+        "RECORD",
+        f"Report written to {report_path}",
+    )
+
+    return (
+        f"RAG validation run complete.\n"
+        f"Report: {report_path}"
+    )
 
 def _run_architecture(cfg, app_dir, repo_root, registry, runner):
     tag = "ARCHITECTURE"
