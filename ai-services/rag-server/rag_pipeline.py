@@ -1040,16 +1040,22 @@ def read_corpus():
 # ============================================================
 
 def _hash_into(values, term, weight):
+    # Feature hashing: each term maps to ONE bucket across the whole
+    # vector, with a +/- sign to cancel collisions on average.
+    # (Spreading the 32 digest bytes over `index % size` only ever
+    # touched dimensions 0-31, so every term overlapped every other.)
     digest = hashlib.sha256(
         term.encode("utf-8")
     ).digest()
 
-    for index, byte in enumerate(digest):
-        vector_index = index % EMBED_VECTOR_SIZE
+    vector_index = (
+        int.from_bytes(digest[:4], "big")
+        % EMBED_VECTOR_SIZE
+    )
 
-        values[vector_index] += (
-            ((byte / 255.0) - 0.5) * weight
-        )
+    sign = 1.0 if digest[4] & 1 else -1.0
+
+    values[vector_index] += sign * weight
 
 
 def embed_texts(texts, idf=None):
