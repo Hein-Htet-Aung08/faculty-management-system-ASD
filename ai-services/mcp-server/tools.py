@@ -179,13 +179,75 @@ def call_feature_api(
 #
 # OWNER: Student 4
 #
-# Add Student 4 MCP tool implementation functions here.
+# Adapted from the Student 4 Release 1 MCP tools. Reads go through
+# STUDENT4_BACKEND_URL (the feature's own Flask backend) rather than
+# its database directly, per the shared convention above.
 #
-# Student 4 may adapt the MCP tool work already implemented in
-# their Release 1 branch into this shared server.
-#
-# Use STUDENT4_BACKEND_URL where appropriate.
-#
+
+def student4_project_count(department=None, status=None):
+    params = {k: v for k, v in {"department": department, "status": status}.items() if v is not None}
+    result = call_feature_api("GET", STUDENT4_BACKEND_URL, "/projects", params=params)
+    if result["status"] != "success":
+        return result
+    return {"status": "success", "data": {"count": len(result["data"])}}
+
+
+def student4_projects_by_department(department: str):
+    return call_feature_api(
+        "GET", STUDENT4_BACKEND_URL, "/projects", params={"department": department}
+    )
+
+
+def student4_project_grants_summary(project_id: int):
+    project_result = call_feature_api("GET", STUDENT4_BACKEND_URL, f"/projects/{project_id}")
+    if project_result["status"] != "success":
+        return project_result
+
+    grants_result = call_feature_api(
+        "GET", STUDENT4_BACKEND_URL, f"/projects/{project_id}/grants"
+    )
+    if grants_result["status"] != "success":
+        return grants_result
+
+    project = project_result["data"]
+    grants = grants_result["data"]
+    total_requested = sum(g.get("amountRequested") or 0 for g in grants)
+    total_awarded = sum(g.get("amountAwarded") or 0 for g in grants)
+
+    return {
+        "status": "success",
+        "data": {
+            "projectID": project_id,
+            "title": project.get("title"),
+            "grantCount": len(grants),
+            "totalRequested": total_requested,
+            "totalAwarded": total_awarded,
+            "grants": grants,
+        },
+    }
+
+
+def student4_research_history(department: str):
+    projects_result = call_feature_api(
+        "GET", STUDENT4_BACKEND_URL, "/projects", params={"department": department}
+    )
+    if projects_result["status"] != "success":
+        return projects_result
+
+    history = []
+    for project in projects_result["data"]:
+        project_id = project.get("projectID")
+        analyses_result = call_feature_api(
+            "GET", STUDENT4_BACKEND_URL, "/ai-analysis", params={"projectID": project_id}
+        )
+        summaries = []
+        if analyses_result["status"] == "success":
+            summaries = [
+                a["generatedSummary"] for a in analyses_result["data"] if a.get("generatedSummary")
+            ]
+        history.append({"projectID": project_id, "title": project.get("title"), "summaries": summaries})
+
+    return {"status": "success", "data": history}
 
 
 # ============================================================

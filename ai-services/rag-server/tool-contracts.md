@@ -61,9 +61,12 @@ TODO: Define Student 3 context sources and chunk contracts.
 
 ## Student 4 - Research & Grant Management
 
-Student 4 contributes research and grant context through `load_student4_context()`.
-
-TODO: Adapt existing Release 1 context-loading work to the shared RAG service.
+Student 4 contributes research and grant context through `load_student4_context()`, which reads
+from `STUDENT4_BACKEND_URL` (`/projects`, `/projects/<id>/grants`, `/projects/<id>/publications`)
+rather than the database directly, and resolves lead/publication staff names via
+`STUDENT1_BACKEND_URL`'s `/api/staff/<id>` (degrading to `staff ID <id> (name unavailable)` if
+that service is unreachable). Emits one `tier_1` chunk per project, grant and publication, plus a
+summary-counts chunk, all tagged `feature="research_grant_management"`, `student=4`.
 
 ## Student 5 - Performance & Professional Development
 
