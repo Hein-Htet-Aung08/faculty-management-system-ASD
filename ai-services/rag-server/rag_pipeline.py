@@ -1900,9 +1900,12 @@ def generate_with_ollama(
     query,
     results,
 ):
+    # llama3.1:8b by default: qwen2.5:0.5b often attributed facts to the
+    # wrong staff member or echoed the raw context instead of answering.
+    # Same model the agentic loop already uses. Override with OLLAMA_MODEL.
     model_name = os.getenv(
         "OLLAMA_MODEL",
-        "qwen2.5:0.5b",
+        "llama3.1:8b",
     )
 
     ollama_generate_url = os.getenv(
