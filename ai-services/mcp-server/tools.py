@@ -140,22 +140,91 @@ def call_feature_api(
 #
 # OWNER: Student 2 - Hein
 #
-# Add Student 2 MCP tool implementation functions here.
+# Student 2 MCP tools reuse the existing allocation backend/API.
+# Business rules remain inside the Student 2 feature backend rather
+# than being duplicated inside the shared MCP server.
 #
-# Existing Student 2 APIs that are suitable for MCP include:
-#
-# POST /teaching-allocations/validate
-# GET  /classrooms/available
-#
-# Initial planned MCP tools:
-#
-# student2_validate_teaching_allocation
-# student2_check_classroom_availability
-#
-# Use STUDENT2_BACKEND_URL.
-# Reuse Student 2 backend validation/business rules rather than
-# duplicating allocation logic inside this shared MCP service.
-#
+
+
+def student2_validate_teaching_allocation(
+    offer_id: str,
+    classroom_id: str,
+    day: str,
+    date_range: str,
+    start_time: str,
+    end_time: str,
+    class_type: str,
+    expected_class_size: int,
+    assigned_staff_member: int | None = None,
+    allocation_status: str | None = None,
+):
+    """
+    Validate a proposed teaching allocation using Student 2's
+    existing allocation validation rules.
+
+    This tool does not create or update an allocation.
+    """
+
+    allocation = {
+        "offer_id": offer_id,
+        "classroom_id": classroom_id,
+        "day": day,
+        "date_range": date_range,
+        "start_time": start_time,
+        "end_time": end_time,
+        "class_type": class_type,
+        "expected_class_size": expected_class_size,
+    }
+
+    if assigned_staff_member is not None:
+        allocation[
+            "assigned_staff_member"
+        ] = assigned_staff_member
+
+    if allocation_status is not None:
+        allocation[
+            "allocation_status"
+        ] = allocation_status
+
+    return call_feature_api(
+        "POST",
+        STUDENT2_BACKEND_URL,
+        "/teaching-allocations/validate",
+        json_body=allocation,
+    )
+
+
+def student2_check_classroom_availability(
+    classroom_id: str,
+    date: str,
+    year: int,
+    start_time: str,
+    end_time: str,
+):
+    """
+    Check whether one classroom is available for a specific
+    date and time using Student 2's existing scheduling rules.
+
+    This tool does not reserve or modify the classroom.
+    """
+
+    return call_feature_api(
+        "GET",
+        STUDENT2_BACKEND_URL,
+        "/classrooms/available",
+        params={
+            "classroom_id":
+                classroom_id,
+            "date":
+                date,
+            "year":
+                year,
+            "start_time":
+                start_time,
+            "end_time":
+                end_time,
+        },
+    )
 
 
 # ============================================================
