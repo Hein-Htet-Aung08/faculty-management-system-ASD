@@ -1,3 +1,5 @@
 flask==3.0.3
-openai  
-flask-cors==4.0.1 
+openai
+flask-cors==4.0.1
+requests==2.32.3
+mcp>=1.0.0,<2.0.0
