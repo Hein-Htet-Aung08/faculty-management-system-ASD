@@ -636,14 +636,78 @@ def load_student3_context():
     """
     OWNER: Student 3
 
-    Return RAG chunks for Workload and Availability Management.
-
-    Student 3 may adapt existing Release 1 work here.
-
-    Each returned item should use make_chunk(...).
+    Return RAG chunks for Workload and Availability Management, sourced
+    from the Student 3 backend/API (STUDENT3_BACKEND_URL) rather than
+    its database directly.
     """
 
-    return []
+    chunks = []
+
+    try:
+        profiles = call_feature_api(
+            "GET", STUDENT3_BACKEND_URL, "/api/staff-workload/profiles"
+        )
+    except requests.RequestException as exc:
+        print(f"[rag_pipeline] student3 backend unreachable: {exc}")
+        return chunks
+
+    chunks.append(
+        make_chunk(
+            chunk_id="student3_summary_counts",
+            source_id="student3/summary",
+            authority_tier="tier_1",
+            feature="workload_and_availability_management",
+            student=3,
+            text=(
+                f"The Workload and Availability Management feature currently "
+                f"tracks {len(profiles)} staff workload profile(s)."
+            ),
+        )
+    )
+
+    for profile in profiles:
+        staff_id = profile.get("staff_id")
+        text = (
+            f"Staff record: {profile.get('staff_name')} (staff ID {staff_id}), "
+            f"department {profile.get('department')}. "
+            f"Current workload: {profile.get('current_total_hours')}h of "
+            f"{profile.get('max_weekly_hours')}h cap. Status: {profile.get('status')}."
+        )
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student3_profile_{staff_id}",
+                source_id=f"student3/profiles/{staff_id}",
+                authority_tier="tier_1",
+                feature="workload_and_availability_management",
+                student=3,
+                text=text,
+            )
+        )
+
+    try:
+        alerts = call_feature_api(
+            "GET", STUDENT3_BACKEND_URL, "/api/staff-workload/alerts", params={"status": "open"}
+        )
+    except requests.RequestException:
+        alerts = []
+
+    for alert in alerts:
+        text = (
+            f"Open workload alert for staff ID {alert.get('staff_id')}: "
+            f"{alert.get('alert_type')} - {alert.get('message')}."
+        )
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student3_alert_{alert.get('alert_id')}",
+                source_id=f"student3/alerts/{alert.get('alert_id')}",
+                authority_tier="tier_1",
+                feature="workload_and_availability_management",
+                student=3,
+                text=text,
+            )
+        )
+
+    return chunks
 
 
 # ============================================================

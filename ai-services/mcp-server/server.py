@@ -102,9 +102,33 @@ AVAILABLE_TOOLS.append(
 #
 # OWNER: Student 3
 #
-# Register Student 3 shared-MCP tools here.
-# Adapt existing feature-specific MCP registrations as required.
-#
+
+@mcp.tool()
+def student3_staff_count(status: str | None = None, department: str | None = None):
+    return tools.student3_staff_count(status, department)
+
+AVAILABLE_TOOLS.append("student3_staff_count")
+
+
+@mcp.tool()
+def student3_staff_by_status(status: str):
+    return tools.student3_staff_by_status(status)
+
+AVAILABLE_TOOLS.append("student3_staff_by_status")
+
+
+@mcp.tool()
+def student3_staff_workload_detail(staff_id: int):
+    return tools.student3_staff_workload_detail(staff_id)
+
+AVAILABLE_TOOLS.append("student3_staff_workload_detail")
+
+
+@mcp.tool()
+def student3_open_alerts(department: str | None = None):
+    return tools.student3_open_alerts(department)
+
+AVAILABLE_TOOLS.append("student3_open_alerts")
 
 
 # ============================================================

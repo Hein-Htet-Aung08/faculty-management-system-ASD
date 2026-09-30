@@ -1,34 +1,31 @@
 import os
-
 import requests
 
-RAG_SERVICE_URL = os.getenv("RAG_SERVICE_URL", "http://localhost:5303")
-RAG_TIMEOUT = float(os.getenv("RAG_SERVICE_TIMEOUT", "180"))
+RAG_SERVER_URL = os.environ.get("RAG_SERVER_URL", "http://host.docker.internal:5200")
 
 
-def rag_enabled():
-    return os.getenv("RAG_ENABLED", "true").strip().lower() in ("1", "true", "on", "yes")
-
-
-def call_rag_service(path, payload):
-    response = requests.post(f"{RAG_SERVICE_URL}{path}", json=payload, timeout=RAG_TIMEOUT)
-
+def rag_ask(query: str, k: int = 5) -> dict:
     try:
-        data = response.json()
-    except ValueError:
-        response.raise_for_status()
-        return {}
-
-    if response.status_code >= 400:
-        raise requests.HTTPError(
-            f"rag-server {path} failed with status {response.status_code}: {data}",
-            response=response,
-        )
-
-    return data
+        resp = requests.post(f"{RAG_SERVER_URL}/answer", json={"query": query, "k": k}, timeout=120)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        return {"error": f"RAG server unavailable: {e}", "answer": None, "citations": [], "confidence_category": "unavailable"}
 
 
-def rag_service_health():
-    response = requests.get(f"{RAG_SERVICE_URL}/health", timeout=5)
-    response.raise_for_status()
-    return response.json()
+def rag_retrieve(query: str, k: int = 5) -> dict:
+    try:
+        resp = requests.post(f"{RAG_SERVER_URL}/retrieve", json={"query": query, "k": k}, timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        return {"error": f"RAG server unavailable: {e}", "results": []}
+
+
+def rag_refresh() -> dict:
+    try:
+        resp = requests.post(f"{RAG_SERVER_URL}/refresh", timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        return {"error": f"RAG server unavailable: {e}"}

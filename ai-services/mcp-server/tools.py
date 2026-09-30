@@ -267,12 +267,57 @@ def student1_search_staff_by_expertise(
 #
 # OWNER: Student 3
 #
-# Add Student 3 MCP tool implementation functions here.
+# Reads go through STUDENT3_BACKEND_URL (the feature's own Flask
+# backend, at its /api/staff-workload/* JSON endpoints) rather than
+# its database directly, per the shared convention above.
 #
-# Student 3 may adapt the MCP tool work already implemented in
-# their Release 1 branch into this shared server.
-#
-# Use STUDENT3_BACKEND_URL where appropriate.
+
+def student3_staff_count(status=None, department=None):
+    params = {k: v for k, v in {"status": status, "department": department}.items() if v}
+    result = call_feature_api(
+        "GET", STUDENT3_BACKEND_URL, "/api/staff-workload/profiles", params=params
+    )
+    if result["status"] != "success":
+        return result
+    return {"status": "success", "data": {"count": len(result["data"])}}
+
+
+def student3_staff_by_status(status: str):
+    return call_feature_api(
+        "GET", STUDENT3_BACKEND_URL, "/api/staff-workload/profiles", params={"status": status}
+    )
+
+
+def student3_staff_workload_detail(staff_id: int):
+    result = call_feature_api(
+        "GET", STUDENT3_BACKEND_URL, "/api/staff-workload/profiles"
+    )
+    if result["status"] != "success":
+        return result
+
+    match = next((row for row in result["data"] if row.get("staff_id") == staff_id), None)
+    if match is None:
+        return {"status": "error", "error": f"staff_id {staff_id} not found"}
+    return {"status": "success", "data": match}
+
+
+def student3_open_alerts(department: str | None = None):
+    result = call_feature_api(
+        "GET", STUDENT3_BACKEND_URL, "/api/staff-workload/alerts", params={"status": "open"}
+    )
+    if result["status"] != "success":
+        return result
+
+    alerts = result["data"]
+    if department:
+        profiles_result = call_feature_api(
+            "GET", STUDENT3_BACKEND_URL, "/api/staff-workload/profiles", params={"department": department}
+        )
+        if profiles_result["status"] == "success":
+            allowed_ids = {row["staff_id"] for row in profiles_result["data"]}
+            alerts = [a for a in alerts if a.get("staff_id") in allowed_ids]
+
+    return {"status": "success", "data": alerts}
 #
 
 

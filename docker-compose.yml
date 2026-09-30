@@ -144,8 +144,8 @@ services:
       OLLAMA_MODEL: qwen2.5:0.5b
       STAFF_SERVICE_URL: http://staff-backend:5001
       MCP_ENABLED: "true"
-      RAG_ENABLED: "true"
-      RAG_SERVICE_URL: http://host.docker.internal:5303
+      MCP_SERVER_URL: http://host.docker.internal:5201/mcp
+      RAG_SERVER_URL: http://host.docker.internal:5200
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
