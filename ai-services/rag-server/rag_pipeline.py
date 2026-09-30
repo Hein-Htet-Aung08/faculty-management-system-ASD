@@ -633,26 +633,545 @@ def load_student1_context():
 # Student 2 - Teaching, Subject & Classroom Allocation Context
 # ============================================================
 
+def _student2_resolve_staff(
+    staff_id,
+    cache,
+):
+    """
+    Resolve a Student 2 allocation staff ID through the
+    Student 1 Staff Management backend.
+
+    Staff Management remains the authority for staff identity.
+    If that service cannot be reached, preserve the staff ID
+    rather than failing the Student 2 RAG corpus refresh.
+    """
+
+    if staff_id is None:
+        return "unassigned"
+
+    if staff_id in cache:
+        return cache[
+            staff_id
+        ]
+
+    display = (
+        f"staff ID {staff_id}"
+    )
+
+    try:
+        staff = call_feature_api(
+            "GET",
+            STUDENT1_BACKEND_URL,
+            f"/api/staff/{staff_id}",
+        )
+
+        name = staff.get(
+            "name"
+        )
+
+        if name:
+            display = (
+                f"{name} "
+                f"(staff ID {staff_id})"
+            )
+
+    except requests.RequestException:
+        pass
+
+    cache[
+        staff_id
+    ] = display
+
+    return display
+
+
 def load_student2_context():
     """
     OWNER: Student 2 - Hein
 
-    Return RAG chunks for:
-    - subjects
-    - subject offers
-    - classrooms
-    - teaching allocations
+    Return RAG chunks for Teaching, Subject & Classroom
+    Allocation using data exposed through the Student 2
+    feature backend.
 
-    Use Student 2 backend/API data.
+    Chunks include:
+    - feature summary
+    - one chunk per subject
+    - one chunk per subject offer
+    - one chunk per classroom
+    - one chunk per teaching allocation
 
-    Each returned item should use make_chunk(...).
-
-    TODO:
-    Student 2 implementation will be added after the shared
-    RAG infrastructure has been merged.
+    The RAG service does not directly access the Student 2
+    database.
     """
 
-    return []
+    chunks = []
+
+    try:
+        context = call_feature_api(
+            "GET",
+            STUDENT2_BACKEND_URL,
+            "/api/rag/context",
+        )
+
+    except requests.RequestException as exc:
+        print(
+            "[rag_pipeline] "
+            "student2 backend unreachable: "
+            f"{exc}"
+        )
+
+        return chunks
+
+    subjects = context.get(
+        "subjects",
+        [],
+    )
+
+    offers = context.get(
+        "subject_offers",
+        [],
+    )
+
+    classrooms = context.get(
+        "classrooms",
+        [],
+    )
+
+    allocations = context.get(
+        "teaching_allocations",
+        [],
+    )
+
+    subject_by_code = {
+        subject.get(
+            "subject_code"
+        ): subject
+        for subject in subjects
+    }
+
+    offer_by_id = {
+        offer.get(
+            "offer_id"
+        ): offer
+        for offer in offers
+    }
+
+    classroom_by_id = {
+        classroom.get(
+            "classroom_id"
+        ): classroom
+        for classroom in classrooms
+    }
+
+    status_counts = {}
+
+    for allocation in allocations:
+        status = allocation.get(
+            "allocation_status",
+            "UNKNOWN",
+        )
+
+        status_counts[
+            status
+        ] = (
+            status_counts.get(
+                status,
+                0,
+            )
+            + 1
+        )
+
+    status_text = (
+        ", ".join(
+            f"{count} {status}"
+            for (
+                status,
+                count,
+            )
+            in sorted(
+                status_counts.items()
+            )
+        )
+        or "no allocations recorded"
+    )
+
+    chunks.append(
+        make_chunk(
+            chunk_id=
+                "student2_summary",
+
+            source_id=
+                "student2/summary",
+
+            authority_tier=
+                "tier_1",
+
+            feature=
+                "teaching_subject_and_classroom_allocation",
+
+            student=
+                2,
+
+            text=(
+                "Teaching, Subject & Classroom Allocation "
+                f"currently contains {len(subjects)} subject(s), "
+                f"{len(offers)} subject offer(s), "
+                f"{len(classrooms)} classroom(s), and "
+                f"{len(allocations)} teaching allocation(s). "
+                "Teaching allocation status counts: "
+                f"{status_text}."
+            ),
+
+            metadata={
+                "source_type":
+                    "summary",
+            },
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Subjects
+    # --------------------------------------------------------
+
+    for subject in subjects:
+        subject_code = subject.get(
+            "subject_code"
+        )
+
+        subject_name = subject.get(
+            "name"
+        )
+
+        required_expertise = (
+            subject.get(
+                "required_expertise"
+            )
+            or "none recorded"
+        )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=(
+                    "student2_subject_"
+                    f"{subject_code}"
+                ),
+
+                source_id=(
+                    "student2/subjects/"
+                    f"{subject_code}"
+                ),
+
+                authority_tier=
+                    "tier_1",
+
+                feature=
+                    "teaching_subject_and_classroom_allocation",
+
+                student=
+                    2,
+
+                text=(
+                    f"Subject {subject_code} is "
+                    f"{subject_name}. "
+                    "Required teaching expertise: "
+                    f"{required_expertise}."
+                ),
+
+                metadata={
+                    "source_type":
+                        "subject",
+
+                    "subject_code":
+                        subject_code,
+                },
+            )
+        )
+
+
+    # --------------------------------------------------------
+    # Subject Offers
+    # --------------------------------------------------------
+
+    for offer in offers:
+        offer_id = offer.get(
+            "offer_id"
+        )
+
+        subject_code = offer.get(
+            "subject_code"
+        )
+
+        subject = subject_by_code.get(
+            subject_code,
+            {},
+        )
+
+        subject_name = (
+            subject.get(
+                "name"
+            )
+            or "unknown subject"
+        )
+
+        semester = offer.get(
+            "semester"
+        )
+
+        year = offer.get(
+            "year"
+        )
+
+        expected_enrollment = (
+            offer.get(
+                "expected_enrollment"
+            )
+        )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=(
+                    "student2_offer_"
+                    f"{offer_id}"
+                ),
+
+                source_id=(
+                    "student2/subject-offers/"
+                    f"{offer_id}"
+                ),
+
+                authority_tier=
+                    "tier_1",
+
+                feature=
+                    "teaching_subject_and_classroom_allocation",
+
+                student=
+                    2,
+
+                text=(
+                    f"Subject offer {offer_id} is "
+                    f"{subject_name} "
+                    f"(subject {subject_code}), "
+                    f"offered in semester {semester} "
+                    f"{year}. "
+                    "Expected enrollment: "
+                    f"{expected_enrollment} students."
+                ),
+
+                metadata={
+                    "source_type":
+                        "subject_offer",
+
+                    "offer_id":
+                        offer_id,
+
+                    "subject_code":
+                        subject_code,
+                },
+            )
+        )
+
+
+    # --------------------------------------------------------
+    # Classrooms
+    # --------------------------------------------------------
+
+    for classroom in classrooms:
+        classroom_id = classroom.get(
+            "classroom_id"
+        )
+
+        building = classroom.get(
+            "building"
+        )
+
+        floor = classroom.get(
+            "floor"
+        )
+
+        room_number = classroom.get(
+            "room_number"
+        )
+
+        capacity = classroom.get(
+            "capacity"
+        )
+
+        room_type = classroom.get(
+            "room_type"
+        )
+
+        facilities = (
+            classroom.get(
+                "facilities"
+            )
+            or "none recorded"
+        )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=(
+                    "student2_classroom_"
+                    f"{classroom_id}"
+                ),
+
+                source_id=(
+                    "student2/classrooms/"
+                    f"{classroom_id}"
+                ),
+
+                authority_tier=
+                    "tier_1",
+
+                feature=
+                    "teaching_subject_and_classroom_allocation",
+
+                student=
+                    2,
+
+                text=(
+                    f"Classroom {classroom_id} is in "
+                    f"building {building}, floor {floor}, "
+                    f"room {room_number}. "
+                    f"Room type: {room_type}. "
+                    f"Capacity: {capacity} students. "
+                    f"Facilities: {facilities}."
+                ),
+
+                metadata={
+                    "source_type":
+                        "classroom",
+
+                    "classroom_id":
+                        classroom_id,
+                },
+            )
+        )
+
+
+    # --------------------------------------------------------
+    # Teaching Allocations
+    # --------------------------------------------------------
+
+    staff_cache = {}
+
+    for allocation in allocations:
+        allocation_id = allocation.get(
+            "allocation_id"
+        )
+
+        offer_id = allocation.get(
+            "offer_id"
+        )
+
+        classroom_id = allocation.get(
+            "classroom_id"
+        )
+
+        offer = offer_by_id.get(
+            offer_id,
+            {},
+        )
+
+        subject_code = offer.get(
+            "subject_code"
+        )
+
+        subject = subject_by_code.get(
+            subject_code,
+            {},
+        )
+
+        subject_name = (
+            subject.get(
+                "name"
+            )
+            or "unknown subject"
+        )
+
+        classroom = classroom_by_id.get(
+            classroom_id,
+            {},
+        )
+
+        assigned_staff = (
+            _student2_resolve_staff(
+                allocation.get(
+                    "assigned_staff_member"
+                ),
+                staff_cache,
+            )
+        )
+
+        classroom_type = (
+            classroom.get(
+                "room_type"
+            )
+            or "unknown room type"
+        )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=(
+                    "student2_allocation_"
+                    f"{allocation_id}"
+                ),
+
+                source_id=(
+                    "student2/teaching-allocations/"
+                    f"{allocation_id}"
+                ),
+
+                authority_tier=
+                    "tier_1",
+
+                feature=
+                    "teaching_subject_and_classroom_allocation",
+
+                student=
+                    2,
+
+                text=(
+                    f"Teaching allocation {allocation_id}: "
+                    f"{subject_name} "
+                    f"(subject {subject_code}, "
+                    f"offer {offer_id}) is assigned to "
+                    f"{assigned_staff}. "
+                    f"Classroom: {classroom_id} "
+                    f"({classroom_type}). "
+                    f"Schedule: {allocation.get('day')} "
+                    f"{allocation.get('date_range')}, "
+                    f"{allocation.get('start_time')} to "
+                    f"{allocation.get('end_time')}. "
+                    f"Class type: "
+                    f"{allocation.get('class_type')}. "
+                    f"Expected class size: "
+                    f"{allocation.get('expected_class_size')}. "
+                    f"Allocation status: "
+                    f"{allocation.get('allocation_status')}."
+                ),
+
+                metadata={
+                    "source_type":
+                        "teaching_allocation",
+
+                    "allocation_id":
+                        allocation_id,
+
+                    "offer_id":
+                        offer_id,
+
+                    "subject_code":
+                        subject_code,
+
+                    "classroom_id":
+                        classroom_id,
+                },
+            )
+        )
+
+    return chunks
 
 
 # ============================================================

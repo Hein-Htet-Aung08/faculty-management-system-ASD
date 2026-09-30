@@ -17,7 +17,12 @@ services:
       - ollama
     environment:
       - OLLAMA_HOST=http://ollama:11434
-    command: pull qwen2.5:0.5b
+    entrypoint: /bin/sh
+    command: 
+      - -c
+      - |
+        ollama pull qwen2.5:0.5b 
+        ollama pull llama3.1:8b
     networks:
       - faculty-network
     restart: "no"

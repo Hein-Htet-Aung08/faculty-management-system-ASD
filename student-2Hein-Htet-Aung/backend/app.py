@@ -19,6 +19,7 @@ from routes.classrooms import classrooms_bp
 from routes.allocations import allocations_bp
 from routes.ai_mode import ai_mode_bp
 from routes.mcp_mode import mcp_bp
+from routes.rag_source import rag_source_bp
 
 
 def create_app():
@@ -57,6 +58,10 @@ def create_app():
 
     app.register_blueprint(
         mcp_bp
+    )
+
+    app.register_blueprint(
+        rag_source_bp
     )
 
     return app
