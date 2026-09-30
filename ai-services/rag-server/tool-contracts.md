@@ -45,7 +45,18 @@ All student features contribute context to the same shared corpus.
 
 Student 1 contributes Staff Management context through `load_student1_context()` in `rag_pipeline.py`.
 
-TODO: Define Student 1 context sources and chunk contracts.
+- Source: Student 1 backend/API (`STUDENT1_BACKEND_URL`, default `http://localhost:5001`) — `GET /api/staff`, then per staff member `GET /api/staff/<id>`, `/expertise`, `/qualifications`, `/availability`. The staff database is never read directly.
+- Common fields: `feature` = `staff_management`, `student` = `1`, `authority_tier` = `tier_1`.
+
+| Chunk | `chunk_id` / `source_id` | Content |
+|---|---|---|
+| Staff profile | `student1_staff_<id>` / `student1/staff/<id>` | Name, position, employment type, department, status, expertise (skill level /5), qualifications |
+| Availability | `student1_availability_<id>` / `student1/staff/<id>/availability` | Day, time slot and status for each availability entry |
+| Department roster | `student1_department_<slug>` / `student1/departments/<slug>` | Staff in the department with position and status |
+| Summary | `student1_summary_counts` / `student1/summary` | Total staff, department count, headcount by status |
+
+- Excluded: email and phone (contact details are not needed for grounded answers).
+- Failure: if the backend is unreachable, the loader returns `[]` so the shared refresh still succeeds for other features.
 
 ## Student 2 - Teaching, Subject & Classroom Allocation
 

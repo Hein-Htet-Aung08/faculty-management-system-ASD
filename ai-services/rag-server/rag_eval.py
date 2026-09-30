@@ -18,17 +18,43 @@ METRICS_PATH = (
 # ============================================================
 
 STUDENT1_BENCHMARKS = [
-    # Add Student 1 benchmark queries here.
-    #
-    # Example structure:
-    #
-    # {
-    #     "query": "...",
-    #     "relevant_keywords": [
-    #         "...",
-    #     ],
-    #     "expected_relevant": 1,
-    # },
+    # Keywords match the seeded Staff Management data
+    # (student-1-Andy-Lam/database/seed.py).
+    {
+        "query": "Which staff member has expertise in machine learning?",
+        "relevant_keywords": [
+            "Machine Learning",
+        ],
+        "expected_relevant": 1,
+    },
+    {
+        "query": "What qualifications does Marcus Chen hold?",
+        "relevant_keywords": [
+            "PhD in Software Engineering",
+        ],
+        "expected_relevant": 1,
+    },
+    {
+        "query": "Who works in the Computer Science department?",
+        "relevant_keywords": [
+            "Computer Science",
+        ],
+        "expected_relevant": 3,
+    },
+    {
+        "query": "Which staff member is currently on leave?",
+        "relevant_keywords": [
+            "On Leave",
+        ],
+        "expected_relevant": 2,
+    },
+    {
+        "query": "When is Fatima Ali available to teach?",
+        "relevant_keywords": [
+            "Staff availability for Fatima Ali",
+        ],
+        "expected_relevant": 1,
+    },
 ]
 
 

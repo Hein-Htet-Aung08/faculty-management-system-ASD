@@ -299,18 +299,211 @@ def load_student1_context():
     """
     OWNER: Student 1
 
-    Return RAG chunks for Staff Management.
+    Return RAG chunks for Staff Management, sourced from the
+    Student 1 backend/API (STUDENT1_BACKEND_URL).
 
-    Each returned item should follow make_chunk(...).
+    Chunks produced:
+    - one profile per staff member (role, department, status,
+      expertise with skill level, qualifications)
+    - one availability schedule per staff member
+    - one staff roster per department
+    - one feature-wide summary of headcounts by status
 
-    Recommended source:
-    Student 1 backend/API.
-
-    TODO:
-    Replace this empty list with Student 1 feature context.
+    Contact details (email, phone) are deliberately excluded.
+    Returns [] if the backend is unreachable so one offline
+    feature does not break the shared corpus refresh.
     """
 
-    return []
+    try:
+        staff_rows = call_feature_api(
+            "GET",
+            STUDENT1_BACKEND_URL,
+            "/api/staff",
+        )
+
+    except requests.RequestException as exc:
+        print(
+            f"[rag_pipeline] student1 backend unreachable: {exc}"
+        )
+        return []
+
+    # /api/staff returns one row per staff/expertise pair,
+    # so de-duplicate while keeping order.
+    staff_ids = list(
+        dict.fromkeys(
+            row["staff_id"]
+            for row in staff_rows
+        )
+    )
+
+    chunks = []
+    departments = {}
+    status_counts = {}
+
+    for staff_id in staff_ids:
+        try:
+            staff = call_feature_api(
+                "GET",
+                STUDENT1_BACKEND_URL,
+                f"/api/staff/{staff_id}",
+            )
+            expertise = call_feature_api(
+                "GET",
+                STUDENT1_BACKEND_URL,
+                f"/api/staff/{staff_id}/expertise",
+            )
+            qualifications = call_feature_api(
+                "GET",
+                STUDENT1_BACKEND_URL,
+                f"/api/staff/{staff_id}/qualifications",
+            )
+            availability = call_feature_api(
+                "GET",
+                STUDENT1_BACKEND_URL,
+                f"/api/staff/{staff_id}/availability",
+            )
+
+        except requests.RequestException as exc:
+            print(
+                f"[rag_pipeline] student1 staff {staff_id} skipped: {exc}"
+            )
+            continue
+
+        name = staff["name"]
+        department = staff["department_name"]
+
+        departments.setdefault(
+            department,
+            [],
+        ).append(
+            f"{name} ({staff['position']}, {staff['status']})"
+        )
+
+        status_counts[staff["status"]] = (
+            status_counts.get(staff["status"], 0)
+            + 1
+        )
+
+        expertise_text = (
+            "; ".join(
+                f"{item['expertise_area']} "
+                f"(skill level {item['skill_level']}/5)"
+                for item in expertise
+            )
+            or "none recorded"
+        )
+
+        qualifications_text = (
+            "; ".join(
+                f"{item['qualification_name']}, "
+                f"{item['institution']} ({item['year_obtained']})"
+                for item in qualifications
+            )
+            or "none recorded"
+        )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student1_staff_{staff_id}",
+                source_id=f"student1/staff/{staff_id}",
+                authority_tier="tier_1",
+                feature="staff_management",
+                student=1,
+                text=(
+                    f"Staff profile: {name} (staff ID {staff_id}) is a "
+                    f"{staff['employment_type']} {staff['position']} in the "
+                    f"{department} department. "
+                    f"Employment status: {staff['status']}. "
+                    f"Expertise: {expertise_text}. "
+                    f"Qualifications: {qualifications_text}."
+                ),
+                metadata={
+                    "source_type": "staff_profile",
+                    "staff_id": staff_id,
+                },
+            )
+        )
+
+        availability_text = (
+            "; ".join(
+                f"{slot['day']} {slot['time_slot']}: "
+                f"{slot['availability_status']}"
+                for slot in availability
+            )
+            or "no availability recorded"
+        )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student1_availability_{staff_id}",
+                source_id=f"student1/staff/{staff_id}/availability",
+                authority_tier="tier_1",
+                feature="staff_management",
+                student=1,
+                text=(
+                    f"Staff availability for {name} ({staff['position']}, "
+                    f"{department}): {availability_text}."
+                ),
+                metadata={
+                    "source_type": "staff_availability",
+                    "staff_id": staff_id,
+                },
+            )
+        )
+
+    for department, members in departments.items():
+        slug = re.sub(
+            r"[^a-z0-9]+",
+            "_",
+            department.lower(),
+        ).strip("_")
+
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student1_department_{slug}",
+                source_id=f"student1/departments/{slug}",
+                authority_tier="tier_1",
+                feature="staff_management",
+                student=1,
+                text=(
+                    f"The {department} department has {len(members)} "
+                    f"staff member(s): {', '.join(members)}."
+                ),
+                metadata={
+                    "source_type": "department_roster",
+                    "department": department,
+                },
+            )
+        )
+
+    status_text = (
+        ", ".join(
+            f"{count} {status}"
+            for status, count in sorted(status_counts.items())
+        )
+        or "no staff recorded"
+    )
+
+    chunks.append(
+        make_chunk(
+            chunk_id="student1_summary_counts",
+            source_id="student1/summary",
+            authority_tier="tier_1",
+            feature="staff_management",
+            student=1,
+            text=(
+                f"The Staff Management feature currently records "
+                f"{len(staff_ids)} staff member(s) across "
+                f"{len(departments)} department(s). "
+                f"Staff by employment status: {status_text}."
+            ),
+            metadata={
+                "source_type": "summary",
+            },
+        )
+    )
+
+    return chunks
 
 
 # ============================================================
