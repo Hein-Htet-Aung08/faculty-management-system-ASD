@@ -5,7 +5,8 @@ RAG_SERVER_URL = os.environ.get("RAG_SERVER_URL", "http://host.docker.internal:5
 
 def rag_ask(query: str) -> dict:
     try:
-        resp = requests.post(f"{RAG_SERVER_URL}/answer", json={"query": query}, timeout=15)
+        # Grounded answers wait on the local LLM; the first call also loads the model
+        resp = requests.post(f"{RAG_SERVER_URL}/answer", json={"query": query}, timeout=120)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
