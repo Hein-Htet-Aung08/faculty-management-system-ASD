@@ -1,0 +1,19 @@
+CONTEXT NOTES
+
+This repository is a shared faculty management system. Five students each own one
+vertical microservice slice (frontend + backend API + database), living in
+sibling folders at the repo root:
+
+- student 1  - Staff Management
+- student 2  - Teaching Subject and Classroom Allocation
+- student 3  - Workload and Availability Management
+- student 4  - Research and Grant Management
+- student 5  - Performance and Professional Development
+
+Each backend is a Flask app. Each database is SQLite, either a plain file or
+wrapped by a small "database-service" HTTP API. A shared docker-compose.yml wires
+the services together with a shared Ollama container for AI features.
+
+The project specification requires every database table to hold at least 10
+seed records. The evidence below is generated live from the actual repository
+and running services - treat it as the only source of truth.

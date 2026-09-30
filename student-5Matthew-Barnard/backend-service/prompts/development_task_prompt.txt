@@ -1,0 +1,13 @@
+Return exactly one JSON object with these keys:
+{
+  "goalID": 1,
+  "recommendationType": "Training",
+  "recommendation": "Concrete recommended action",
+  "rationale": "Why the supplied evidence supports it"
+}
+
+Rules:
+- goalID must be one of the supplied goal IDs, or null when no goal applies.
+- recommendationType must be Training, Goal, Mentoring, or Experience.
+- If recommending training, use the exact title of a supplied training program.
+- Do not include Markdown or text outside the JSON object.

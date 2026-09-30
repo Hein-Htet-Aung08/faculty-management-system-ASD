@@ -4,14 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Research &amp; Grant Ledger</title>
-  <link rel="stylesheet" href="http://localhost:8000/css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.10/htmx.min.js"></script>
 </head>
 <body>
 
-  <header class="ledger-header">
-    <h1>Research &amp; Grant Ledger</h1>
-    <p class="subtitle">Faculty Management System — Research and Grant Management</p>
+  <header class="ledger-header feature-header">
+    <div>
+      <h1>Research &amp; Grant Ledger</h1>
+      <p class="subtitle">Faculty Management System — Research and Grant Management</p>
+    </div>
+    <div class="feature-actions">
+      <a class="btn secondary home-link" href="http://localhost:8000">&larr; All features</a>
+    </div>
 
     <nav class="tab-nav">
       <button
@@ -31,6 +36,24 @@
         onclick="setActiveTab(this)"
       >
         AI Insights
+      </button>
+      <button
+        class="tab-button"
+        hx-get="/tabs/mcp"
+        hx-target="#tab-content"
+        hx-swap="innerHTML"
+        onclick="setActiveTab(this)"
+      >
+        MCP Tools
+      </button>
+      <button
+        class="tab-button"
+        hx-get="/tabs/rag"
+        hx-target="#tab-content"
+        hx-swap="innerHTML"
+        onclick="setActiveTab(this)"
+      >
+        RAG
       </button>
     </nav>
   </header>

@@ -6,10 +6,15 @@ __pycache__/
 .venv/
 student-3Tristan-Lim/**/data/
 *.db
+venv
+.vscode
+vscode
 
-# Student 3 personal notes
-student-3Tristan-Lim/README.md
-
-# Student 3 RAG server - regenerable local vector index and audit log
-student-3Tristan-Lim/rag-server/chroma/
-student-3Tristan-Lim/rag-server/rag-audit.jsonl
+ai-services/agentic_loop/reports/
+ai-services/rag-server/corpus/
+ai-services/rag-server/chroma_db/
+ai-services/rag-server/rag-audit.jsonl
+ai-services/rag-server/corpus/
+ai-services/rag-server/chroma/
+ai-services/rag-server/chroma_db/
+ai-services/rag-server/rag-audit.jsonl

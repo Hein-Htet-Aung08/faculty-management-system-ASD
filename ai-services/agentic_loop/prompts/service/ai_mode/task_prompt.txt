@@ -1,0 +1,24 @@
+TASK
+
+Review target: {{REVIEW_TARGET}}
+
+Below is the static evidence collected from the real repository. Do not just
+summarise it - judge it.
+
+From what the evidence supports:
+- state whether the backend actually integrates with the shared Ollama
+  runtime, and if so, in which file
+- call out anything that is actually a problem, not just a fact - missing
+  error handling around the LLM call, no timeout, a hardcoded prompt instead
+  of an externalised template, or AI output that is generated but never
+  persisted are all real weaknesses
+- if no AI-Mode integration was found at all, say exactly that
+
+Then give 2-4 concrete, actionable recommendations, one category per bullet
+(see the output contract in your system prompt), each tied directly to a
+specific weakness you identified above. Omit a category if the evidence
+shows nothing wrong in it - do not pad the list to a fixed count.
+
+--- STATIC EVIDENCE ---
+{{VALIDATION_EVIDENCE}}
+--- END EVIDENCE ---

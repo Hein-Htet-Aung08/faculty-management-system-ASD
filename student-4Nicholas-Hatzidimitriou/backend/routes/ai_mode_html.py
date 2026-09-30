@@ -1,6 +1,8 @@
 from flask import Blueprint
 from services import database_api
 from services import staff_client
+from services import workload_client
+from services.rag_api import rag_retrieve
 from services.prompt_loader import load_prompt
 from services.llm_client import OLLAMA_MODEL, create_chat_completion
 
@@ -17,6 +19,13 @@ def generate_summary_html(project_id):
     publications = database_api.list_publications(project_id=project_id)
     pub_titles = [p["title"] for p in publications]
 
+    retrieved = rag_retrieve(project["title"])
+    retrieved_context = (
+        "\n".join(f"- {chunk.get('text', '')}" for chunk in retrieved)
+        if retrieved
+        else "No relevant historical context was found."
+    )
+
     try:
         system_prompt = load_prompt("generate_summary/system_prompt.txt")
         task_prompt = load_prompt("generate_summary/task_prompt.txt")
@@ -27,6 +36,7 @@ def generate_summary_html(project_id):
             department=project["department"],
             status=project["status"],
             publications=", ".join(pub_titles) if pub_titles else "None yet",
+            retrieved_context=retrieved_context,
         )
 
         final_prompt = f"""
@@ -162,7 +172,21 @@ def recommend_staff_html(project_id):
         name = s.get("name") or f"Staff #{s.get('staff_id')}"
         expertise = s.get("expertise_area", "unspecified")
         dept = s.get("department_name", "unspecified")
-        staff_roster_lines.append(f"- {name}, expertise: {expertise}, department: {dept}")
+
+        workload_note = "workload unknown"
+        workload = workload_client.get_workload_profile(s.get("staff_id"))
+        if workload:
+            status = workload.get("status", "unknown")
+            current = workload.get("current_total_hours")
+            capacity = workload.get("max_weekly_hours")
+            if current is not None and capacity is not None:
+                workload_note = f"workload: {status} ({current}/{capacity} hrs)"
+            else:
+                workload_note = f"workload: {status}"
+
+        staff_roster_lines.append(
+            f"- {name}, expertise: {expertise}, department: {dept}, {workload_note}"
+        )
 
     already_assigned_lines = []
     for s in all_staff:

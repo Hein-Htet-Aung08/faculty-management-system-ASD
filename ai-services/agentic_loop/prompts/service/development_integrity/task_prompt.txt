@@ -1,0 +1,20 @@
+TASK
+
+Review target: {{REVIEW_TARGET}}
+
+PLAN: Review whether development goal status and progress can contradict each
+other.
+
+OBSERVE: Judge only the collected evidence below. The disposable probe proves
+current validation behaviour. The live API count only describes stored data.
+
+ADAPT: If the probe is ACCEPTED, propose the focused validation change. If the
+probe is REJECTED, state that the adaptation is working and should be retained.
+Include the focused API test in either case. Do not claim a change was made by
+the review mode itself.
+
+Return one finding only and copy the complete probe line into Evidence.
+
+--- COLLECTED EVIDENCE ---
+{{INTEGRITY_EVIDENCE}}
+--- END EVIDENCE ---

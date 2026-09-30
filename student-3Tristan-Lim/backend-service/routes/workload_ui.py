@@ -91,6 +91,13 @@ def profile_by_staff():
         return fmt.message(f"database-service unreachable: {exc}", "error"), 503
     return fmt.format_profile_detail(timetable), 200
 
+@workload_bp.get("/profiles/<staff_id>/json")
+def profile_json(staff_id):
+    try:
+        timetable = db.get_timetable(staff_id)
+    except requests.RequestException as exc:
+        return jsonify({"error": str(exc)}), 503
+    return jsonify(timetable), 200
 
 @workload_bp.get("/overloads")
 def overloads():

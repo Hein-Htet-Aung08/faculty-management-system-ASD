@@ -1,10 +1,11 @@
 import os
-from openai import OpenAI
+from openai import APIConnectionError, APITimeoutError, OpenAI
  
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:0.5b")
+OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "30"))
  
-client = OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
+client = OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama", timeout=OLLAMA_TIMEOUT_SECONDS)
  
  
 def generate_response(task_prompt: str, system_prompt: str = None, max_tokens: int = 150) -> str:
@@ -15,17 +16,26 @@ def generate_response(task_prompt: str, system_prompt: str = None, max_tokens: i
     with real data substituted in).
     """
     messages = []
- 
+
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
- 
+
     messages.append({"role": "user", "content": task_prompt})
- 
-    response = client.chat.completions.create(
-        model=OLLAMA_MODEL,
-        messages=messages,
-        max_tokens=max_tokens,
-        temperature=0.1
-    )
- 
+
+    try:
+        response = client.chat.completions.create(
+            model=OLLAMA_MODEL,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=0.1
+        )
+    except APITimeoutError as e:
+        raise RuntimeError(
+            f"Ollama did not respond within {OLLAMA_TIMEOUT_SECONDS} seconds"
+        ) from e
+    except APIConnectionError as e:
+        raise RuntimeError(
+            f"Could not connect to Ollama at {OLLAMA_BASE_URL}"
+        ) from e
+
     return response.choices[0].message.content

@@ -1,0 +1,17 @@
+Review shared RAG output quality.
+
+Check:
+- retrieval relevance
+- citation quality
+- confidence justification
+- feature-source traceability
+- unsupported claims
+- insufficient-context behaviour
+
+Return exactly:
+
+Risk:
+Correction:
+Retest:
+
+Maximum 35 words.
