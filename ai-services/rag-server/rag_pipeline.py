@@ -1861,6 +1861,13 @@ Return a concise grounded answer.
                     prompt,
                 "stream":
                     False,
+                # Grounded answers should be repeatable, not creative.
+                # Ollama's default (0.8) let small models pick a
+                # different, wrong name from the same context.
+                "options": {
+                    "temperature":
+                        0,
+                },
             },
             timeout=120,
         )
