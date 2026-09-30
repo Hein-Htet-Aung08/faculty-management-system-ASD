@@ -521,3 +521,19 @@ table.ledger-table tbody tr:hover {
   font-family: var(--font-body);
   font-size: 0.82rem;
 }
+
+.mcp-result-panel {
+  background: var(--paper);
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-top: 1rem;
+  min-height: 3rem;
+  font-size: 0.95rem;
+}
+
+.mcp-result-panel:empty::before {
+  content: "MCP tool result will appear here.";
+  color: var(--line-strong);
+  font-style: italic;
+}

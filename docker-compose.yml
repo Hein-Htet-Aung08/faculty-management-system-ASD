@@ -92,6 +92,10 @@ services:
       - WORKLOAD_SERVICE_URL=http://student3-backend:5003
       - OLLAMA_BASE_URL=http://ollama:11434/v1
       - OLLAMA_MODEL=qwen2.5:0.5b
+      - MCP_ENABLED=true
+      - MCP_SERVER_URL=http://host.docker.internal:5201/mcp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - allocation-database
       - staff-backend
