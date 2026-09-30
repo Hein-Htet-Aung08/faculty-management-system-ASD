@@ -1,11 +1,31 @@
 name: Student 1 CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main, student-1-* ]
-    paths: [ 'student-1-Andy-Lam/**' ]
+    paths:
+      - 'student-1-Andy-Lam/**'
+      - 'ai-services/mcp-server/**'
+      - 'ai-services/rag-server/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/student-1-AndyLam.yml'
   pull_request:
-    paths: [ 'student-1-Andy-Lam/**' ]
+    paths:
+      - 'student-1-Andy-Lam/**'
+      - 'ai-services/mcp-server/**'
+      - 'ai-services/rag-server/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/student-1-AndyLam.yml'
+
+env:
+  STUDENT_DIR: student-1-Andy-Lam
+  # MCP and RAG integration stays in the code but is switched off in CI:
+  # the shared servers (and Ollama) run on a developer's machine, not here.
+  MCP_ENABLED: 'false'
+  RAG_ENABLED: 'false'
+  BACKEND_PORT: '5001'
+  FRONTEND_PORT: '8001'
 
 jobs:
   build-and-validate:
@@ -17,18 +37,88 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            student-1-Andy-Lam/backend/requirements.txt
+            ai-services/rag-server/requirements.txt
 
-      - name: Install backend dependencies
-        run: pip install -r student-1-Andy-Lam/backend/requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r "$STUDENT_DIR/backend/requirements.txt"
+          # Needed only to unit-test Student 1's loader inside the shared RAG pipeline
+          pip install -r ai-services/rag-server/requirements.txt
+          pip install pytest
 
       - name: Check backend imports correctly
-        run: python -c "import sys; sys.path.insert(0, 'student-1-Andy-Lam/backend'); import app"
+        run: python -c "import sys; sys.path.insert(0, '$STUDENT_DIR/backend'); import app"
+
+      - name: Run unit tests (MCP/RAG servers faked or disabled)
+        run: python -m pytest "$STUDENT_DIR/tests" -v
+
+      - name: Validate docker-compose MCP/RAG configuration
+        run: |
+          docker compose config --format json > compose.json
+          # Integration is retained: staff-backend is configured for the shared servers
+          jq -e '.services["staff-backend"].environment
+                 | .MCP_ENABLED == "true"
+                   and (.MCP_SERVER_URL | test("host.docker.internal:5201"))
+                   and .RAG_ENABLED == "true"
+                   and (.RAG_SERVER_URL | test("host.docker.internal:5200"))' compose.json
+          # AI-Mode, MCP and RAG must not be defined as compose services for this feature
+          jq -e '.services["staff-backend"].depends_on | keys == ["staff-database"]' compose.json
+          echo "PASS: staff-backend points at host MCP/RAG and depends only on its own database"
 
       - name: Build database Docker image
-        run: docker build -t staff-database student-1-Andy-Lam/database
+        run: docker build -t staff-database "$STUDENT_DIR/database"
 
       - name: Build backend Docker image
-        run: docker build -t staff-backend student-1-Andy-Lam/backend
+        run: docker build -t staff-backend "$STUDENT_DIR/backend"
 
       - name: Build frontend Docker image
-        run: docker build -t staff-frontend student-1-Andy-Lam/frontend
+        run: docker build -t staff-frontend "$STUDENT_DIR/frontend"
+
+      - name: Run containers and smoke test (MCP/RAG disabled)
+        run: |
+          set -euo pipefail
+
+          # Database image bakes a seeded staff.db; mounting an empty named
+          # volume copies it in, the same way docker-compose shares it.
+          docker volume create staff-ci-data
+          docker run --rm -v staff-ci-data:/app staff-database true
+
+          docker run -d --name staff-backend -p "$BACKEND_PORT:5001" \
+            -v staff-ci-data:/app/data -e DB_PATH=/app/data/staff.db \
+            -e MCP_ENABLED -e RAG_ENABLED staff-backend
+          docker run -d --name staff-frontend -p "$FRONTEND_PORT:80" staff-frontend
+
+          API="http://localhost:$BACKEND_PORT"
+          for attempt in $(seq 1 30); do
+            curl -fs "$API/api/departments" > /dev/null && break
+            sleep 1
+          done
+
+          echo "--- Release 0: seeded data served through the backend container"
+          curl -fs "$API/api/staff" | jq -e 'length >= 10'
+          curl -fs "$API/api/staff/1" | jq -e '.name == "John Smith"'
+
+          echo "--- Release 1: MCP/RAG reported disabled, routes refuse cleanly"
+          curl -fs "$API/api/ai-services/status" | jq -e '. == {"mcp_enabled": false, "rag_enabled": false}'
+          for route in mcp/staff-profile rag/ask; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+              -d '{"staff_id": 1, "question": "test"}' "$API/api/$route")
+            echo "POST /api/$route -> $code"
+            test "$code" = "503"
+          done
+
+          echo "--- Frontend container serves the page and AI Assistant panel"
+          curl -fs "http://localhost:$FRONTEND_PORT/" | grep -q 'id="ai-assistant"'
+          curl -fs "http://localhost:$FRONTEND_PORT/js/app.js" > /dev/null
+
+          echo "PASS: Student 1 containers run with MCP/RAG disabled"
+
+      - name: Container logs on failure
+        if: failure()
+        run: |
+          docker logs staff-backend || true
+          docker logs staff-frontend || true

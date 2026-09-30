@@ -392,18 +392,241 @@ def load_student1_context():
     """
     OWNER: Student 1
 
-    Return RAG chunks for Staff Management.
+    Return RAG chunks for Staff Management, sourced from the
+    Student 1 backend/API (STUDENT1_BACKEND_URL).
 
-    Each returned item should follow make_chunk(...).
+    Chunks produced:
+    - one profile per staff member (role, department, status,
+      expertise with skill level, qualifications)
+    - one availability schedule per staff member
+    - one staff roster per department
+    - one feature-wide summary of headcounts by status
 
-    Recommended source:
-    Student 1 backend/API.
-
-    TODO:
-    Replace this empty list with Student 1 feature context.
+    Contact details (email, phone) are deliberately excluded.
+    Returns [] if the backend is unreachable so one offline
+    feature does not break the shared corpus refresh.
     """
 
-    return []
+    try:
+        staff_rows = call_feature_api(
+            "GET",
+            STUDENT1_BACKEND_URL,
+            "/api/staff",
+        )
+
+    except requests.RequestException as exc:
+        print(
+            f"[rag_pipeline] student1 backend unreachable: {exc}"
+        )
+        return []
+
+    # /api/staff returns one row per staff/expertise pair,
+    # so de-duplicate while keeping order.
+    staff_ids = list(
+        dict.fromkeys(
+            row["staff_id"]
+            for row in staff_rows
+        )
+    )
+
+    chunks = []
+    departments = {}
+    status_members = {}
+
+    for staff_id in staff_ids:
+        try:
+            staff = call_feature_api(
+                "GET",
+                STUDENT1_BACKEND_URL,
+                f"/api/staff/{staff_id}",
+            )
+            expertise = call_feature_api(
+                "GET",
+                STUDENT1_BACKEND_URL,
+                f"/api/staff/{staff_id}/expertise",
+            )
+            qualifications = call_feature_api(
+                "GET",
+                STUDENT1_BACKEND_URL,
+                f"/api/staff/{staff_id}/qualifications",
+            )
+            availability = call_feature_api(
+                "GET",
+                STUDENT1_BACKEND_URL,
+                f"/api/staff/{staff_id}/availability",
+            )
+
+        except requests.RequestException as exc:
+            print(
+                f"[rag_pipeline] student1 staff {staff_id} skipped: {exc}"
+            )
+            continue
+
+        name = staff["name"]
+        department = staff["department_name"]
+
+        departments.setdefault(
+            department,
+            [],
+        ).append(name)
+
+        status_members.setdefault(
+            staff["status"],
+            [],
+        ).append(name)
+
+        expertise_text = (
+            "; ".join(
+                f"{item['expertise_area']} "
+                f"(skill level {item['skill_level']}/5)"
+                for item in expertise
+            )
+            or "none recorded"
+        )
+
+        qualifications_text = (
+            "; ".join(
+                f"{item['qualification_name']}, "
+                f"{item['institution']} ({item['year_obtained']})"
+                for item in qualifications
+            )
+            or "none recorded"
+        )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student1_staff_{staff_id}",
+                source_id=f"student1/staff/{staff_id}",
+                authority_tier="tier_1",
+                feature="staff_management",
+                student=1,
+                text=(
+                    f"Staff profile: {name} (staff ID {staff_id}) is a "
+                    f"{staff['employment_type']} {staff['position']} in the "
+                    f"{department} department. "
+                    f"Employment status: {staff['status']}. "
+                    f"Expertise: {expertise_text}. "
+                    f"Qualifications: {qualifications_text}."
+                ),
+                metadata={
+                    "source_type": "staff_profile",
+                    "staff_id": staff_id,
+                },
+            )
+        )
+
+        availability_text = (
+            "; ".join(
+                f"{slot['day']} {slot['time_slot']}: "
+                f"{slot['availability_status']}"
+                for slot in availability
+            )
+            or "no availability recorded"
+        )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student1_availability_{staff_id}",
+                source_id=f"student1/staff/{staff_id}/availability",
+                authority_tier="tier_1",
+                feature="staff_management",
+                student=1,
+                text=(
+                    f"Staff availability for {name} ({staff['position']}, "
+                    f"{department}): {availability_text}."
+                ),
+                metadata={
+                    "source_type": "staff_availability",
+                    "staff_id": staff_id,
+                },
+            )
+        )
+
+    for department, members in departments.items():
+        slug = re.sub(
+            r"[^a-z0-9]+",
+            "_",
+            department.lower(),
+        ).strip("_")
+
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student1_department_{slug}",
+                source_id=f"student1/departments/{slug}",
+                authority_tier="tier_1",
+                feature="staff_management",
+                student=1,
+                # Names only, kept short: this is the one chunk that
+                # answers "who is in X?" in full, and extra words
+                # dilute its similarity so single-person chunks
+                # outranked it. Avoids "has N staff member(s)", which
+                # matched the filler words of most questions.
+                text=(
+                    f"{department} department roster "
+                    f"({len(members)}): {', '.join(members)}."
+                ),
+                metadata={
+                    "source_type": "department_roster",
+                    "department": department,
+                },
+            )
+        )
+
+    # One roster per employment status, so "which staff are active /
+    # on leave?" has a single chunk holding the complete answer --
+    # otherwise top-k retrieval only surfaces a few individual profiles.
+    for status, members in sorted(status_members.items()):
+        slug = re.sub(
+            r"[^a-z0-9]+",
+            "_",
+            status.lower(),
+        ).strip("_")
+
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student1_status_{slug}",
+                source_id=f"student1/status/{slug}",
+                authority_tier="tier_1",
+                feature="staff_management",
+                student=1,
+                text=(
+                    f"{status} staff roster "
+                    f"({len(members)}): {', '.join(members)}."
+                ),
+                metadata={
+                    "source_type": "status_roster",
+                    "status": status,
+                },
+            )
+        )
+
+    status_text = (
+        ", ".join(
+            f"{len(members)} {status}"
+            for status, members in sorted(status_members.items())
+        )
+        or "no staff recorded"
+    )
+
+    chunks.append(
+        make_chunk(
+            chunk_id="student1_summary_counts",
+            source_id="student1/summary",
+            authority_tier="tier_1",
+            feature="staff_management",
+            student=1,
+            text=(
+                f"Staff Management totals: {len(staff_ids)} staff "
+                f"across {len(departments)} department(s). "
+                f"Headcount by employment status: {status_text}."
+            ),
+            metadata={
+                "source_type": "summary",
+            },
+        )
+    )
+
+    return chunks
 
 
 # ============================================================
@@ -911,16 +1134,22 @@ def read_corpus():
 # ============================================================
 
 def _hash_into(values, term, weight):
+    # Feature hashing: each term maps to ONE bucket across the whole
+    # vector, with a +/- sign to cancel collisions on average.
+    # (Spreading the 32 digest bytes over `index % size` only ever
+    # touched dimensions 0-31, so every term overlapped every other.)
     digest = hashlib.sha256(
         term.encode("utf-8")
     ).digest()
 
-    for index, byte in enumerate(digest):
-        vector_index = index % EMBED_VECTOR_SIZE
+    vector_index = (
+        int.from_bytes(digest[:4], "big")
+        % EMBED_VECTOR_SIZE
+    )
 
-        values[vector_index] += (
-            ((byte / 255.0) - 0.5) * weight
-        )
+    sign = 1.0 if digest[4] & 1 else -1.0
+
+    values[vector_index] += sign * weight
 
 
 def embed_texts(texts, idf=None):
@@ -1671,9 +1900,12 @@ def generate_with_ollama(
     query,
     results,
 ):
+    # llama3.1:8b by default: qwen2.5:0.5b often attributed facts to the
+    # wrong staff member or echoed the raw context instead of answering.
+    # Same model the agentic loop already uses. Override with OLLAMA_MODEL.
     model_name = os.getenv(
         "OLLAMA_MODEL",
-        "qwen2.5:0.5b",
+        "llama3.1:8b",
     )
 
     ollama_generate_url = os.getenv(
@@ -1726,6 +1958,13 @@ Return a concise grounded answer.
                     prompt,
                 "stream":
                     False,
+                # Grounded answers should be repeatable, not creative.
+                # Ollama's default (0.8) let small models pick a
+                # different, wrong name from the same context.
+                "options": {
+                    "temperature":
+                        0,
+                },
             },
             timeout=120,
         )
