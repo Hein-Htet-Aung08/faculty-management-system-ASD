@@ -9,3 +9,7 @@ student-3Tristan-Lim/**/data/
 
 # Student 3 personal notes
 student-3Tristan-Lim/README.md
+
+# Student 3 RAG server - regenerable local vector index and audit log
+student-3Tristan-Lim/rag-server/chroma/
+student-3Tristan-Lim/rag-server/rag-audit.jsonl
