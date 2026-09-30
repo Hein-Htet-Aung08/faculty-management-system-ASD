@@ -889,7 +889,7 @@ def load_student2_context():
         )
 
 
-    # --------------------------------------------------------
+        # --------------------------------------------------------
     # Subject Offers
     # --------------------------------------------------------
 
@@ -912,6 +912,13 @@ def load_student2_context():
                 "name"
             )
             or "unknown subject"
+        )
+
+        required_expertise = (
+            subject.get(
+                "required_expertise"
+            )
+            or "none recorded"
         )
 
         semester = offer.get(
@@ -952,11 +959,14 @@ def load_student2_context():
                 text=(
                     f"Subject offer {offer_id} is "
                     f"{subject_name} "
-                    f"(subject {subject_code}), "
-                    f"offered in semester {semester} "
+                    f"(subject {subject_code}). "
+                    f"It is offered in semester {semester} "
                     f"{year}. "
-                    "Expected enrollment: "
-                    f"{expected_enrollment} students."
+                    f"Expected enrollment: "
+                    f"{expected_enrollment} students. "
+                    f"Required teaching expertise for "
+                    f"{subject_name}: "
+                    f"{required_expertise}."
                 ),
 
                 metadata={
@@ -971,7 +981,6 @@ def load_student2_context():
                 },
             )
         )
-
 
     # --------------------------------------------------------
     # Classrooms
@@ -1050,7 +1059,7 @@ def load_student2_context():
         )
 
 
-    # --------------------------------------------------------
+        # --------------------------------------------------------
     # Teaching Allocations
     # --------------------------------------------------------
 
@@ -1090,6 +1099,33 @@ def load_student2_context():
             or "unknown subject"
         )
 
+        required_expertise = (
+            subject.get(
+                "required_expertise"
+            )
+            or "none recorded"
+        )
+
+        semester = (
+            offer.get(
+                "semester"
+            )
+            or "unknown semester"
+        )
+
+        year = (
+            offer.get(
+                "year"
+            )
+            or "unknown year"
+        )
+
+        expected_enrollment = (
+            offer.get(
+                "expected_enrollment"
+            )
+        )
+
         classroom = classroom_by_id.get(
             classroom_id,
             {},
@@ -1109,6 +1145,46 @@ def load_student2_context():
                 "room_type"
             )
             or "unknown room type"
+        )
+
+        classroom_capacity = (
+            classroom.get(
+                "capacity"
+            )
+        )
+
+        classroom_facilities = (
+            classroom.get(
+                "facilities"
+            )
+            or "none recorded"
+        )
+
+        classroom_building = (
+            classroom.get(
+                "building"
+            )
+            or "unknown building"
+        )
+
+        classroom_floor = (
+            classroom.get(
+                "floor"
+            )
+            or "unknown floor"
+        )
+
+        classroom_room_number = (
+            classroom.get(
+                "room_number"
+            )
+            or "unknown room"
+        )
+
+        expected_class_size = (
+            allocation.get(
+                "expected_class_size"
+            )
         )
 
         chunks.append(
@@ -1133,21 +1209,46 @@ def load_student2_context():
                     2,
 
                 text=(
-                    f"Teaching allocation {allocation_id}: "
-                    f"{subject_name} "
-                    f"(subject {subject_code}, "
-                    f"offer {offer_id}) is assigned to "
+                    f"Teaching allocation {allocation_id}. "
+
+                    f"Subject: {subject_name} "
+                    f"(subject {subject_code}). "
+
+                    f"Subject offer: {offer_id}, "
+                    f"semester {semester} {year}, "
+                    f"expected enrollment "
+                    f"{expected_enrollment} students. "
+
+                    f"Required teaching expertise: "
+                    f"{required_expertise}. "
+
+                    f"Assigned staff: "
                     f"{assigned_staff}. "
-                    f"Classroom: {classroom_id} "
-                    f"({classroom_type}). "
-                    f"Schedule: {allocation.get('day')} "
+
+                    f"Classroom: {classroom_id}, "
+                    f"{classroom_type}, "
+                    f"building {classroom_building}, "
+                    f"floor {classroom_floor}, "
+                    f"room {classroom_room_number}. "
+
+                    f"Classroom capacity: "
+                    f"{classroom_capacity} students. "
+
+                    f"Classroom facilities: "
+                    f"{classroom_facilities}. "
+
+                    f"Teaching session schedule: "
+                    f"{allocation.get('day')} "
                     f"{allocation.get('date_range')}, "
                     f"{allocation.get('start_time')} to "
                     f"{allocation.get('end_time')}. "
+
                     f"Class type: "
                     f"{allocation.get('class_type')}. "
+
                     f"Expected class size: "
-                    f"{allocation.get('expected_class_size')}. "
+                    f"{expected_class_size} students. "
+
                     f"Allocation status: "
                     f"{allocation.get('allocation_status')}."
                 ),
@@ -1167,6 +1268,206 @@ def load_student2_context():
 
                     "classroom_id":
                         classroom_id,
+                },
+            )
+        )
+
+    # --------------------------------------------------------
+    # Subject Allocation Summaries
+    # --------------------------------------------------------
+
+    allocations_by_subject = {}
+
+    for allocation in allocations:
+        offer_id = allocation.get(
+            "offer_id"
+        )
+
+        offer = offer_by_id.get(
+            offer_id,
+            {},
+        )
+
+        subject_code = offer.get(
+            "subject_code"
+        )
+
+        if not subject_code:
+            continue
+
+        allocations_by_subject.setdefault(
+            subject_code,
+            [],
+        ).append(
+            allocation
+        )
+
+
+    for (
+        subject_code,
+        subject_allocations,
+    ) in allocations_by_subject.items():
+
+        subject = subject_by_code.get(
+            subject_code,
+            {},
+        )
+
+        subject_name = (
+            subject.get(
+                "name"
+            )
+            or "unknown subject"
+        )
+
+        required_expertise = (
+            subject.get(
+                "required_expertise"
+            )
+            or "none recorded"
+        )
+
+        allocation_descriptions = []
+
+        for allocation in subject_allocations:
+            allocation_id = (
+                allocation.get(
+                    "allocation_id"
+                )
+            )
+
+            offer_id = (
+                allocation.get(
+                    "offer_id"
+                )
+            )
+
+            offer = offer_by_id.get(
+                offer_id,
+                {},
+            )
+
+            classroom_id = (
+                allocation.get(
+                    "classroom_id"
+                )
+            )
+
+            classroom = (
+                classroom_by_id.get(
+                    classroom_id,
+                    {},
+                )
+            )
+
+            assigned_staff = (
+                _student2_resolve_staff(
+                    allocation.get(
+                        "assigned_staff_member"
+                    ),
+                    staff_cache,
+                )
+            )
+
+            room_type = (
+                classroom.get(
+                    "room_type"
+                )
+                or "unknown room type"
+            )
+
+            capacity = (
+                classroom.get(
+                    "capacity"
+                )
+            )
+
+            facilities = (
+                classroom.get(
+                    "facilities"
+                )
+                or "none recorded"
+            )
+
+            expected_enrollment = (
+                offer.get(
+                    "expected_enrollment"
+                )
+            )
+
+            allocation_descriptions.append(
+                (
+                    f"Allocation {allocation_id}: "
+                    f"offer {offer_id}, "
+                    f"semester {offer.get('semester')} "
+                    f"{offer.get('year')}, "
+                    f"expected enrollment "
+                    f"{expected_enrollment}; "
+                    f"classroom {classroom_id}, "
+                    f"{room_type}, "
+                    f"capacity {capacity}, "
+                    f"facilities {facilities}; "
+                    f"schedule "
+                    f"{allocation.get('day')} "
+                    f"{allocation.get('date_range')} "
+                    f"{allocation.get('start_time')} to "
+                    f"{allocation.get('end_time')}; "
+                    f"class type "
+                    f"{allocation.get('class_type')}; "
+                    f"expected class size "
+                    f"{allocation.get('expected_class_size')}; "
+                    f"assigned staff {assigned_staff}; "
+                    f"status "
+                    f"{allocation.get('allocation_status')}."
+                )
+            )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=(
+                    "student2_subject_allocation_summary_"
+                    f"{subject_code}"
+                ),
+
+                source_id=(
+                    "student2/subjects/"
+                    f"{subject_code}/allocations"
+                ),
+
+                authority_tier=
+                    "tier_1",
+
+                feature=
+                    "teaching_subject_and_classroom_allocation",
+
+                student=
+                    2,
+
+                text=(
+                    f"Complete teaching allocation summary for "
+                    f"{subject_name} "
+                    f"(subject {subject_code}). "
+                    f"Required teaching expertise: "
+                    f"{required_expertise}. "
+                    f"This subject has "
+                    f"{len(subject_allocations)} "
+                    f"teaching allocation(s). "
+                    + " ".join(
+                        allocation_descriptions
+                    )
+                ),
+
+                metadata={
+                    "source_type":
+                        "subject_allocation_summary",
+
+                    "subject_code":
+                        subject_code,
+
+                    "allocation_count":
+                        len(
+                            subject_allocations
+                        ),
                 },
             )
         )
@@ -2447,25 +2748,40 @@ def generate_with_ollama(
     )
 
     prompt = f"""
-You are a retrieval-grounded assistant for a Faculty Management System.
+        You are a retrieval-grounded assistant for a Faculty Management System.
 
-Use ONLY the supplied context.
+        Use ONLY the supplied context.
 
-Do not invent facts.
-Do not use outside knowledge.
+        The retrieved context may contain both relevant and irrelevant chunks.
 
-If the context does not contain enough evidence to answer the question, return exactly:
+        Identify the evidence that directly relates to the question.
+        Ignore retrieved chunks that are unrelated to the entities or relationships
+        mentioned in the question.
 
-Insufficient context.
+        You may combine facts from multiple retrieved chunks when the context
+        explicitly shows that those facts refer to the same entity or to linked entities.
 
-QUESTION:
-{query}
+        Follow relationships only when they are supported by the supplied context.
+        Do not invent missing links.
+        Do not assume that every retrieved chunk is relevant.
+        Do not use outside knowledge.
 
-CONTEXT:
-{context}
+        If the supplied context contains enough evidence to answer the question,
+        provide a concise grounded answer.
 
-Return a concise grounded answer.
-""".strip()
+        If the supplied context does not contain enough evidence to answer the question,
+        return exactly:
+
+        Insufficient context.
+
+        QUESTION:
+        {query}
+
+        CONTEXT:
+        {context}
+
+        Return a concise grounded answer.
+        """.strip()
 
     try:
         response = requests.post(
