@@ -558,9 +558,13 @@ def load_student1_context():
                 authority_tier="tier_1",
                 feature="staff_management",
                 student=1,
+                # Worded as a roster rather than "has N staff member(s)":
+                # that phrasing matched the filler words of almost any
+                # "which staff member has..." question and outranked
+                # the profile that actually answered it.
                 text=(
-                    f"The {department} department has {len(members)} "
-                    f"staff member(s): {', '.join(members)}."
+                    f"{department} department roster ({len(members)}): "
+                    f"{', '.join(members)}."
                 ),
                 metadata={
                     "source_type": "department_roster",
@@ -585,10 +589,9 @@ def load_student1_context():
             feature="staff_management",
             student=1,
             text=(
-                f"The Staff Management feature currently records "
-                f"{len(staff_ids)} staff member(s) across "
-                f"{len(departments)} department(s). "
-                f"Staff by employment status: {status_text}."
+                f"Staff Management totals: {len(staff_ids)} staff "
+                f"across {len(departments)} department(s). "
+                f"Headcount by employment status: {status_text}."
             ),
             metadata={
                 "source_type": "summary",
