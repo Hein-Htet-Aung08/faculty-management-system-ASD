@@ -65,8 +65,85 @@ STUDENT1_BENCHMARKS = [
 STUDENT2_BENCHMARKS = [
     # OWNER: Student 2 - Hein
     #
-    # Add Student 2 RAG evaluation queries here after
-    # Student 2 context loading is implemented.
+    # Student 2 uses explicit gold chunk IDs because the corpus
+    # contains several joined representations of the same data.
+    # The gold chunks below represent the most appropriate evidence
+    # for each information need.
+
+    {
+        "query":
+            "What expertise is required for "
+            "Advanced Software Development?",
+
+        "relevant_chunk_ids": [
+            "student2_subject_41114",
+        ],
+    },
+
+    {
+        "query":
+            "What classroom is Advanced Software Development "
+            "taught in?",
+
+        "relevant_chunk_ids": [
+            "student2_allocation_4",
+            "student2_subject_allocation_summary_41114",
+        ],
+    },
+
+    {
+        "query":
+            "What expertise is required for the subject "
+            "allocated to classroom CB11.04.406?",
+
+        "relevant_chunk_ids": [
+            "student2_subject_allocation_summary_41114",
+            "student2_allocation_4",
+        ],
+    },
+
+    {
+        "query":
+            "When is Advanced Software Development taught, "
+            "which classroom is it in, and what facilities "
+            "does that room have?",
+
+        "relevant_chunk_ids": [
+            "student2_allocation_4",
+            "student2_subject_allocation_summary_41114",
+        ],
+    },
+
+    {
+        "query":
+            "What is the status of the Advanced Software "
+            "Development allocation and who is assigned to teach it?",
+
+        "relevant_chunk_ids": [
+            "student2_allocation_4",
+            "student2_subject_allocation_summary_41114",
+        ],
+    },
+
+    {
+        "query":
+            "What is the capacity and room type of "
+            "classroom CB10.02.301?",
+
+        "relevant_chunk_ids": [
+            "student2_classroom_CB10.02.301",
+        ],
+    },
+
+    {
+        "query":
+            "How many subjects, subject offers, classrooms "
+            "and teaching allocations are currently tracked?",
+
+        "relevant_chunk_ids": [
+            "student2_summary",
+        ],
+    },
 ]
 
 
@@ -182,19 +259,50 @@ def evaluate_query(
         )[:5]
     )
 
-    relevant = [
-        result
-        for result in results
-        if is_relevant(
-            result.get(
-                "text",
-                "",
-            ),
-            benchmark[
-                "relevant_keywords"
-            ],
+    expected_chunk_ids = (
+        benchmark.get(
+            "relevant_chunk_ids"
         )
-    ]
+    )
+
+    if expected_chunk_ids is not None:
+        expected_set = set(
+            expected_chunk_ids
+        )
+
+        relevant = [
+            result
+            for result in results
+            if result.get(
+                "chunk_id"
+            )
+            in expected_set
+        ]
+
+        expected_relevant = len(
+            expected_set
+        )
+
+    else:
+        relevant = [
+            result
+            for result in results
+            if is_relevant(
+                result.get(
+                    "text",
+                    "",
+                ),
+                benchmark[
+                    "relevant_keywords"
+                ],
+            )
+        ]
+
+        expected_relevant = (
+            benchmark[
+                "expected_relevant"
+            ]
+        )
 
     precision_at_5 = (
         len(relevant)
@@ -204,9 +312,7 @@ def evaluate_query(
     raw_recall_at_5 = (
         len(relevant)
         / max(
-            benchmark[
-                "expected_relevant"
-            ],
+            expected_relevant,
             1,
         )
     )
@@ -221,6 +327,7 @@ def evaluate_query(
             benchmark[
                 "query"
             ],
+
         "retrieved_chunk_ids":
             [
                 result.get(
@@ -229,6 +336,7 @@ def evaluate_query(
                 for result
                 in results
             ],
+
         "relevant_chunk_ids":
             [
                 result.get(
@@ -237,8 +345,10 @@ def evaluate_query(
                 for result
                 in relevant
             ],
+
         "p_at_5":
             precision_at_5,
+
         "r_at_5":
             recall_at_5,
     }
