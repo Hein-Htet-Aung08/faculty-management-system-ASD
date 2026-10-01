@@ -1,3 +1,7 @@
+import os
+
+from functools import wraps
+
 from flask import (
     Blueprint,
     jsonify,
@@ -17,9 +21,45 @@ rag_bp = Blueprint(
 )
 
 
+def _rag_mode_active():
+    return (
+        os.environ.get(
+            "RAG_ENABLED",
+            "false",
+        ).lower()
+        == "true"
+    )
+
+
+def require_rag_mode(
+    function,
+):
+    @wraps(function)
+    def wrapper(
+        *args,
+        **kwargs,
+    ):
+        if not _rag_mode_active():
+            return jsonify(
+                {
+                    "error":
+                        "RAG mode is off. "
+                        "The server needs RAG_ENABLED set to true."
+                }
+            ), 403
+
+        return function(
+            *args,
+            **kwargs,
+        )
+
+    return wrapper
+
+
 @rag_bp.post(
     "/rag/ask"
 )
+@require_rag_mode
 def ask():
     body = (
         request.get_json(
@@ -81,6 +121,7 @@ def ask():
 @rag_bp.post(
     "/rag/retrieve"
 )
+@require_rag_mode
 def retrieve():
     body = (
         request.get_json(
@@ -142,6 +183,7 @@ def retrieve():
 @rag_bp.post(
     "/rag/refresh"
 )
+@require_rag_mode
 def refresh():
     return jsonify(
         rag_refresh()
