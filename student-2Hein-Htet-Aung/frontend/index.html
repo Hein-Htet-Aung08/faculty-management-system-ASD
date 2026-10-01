@@ -1498,19 +1498,59 @@
                 </div>
 
 
-                <div class="form-field">
+                <div class="form-field span-2">
 
-                    <label for="mcp-staff-id">
-                        Staff ID
+                    <label for="mcp-staff-search">
+                        Assigned Staff
                     </label>
 
-                    <input
-                        id="mcp-staff-id"
-                        name="assigned_staff_member"
-                        type="number"
-                        min="1"
-                        placeholder="Optional"
-                    >
+                    <div class="staff-picker">
+
+                        <input
+                            id="mcp-staff-search"
+                            type="text"
+                            placeholder="Search staff by name..."
+                            autocomplete="off"
+                        >
+
+                        <input
+                            id="mcp-staff-id"
+                            name="assigned_staff_member"
+                            type="hidden"
+                        >
+
+                        <div
+                            id="mcp-staff-options"
+                            class="staff-picker-options"
+                            hidden
+                        ></div>
+
+                        <div
+                            id="mcp-selected-staff"
+                            class="selected-staff"
+                            hidden
+                        >
+
+                            <span
+                                id="mcp-selected-staff-label"
+                            ></span>
+
+                            <button
+                                id="mcp-clear-staff"
+                                class="btn secondary"
+                                type="button"
+                            >
+                                Clear selection
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <p class="staff-picker-hint">
+                        Optional. Leave unassigned if no staff member
+                        should be validated.
+                    </p>
 
                 </div>
 
