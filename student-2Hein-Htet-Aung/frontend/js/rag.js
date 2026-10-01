@@ -88,6 +88,88 @@ function ragRawJsonBlock(
 }
 
 
+function showRagRefresh(
+  panel,
+  data
+) {
+  clearRagPanel(
+    panel
+  );
+
+  if (
+    data.status !== "success"
+  ) {
+    showRagMessage(
+      panel,
+      data.error ||
+        "RAG refresh failed.",
+      "error-state"
+    );
+
+    return;
+  }
+
+  panel.innerHTML = `
+    <div class="tool-result-card">
+
+      <div class="tool-result-header">
+
+        <div>
+          <span class="tool-result-eyebrow">
+            RAG CORPUS
+          </span>
+
+          <h3>
+            Knowledge Base Refreshed
+          </h3>
+        </div>
+
+        <span class="stamp status-active">
+          Ready
+        </span>
+
+      </div>
+
+      <div class="result-fact-grid">
+
+        <div class="result-fact">
+          <span>Chunks Indexed</span>
+          <strong>
+            ${escapeRagHtml(
+              data.chunk_count
+            )}
+          </strong>
+        </div>
+
+        <div class="result-fact">
+          <span>Vector Store</span>
+          <strong>
+            ${escapeRagHtml(
+              data.vector_store_status ||
+              "Unknown"
+            )}
+          </strong>
+        </div>
+
+        <div class="result-fact">
+          <span>Collection</span>
+          <strong>
+            ${escapeRagHtml(
+              data.collection ||
+              "Unknown"
+            )}
+          </strong>
+        </div>
+
+      </div>
+
+      ${ragRawJsonBlock(data)}
+
+    </div>
+  `;
+}
+
+
 function showRagRetrieval(
   panel,
   data
@@ -110,7 +192,11 @@ function showRagRetrieval(
   }
 
   const results =
-    data.results || [];
+    Array.isArray(
+      data.results
+    )
+      ? data.results
+      : [];
 
   const cards =
     results
@@ -198,16 +284,16 @@ function showRagRetrieval(
 
         <div>
           <span class="tool-result-eyebrow">
-            RAG CORPUS
+            RAG RETRIEVAL
           </span>
 
           <h3>
-            Knowledge Base Refreshed
+            Retrieved Context
           </h3>
         </div>
 
         <span class="stamp status-active">
-          Ready
+          ${results.length} Results
         </span>
 
       </div>
@@ -215,35 +301,43 @@ function showRagRetrieval(
       <div class="result-fact-grid">
 
         <div class="result-fact">
-          <span>Chunks Indexed</span>
+          <span>Query</span>
           <strong>
             ${escapeRagHtml(
-              data.chunk_count
+              data.query
             )}
           </strong>
         </div>
 
         <div class="result-fact">
-          <span>Vector Store</span>
+          <span>Retrieval Mode</span>
           <strong>
             ${escapeRagHtml(
-              data.vector_store_status ||
+              data.retrieval_mode ||
               "Unknown"
             )}
           </strong>
         </div>
 
         <div class="result-fact">
-          <span>Collection</span>
+          <span>Requested Chunks</span>
           <strong>
             ${escapeRagHtml(
-              data.collection ||
-              "Unknown"
+              data.k
             )}
           </strong>
         </div>
 
       </div>
+
+      ${
+        cards ||
+        `
+          <p class="empty-state">
+            No relevant context was retrieved.
+          </p>
+        `
+      }
 
       ${ragRawJsonBlock(data)}
 
@@ -430,7 +524,7 @@ if (
             }
           );
 
-        showRagRetrieval(
+        showRagRefresh(
           panel,
           data
         );
@@ -504,7 +598,7 @@ if (
             }
           );
 
-        showRagJson(
+        showRagRetrieval(
           panel,
           data
         );
