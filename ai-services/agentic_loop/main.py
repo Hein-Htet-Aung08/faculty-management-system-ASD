@@ -10,10 +10,20 @@ MENU_TO_MODE = {
     "2": "endpoints",
     "3": "architecture",
     "4": "ai_mode",
-    "6": "development_integrity",
+    "5": "development_integrity",
+    "6": "mcp",
     "7": "rag",
 }
-MODE_ORDER = ["db", "endpoints", "architecture", "ai_mode", "development_integrity", "rag",]
+
+MODE_ORDER = [
+    "db",
+    "endpoints",
+    "architecture",
+    "ai_mode",
+    "development_integrity",
+    "mcp",
+    "rag",
+]
 
 
 def _load_env(env_path: Path) -> None:
@@ -57,7 +67,7 @@ def main() -> None:
             print("Exiting.")
             return
 
-        if choice == "5":
+        if choice == "8":
             for mode_key in MODE_ORDER:
                 print(reporter.divider())
                 print(run_mode(mode_key, str(APP_DIR), str(REPO_ROOT)))

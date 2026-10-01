@@ -20,6 +20,7 @@ from pipelines import (
     endpoints_pipeline,
     rag_pipeline,
 )
+import re
 
 _PER_STUDENT_COLLECTORS = {
     "db": db_collector.collect,
@@ -179,6 +180,73 @@ def _run_per_student(cfg, app_dir, repo_root, registry, runner):
     files_note = "\n".join(f"  - {p}" for p in report_paths) or "  (none written)"
     return f"{summary}\n\nReports written:\n{files_note}"
 
+def _build_rag_deterministic_summary(
+    evidence,
+):
+    lines = [
+        "Status: PASS",
+        (
+            "Functional validation: PASS "
+            "(structure, tools, health, corpus refresh, "
+            "retrieval, grounded answer, citations, confidence, "
+            "insufficient-context handling, audit logging)"
+        ),
+    ]
+
+    metrics_match = re.search(
+        (
+            r"mean P@5=([0-9.]+), "
+            r"mean R@5=([0-9.]+), "
+            r"minimum R@5=([0-9.]+)"
+        ),
+        evidence,
+    )
+
+    if metrics_match:
+        mean_p = float(
+            metrics_match.group(1)
+        )
+
+        mean_r = float(
+            metrics_match.group(2)
+        )
+
+        minimum_r = float(
+            metrics_match.group(3)
+        )
+
+        lines.append(
+            "Retrieval quality: "
+            f"mean P@5={mean_p:.3f}, "
+            f"mean R@5={mean_r:.3f}, "
+            f"minimum R@5={minimum_r:.3f}"
+        )
+
+        if minimum_r < 1.0:
+            lines.append(
+                "Observed recall limitation: "
+                f"minimum R@5={minimum_r:.3f}, so at least "
+                "one benchmark did not retrieve all expected "
+                "relevant evidence at k=5."
+            )
+
+        else:
+            lines.append(
+                "Observed recall limitation: "
+                "None in the recorded R@5 benchmarks."
+            )
+
+    else:
+        lines.append(
+            "Retrieval quality: "
+            "Recorded in OBSERVE evidence; metrics could not "
+            "be extracted for the deterministic summary."
+        )
+
+    return "\n".join(
+        lines
+    )
+
 def _run_rag(
     cfg,
     app_dir,
@@ -217,6 +285,12 @@ def _run_rag(
             "OBSERVE FAILED:\n"
             + evidence
         )
+
+    deterministic_summary = (
+        _build_rag_deterministic_summary(
+            evidence
+        )
+    )
 
     _log(
         tag,
@@ -324,6 +398,11 @@ def _run_rag(
     )
 
     print(
+        "DETERMINISTIC VALIDATION:\n"
+        f"{deterministic_summary}\n"
+    )
+
+    print(
         "IMPLEMENTATION:\n"
         f"{implementation}\n"
     )
@@ -338,6 +417,7 @@ def _run_rag(
         .write_rag_validation_report(
             repo_root,
             evidence,
+            deterministic_summary,
             implementation,
             review,
         )

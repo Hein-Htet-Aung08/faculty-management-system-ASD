@@ -1,11 +1,13 @@
-Review the implementation assessment against the supplied evidence.
+Review the assessment against ONLY the supplied deterministic RAG evidence.
 
-Do not introduce facts that are not present in the evidence.
+Rules:
+1. Checks marked PASS are authoritative.
+2. Do not discuss production readiness.
+3. Do not invent acceptable thresholds.
+4. If retrieval metrics are below 1.0, ensure the assessment acknowledges them.
+5. Do not add explanations before or after the required output.
+6. Return EXACTLY three lines.
 
-Return exactly:
-
-Risk: <contradiction or unsupported conclusion, or "None observed">
-Correction: <required correction, or "None">
-Retest: <specific validation to rerun, or "No additional retest required">
-
-Maximum 50 words.
+Risk: <specific contradiction or overlooked evidence, or "None observed">
+Correction: <specific correction, or "None">
+Retest: <specific evidence-based retest, or "No additional retest required">

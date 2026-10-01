@@ -11,6 +11,42 @@ REQUIRED_RAG_TOOLS = (
     "answer_question",
 )
 
+VALID_CONFIDENCE = {
+    "Low",
+    "Medium",
+    "High",
+}
+
+
+def _post_json(
+    base_url,
+    path,
+    payload,
+    timeout,
+):
+    response = requests.post(
+        f"{base_url}{path}",
+        json=payload,
+        timeout=timeout,
+    )
+
+    response.raise_for_status()
+
+    return response.json()
+
+
+def _line_count(
+    path,
+):
+    if not path.is_file():
+        return 0
+
+    return len(
+        path.read_text(
+            encoding="utf-8",
+        ).splitlines()
+    )
+
 
 def collect(
     app_dir,
@@ -95,17 +131,33 @@ def collect(
         )
     )
 
-    p_at_5 = re.findall(
-        r"P@5:\s*([0-9.]+)",
+    benchmark_queries = re.findall(
+        r"^## (.+)$",
         metrics_text,
+        flags=re.MULTILINE,
     )
 
-    r_at_5 = re.findall(
-        r"R@5:\s*([0-9.]+)",
-        metrics_text,
-    )
+    p_at_5 = [
+        float(value)
+        for value in re.findall(
+            r"P@5:\s*([0-9.]+)",
+            metrics_text,
+        )
+    ]
 
-    if not p_at_5 or not r_at_5:
+    r_at_5 = [
+        float(value)
+        for value in re.findall(
+            r"R@5:\s*([0-9.]+)",
+            metrics_text,
+        )
+    ]
+
+    if (
+        not benchmark_queries
+        or not p_at_5
+        or not r_at_5
+    ):
         return (
             False,
             "RAG retrieval metrics are missing.",
@@ -115,6 +167,17 @@ def collect(
         "RAG_SERVER_URL",
         "http://localhost:5200",
     ).rstrip("/")
+
+    audit_path = (
+        rag_dir
+        / "rag-audit.jsonl"
+    )
+
+    audit_before = (
+        _line_count(
+            audit_path
+        )
+    )
 
     try:
         response = requests.get(
@@ -126,48 +189,148 @@ def collect(
 
         health = response.json()
 
-    except requests.RequestException as exc:
+    except (
+        requests.RequestException,
+        ValueError,
+    ) as exc:
         return (
             False,
-            "RAG server is not reachable: "
+            "RAG health validation failed: "
             f"{exc}",
         )
 
-    evidence = (
-        "RAG VALIDATION EVIDENCE\n"
-        f"- Live service: {rag_url}\n"
-        f"- Health: {health}\n"
-        "- Required tools present: "
-        "refresh_corpus, retrieve_context, answer_question\n"
-        "- Grounding contract present: citations, confidence category, "
-        "insufficient-context handling\n"
-        f"- Retrieval metrics recorded: {len(p_at_5)} P@5 values and "
-        f"{len(r_at_5)} R@5 values\n"
-        "- Required RAG implementation files are present."
+    if (
+        health.get("status")
+        != "ok"
+    ):
+        return (
+            False,
+            "RAG health endpoint did not "
+            "report status=ok.",
+        )
+
+    try:
+        refresh_result = _post_json(
+            rag_url,
+            "/refresh",
+            {
+                "caller":
+                    "agentic-rag-validation",
+            },
+            30,
+        )
+
+    except (
+        requests.RequestException,
+        ValueError,
+    ) as exc:
+        return (
+            False,
+            "RAG corpus refresh validation failed: "
+            f"{exc}",
+        )
+
+    if (
+        refresh_result.get("status")
+        != "success"
+    ):
+        return (
+            False,
+            "RAG corpus refresh returned "
+            "a non-success result.",
+        )
+
+    if (
+        refresh_result.get(
+            "chunk_count",
+            0,
+        )
+        <= 0
+    ):
+        return (
+            False,
+            "RAG corpus refresh produced "
+            "zero chunks.",
+        )
+
+    if (
+        refresh_result.get(
+            "vector_store_status"
+        )
+        != "ready"
+    ):
+        return (
+            False,
+            "RAG vector store did not "
+            "report ready status.",
+        )
+
+    validation_query = (
+        benchmark_queries[0]
     )
 
     try:
-        answer_response = requests.post(
-            f"{rag_url}/answer",
-            json={
+        retrieve_result = _post_json(
+            rag_url,
+            "/retrieve",
+            {
                 "query":
-                    "What expertise is required for "
-                    "Advanced Software Development?",
+                    validation_query,
                 "k":
                     5,
                 "caller":
                     "agentic-rag-validation",
             },
-            timeout=120,
+            15,
         )
 
-        answer_response.raise_for_status()
-
-        answer_result = (
-            answer_response.json()
+    except (
+        requests.RequestException,
+        ValueError,
+    ) as exc:
+        return (
+            False,
+            "RAG retrieval validation failed: "
+            f"{exc}",
         )
 
-    except requests.RequestException as exc:
+    retrieved = (
+        retrieve_result.get(
+            "results",
+            [],
+        )
+    )
+
+    if (
+        retrieve_result.get("status")
+        != "success"
+        or not retrieved
+    ):
+        return (
+            False,
+            "RAG retrieval returned "
+            "no validation evidence.",
+        )
+
+    try:
+        answer_result = _post_json(
+            rag_url,
+            "/answer",
+            {
+                "query":
+                    validation_query,
+                "k":
+                    5,
+                "caller":
+                    "agentic-rag-validation",
+            },
+            120,
+        )
+
+    except (
+        requests.RequestException,
+        ValueError,
+    ) as exc:
         return (
             False,
             "Live RAG answer validation failed: "
@@ -184,6 +347,14 @@ def collect(
             "a non-success result.",
         )
 
+    answer = (
+        answer_result.get(
+            "answer",
+            "",
+        )
+        .strip()
+    )
+
     citations = (
         answer_result.get(
             "citations",
@@ -197,12 +368,16 @@ def collect(
         )
     )
 
-    answer = (
-        answer_result.get(
-            "answer",
-            ""
+    if (
+        not answer
+        or answer
+        == "Insufficient context."
+    ):
+        return (
+            False,
+            "Positive grounded-answer test "
+            "did not produce an answer.",
         )
-    )
 
     if not citations:
         return (
@@ -211,73 +386,124 @@ def collect(
             "without citations.",
         )
 
-    if not confidence:
+    for citation in citations:
+        if (
+            not citation.get(
+                "chunk_id"
+            )
+            or not citation.get(
+                "source_id"
+            )
+        ):
+            return (
+                False,
+                "A RAG citation is missing "
+                "chunk or source identity.",
+            )
+
+    if (
+        confidence
+        not in VALID_CONFIDENCE
+    ):
         return (
             False,
             "Live grounded answer returned "
-            "without confidence.",
+            "an invalid confidence category.",
         )
 
+    negative_query = (
+        "zzzz_agentic_validation_"
+        "no_matching_context_987654321"
+    )
+
     try:
-        insufficient_response = requests.post(
-            f"{rag_url}/answer",
-            json={
+        insufficient_result = _post_json(
+            rag_url,
+            "/answer",
+            {
                 "query":
-                    "What colour is the university "
-                    "mascot's private helicopter?",
+                    negative_query,
                 "k":
                     5,
                 "caller":
                     "agentic-rag-validation",
             },
-            timeout=120,
+            120,
         )
 
-        insufficient_response.raise_for_status()
-
-        insufficient_result = (
-            insufficient_response.json()
-        )
-
-    except requests.RequestException as exc:
+    except (
+        requests.RequestException,
+        ValueError,
+    ) as exc:
         return (
             False,
             "Insufficient-context validation failed: "
             f"{exc}",
         )
 
-    insufficient_answer = (
-        insufficient_result.get(
-            "answer",
-            ""
-        )
-    )
-
     if (
-        insufficient_answer
+        insufficient_result.get(
+            "answer"
+        )
         != "Insufficient context."
     ):
         return (
             False,
             "RAG failed insufficient-context test. "
-            f"Returned: {insufficient_answer}"
+            f"Returned: "
+            f"{insufficient_result.get('answer')}"
         )
+
+    audit_after = (
+        _line_count(
+            audit_path
+        )
+    )
+
+    if (
+        audit_after
+        <= audit_before
+    ):
+        return (
+            False,
+            "RAG validation completed but "
+            "no new audit records were written.",
+        )
+
+    mean_p = (
+        sum(p_at_5)
+        / len(p_at_5)
+    )
+
+    mean_r = (
+        sum(r_at_5)
+        / len(r_at_5)
+    )
 
     evidence = (
         "RAG VALIDATION EVIDENCE\n"
-        f"- Live service: {rag_url}\n"
-        f"- Health: {health}\n"
-        "- Required tools present: "
-        "refresh_corpus, retrieve_context, answer_question\n"
-        "- Grounding contract present: citations, confidence category, "
-        "insufficient-context handling\n"
-        f"- Retrieval metrics recorded: {len(p_at_5)} P@5 values and "
-        f"{len(r_at_5)} R@5 values\n"
-        f"- Live grounded answer: {answer}\n"
-        f"- Live citations returned: {len(citations)}\n"
-        f"- Live confidence category: {confidence}\n"
-        "- Insufficient-context test: PASS\n"
-        "- Required RAG implementation files are present."
+        "- Structural files: PASS\n"
+        "- Required tools: PASS "
+        "(refresh_corpus, retrieve_context, answer_question)\n"
+        f"- Live health: PASS ({health})\n"
+        "- Corpus refresh: PASS "
+        f"({refresh_result.get('chunk_count')} chunks, "
+        "vector store ready)\n"
+        "- Retrieval: PASS "
+        f"({len(retrieved)} chunk(s), "
+        f"mode={retrieve_result.get('retrieval_mode')})\n"
+        f"- Validation query: {validation_query}\n"
+        f"- Grounded answer: {answer}\n"
+        f"- Citations: PASS ({len(citations)} returned)\n"
+        f"- Confidence: PASS ({confidence})\n"
+        "- Insufficient-context behaviour: PASS\n"
+        "- Audit logging: PASS "
+        f"({audit_after - audit_before} new record(s))\n"
+        "- Retrieval metrics: "
+        f"{len(p_at_5)} benchmark(s), "
+        f"mean P@5={mean_p:.3f}, "
+        f"mean R@5={mean_r:.3f}, "
+        f"minimum R@5={min(r_at_5):.3f}"
     )
 
     return True, evidence
