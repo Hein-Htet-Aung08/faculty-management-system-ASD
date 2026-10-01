@@ -28,12 +28,13 @@ Nginx frontend -- /api --> Flask backend :5005 --> Database service :5105 --> SQ
                                   |
                                   +--> Shared Ollama service :11434
                                   +--> Shared local MCP server :5201
+                                  +--> Shared local RAG server :5200
 ```
 
 The frontend is served by Nginx, which also sends `/api` requests to the
 backend. The backend handles the feature logic and communicates with the
-database and Ollama services. Only the database service directly accesses the
-SQLite database.
+database, Ollama, MCP and RAG services. Only the database service directly
+accesses the SQLite database.
 
 When the full group application is running, the backend also gets staff names
 and details from the Staff Management service. If that service is unavailable,
@@ -138,13 +139,29 @@ corpus. From the repository root, install the RAG requirements, then run:
 ```powershell
 python -m pip install -r ai-services/rag-server/requirements.txt
 Set-Location ai-services/rag-server
-python rag_pipeline.py
+python rag_http_server.py
 ```
 
 `STUDENT5_BACKEND_URL` defaults to `http://localhost:5005` and can be set to a
 different backend address. The loader skips Student 5 context when a required
 feature API is unavailable; refresh the corpus again after the backend starts.
 The six Student 5 retrieval questions are in `ai-services/rag-server/rag_eval.py`.
+
+The RAG Questions tab sends requests through `POST /api/rag/ask` on this
+feature's backend. The backend calls the shared local RAG service and returns
+the grounded answer, citations and confidence category. The tab also has a
+Refresh context button, which calls `POST /api/rag/refresh` after records
+change. The shared HTTP server listens at `http://localhost:5200`; the
+integrated Compose deployment connects the backend through
+`host.docker.internal`. For a backend running directly on the host, set
+`RAG_ENABLED=true` and `RAG_SERVER_URL=http://localhost:5200`.
+
+To demonstrate the feature, start the Student 5 backend and database and the
+shared RAG HTTP server, refresh context in the tab, then ask about the
+"Strengthen academic leadership" goal. The answer should show source IDs and
+a confidence category. Ask an unrelated question to check the
+insufficient-context message. RAG defaults to disabled outside Compose and is
+disabled in CI.
 
 ## API Endpoints
 

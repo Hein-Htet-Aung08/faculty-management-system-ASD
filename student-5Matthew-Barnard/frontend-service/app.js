@@ -213,12 +213,21 @@ function activateResource(resource) {
     $('#resource-panel').hidden = true;
     $('#ai-panel').hidden = false;
     $('#mcp-panel').hidden = true;
+    $('#rag-panel').hidden = true;
     return;
   }
   if (resource === 'mcp-mode') {
     $('#resource-panel').hidden = true;
     $('#ai-panel').hidden = true;
     $('#mcp-panel').hidden = false;
+    $('#rag-panel').hidden = true;
+    return;
+  }
+  if (resource === 'rag-mode') {
+    $('#resource-panel').hidden = true;
+    $('#ai-panel').hidden = true;
+    $('#mcp-panel').hidden = true;
+    $('#rag-panel').hidden = false;
     return;
   }
   currentResource = resource;
@@ -226,6 +235,7 @@ function activateResource(resource) {
   $('#resource-panel').hidden = false;
   $('#ai-panel').hidden = true;
   $('#mcp-panel').hidden = true;
+  $('#rag-panel').hidden = true;
   $('#resource-kicker').textContent = config.kicker;
   $('#resource-title').textContent = config.title;
   $('#resource-description').textContent = config.description;
@@ -426,6 +436,70 @@ function showTrainingPrograms(result) {
     ], result.data);
 }
 
+async function checkRag() {
+  try {
+    const result = await api('/rag/status');
+    $('#rag-status').textContent = result.enabled ? 'RAG enabled' : 'RAG disabled';
+    $('#rag-status').className = `ai-status ${result.enabled ? 'ready' : 'failed'}`;
+  } catch (_) {
+    $('#rag-status').textContent = 'Backend unavailable';
+    $('#rag-status').className = 'ai-status failed';
+  }
+}
+
+function showRagAnswer(result) {
+  const answer = String(result.answer || '').trim();
+  if (!answer || answer.toLowerCase().startsWith('insufficient context')) {
+    return '<p class="eyebrow ai-accent">Confidence: Insufficient</p><h3>Insufficient context</h3><p>There is not enough relevant recorded information to answer this question.</p>';
+  }
+  const citations = Array.isArray(result.citations) ? result.citations : [];
+  const sources = citations.length
+    ? `<h4>Sources</h4><ol class="rag-sources">${citations.map((citation) =>
+      `<li>${escapeHtml(citation.source_id)} <span>${escapeHtml(citation.authority_tier)}</span></li>`
+    ).join('')}</ol>`
+    : '<p>No sources returned.</p>';
+  return `<p class="eyebrow ai-accent">Confidence: ${escapeHtml(result.confidence_category || 'Unknown')}</p>
+    <h3>Grounded answer</h3><p>${escapeHtml(answer)}</p>${sources}`;
+}
+
+async function askRag() {
+  const query = $('#rag-query').value.trim();
+  const resultBox = $('#rag-result');
+  if (!query) {
+    resultBox.hidden = false;
+    resultBox.innerHTML = '<p class="form-error">Enter a question first.</p>';
+    return;
+  }
+  const button = $('#rag-ask-button');
+  button.disabled = true;
+  resultBox.hidden = false;
+  resultBox.textContent = 'Retrieving context and generating an answer…';
+  try {
+    const result = await api('/rag/ask', { method: 'POST', body: JSON.stringify({ query }) });
+    resultBox.innerHTML = showRagAnswer(result);
+  } catch (error) {
+    resultBox.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function refreshRag() {
+  const button = $('#rag-refresh-button');
+  const resultBox = $('#rag-result');
+  button.disabled = true;
+  resultBox.hidden = false;
+  resultBox.textContent = 'Refreshing context from current records…';
+  try {
+    const result = await api('/rag/refresh', { method: 'POST' });
+    resultBox.innerHTML = `<p>Context refreshed: ${escapeHtml(result.chunk_count)} chunks indexed.</p>`;
+  } catch (error) {
+    resultBox.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 document.querySelectorAll('.nav-button').forEach((button) => {
   button.addEventListener('click', () => activateResource(button.dataset.resource));
 });
@@ -450,11 +524,14 @@ $('#mcp-training-button').addEventListener('click', () => runMcp(
   '#mcp-training-button', '#mcp-training-result', '/mcp/training-by-skill',
   { skillArea: $('#mcp-skill-area').value.trim() }, showTrainingPrograms
 ));
+$('#rag-ask-button').addEventListener('click', askRag);
+$('#rag-refresh-button').addEventListener('click', refreshRag);
 
 async function initialise() {
   await loadStaffDirectory();
   await loadMetrics();
   await checkMcp();
+  await checkRag();
   activateResource('development-goals');
 }
 

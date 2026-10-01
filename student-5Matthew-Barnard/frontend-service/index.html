@@ -17,7 +17,7 @@
       </div>
       <div class="header-actions">
         <a class="btn secondary home-link" href="http://localhost:8000">&larr; All features</a>
-        <div class="release-badge">Release 0</div>
+        <div class="release-badge">Release 1</div>
       </div>
     </header>
 
@@ -37,6 +37,7 @@
         <button class="tab-button nav-button" data-resource="development-recommendations">Recommendations</button>
         <button class="tab-button nav-button ai-nav" data-resource="ai-mode">AI-Mode</button>
         <button class="tab-button nav-button" data-resource="mcp-mode">MCP Tools</button>
+        <button class="tab-button nav-button" data-resource="rag-mode">RAG Questions</button>
       </nav>
 
       <section id="resource-panel" class="workspace-card">
@@ -132,6 +133,27 @@
             </div>
             <div id="mcp-training-result" class="mcp-result" role="status" aria-live="polite" hidden></div>
           </div>
+        </div>
+      </section>
+
+      <section id="rag-panel" class="workspace-card" hidden>
+        <div class="workspace-heading">
+          <div>
+            <p class="eyebrow accent">Shared RAG server</p>
+            <h2>Ask about performance and development</h2>
+            <p>Ask a question about recorded reviews, goals, training or recommendations. Answers show their sources and confidence.</p>
+          </div>
+          <div id="rag-status" class="ai-status">Not checked</div>
+        </div>
+
+        <div class="rag-workbench">
+          <label for="rag-query">Your question</label>
+          <textarea id="rag-query" maxlength="500">What is the progress and target date of the Strengthen academic leadership development goal?</textarea>
+          <div class="rag-actions">
+            <button id="rag-ask-button" class="btn primary-button">Ask question</button>
+            <button id="rag-refresh-button" class="btn secondary secondary-button">Refresh context</button>
+          </div>
+          <div id="rag-result" class="ai-result" role="status" aria-live="polite" hidden></div>
         </div>
       </section>
     </main>

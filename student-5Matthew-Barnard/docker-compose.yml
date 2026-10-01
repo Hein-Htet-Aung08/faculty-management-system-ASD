@@ -49,8 +49,11 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434/v1
       OLLAMA_MODEL: qwen2.5:0.5b
       LLM_TIMEOUT: "120"
+      AI_MODE_ENABLED: "true"
       MCP_ENABLED: "true"
       MCP_SERVER_URL: http://host.docker.internal:5201/mcp
+      RAG_ENABLED: "true"
+      RAG_SERVER_URL: http://host.docker.internal:5200
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

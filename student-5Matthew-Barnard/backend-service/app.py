@@ -7,6 +7,7 @@ from requests import RequestException
 import ai_service
 import database_client
 import mcp_client
+import rag_client
 import staff_client
 
 RESOURCE_FILTERS = {
@@ -105,6 +106,8 @@ def create_app():
 
     @app.get("/api/ai/health")
     def ai_health():
+        if os.getenv("AI_MODE_ENABLED", "true").lower() != "true":
+            return jsonify({"error": "AI-Mode is disabled"}), 503
         try:
             return jsonify(ai_service.health_check())
         except (OpenAIError, OSError) as exc:
@@ -179,6 +182,8 @@ def create_app():
 
     @app.post("/api/ai/recommend-development")
     def recommend_development():
+        if os.getenv("AI_MODE_ENABLED", "true").lower() != "true":
+            return jsonify({"error": "AI-Mode is disabled"}), 503
         payload = request.get_json(silent=True)
         if not isinstance(payload, dict):
             return jsonify({"error": "request body must be a JSON object"}), 400
@@ -200,6 +205,34 @@ def create_app():
                 "error": "AI service is unavailable or returned an unusable response",
                 "detail": str(exc),
             }), 503
+
+    @app.get("/api/rag/status")
+    def rag_status():
+        return jsonify({"enabled": rag_client.enabled()})
+
+    @app.post("/api/rag/ask")
+    def rag_ask():
+        if not rag_client.enabled():
+            return jsonify({"error": "RAG integration is disabled"}), 503
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "request body must be a JSON object"}), 400
+        query = payload.get("query")
+        if not isinstance(query, str) or not 1 <= len(query.strip()) <= 500:
+            return jsonify({"error": "query must be 1 to 500 characters"}), 400
+        try:
+            return jsonify(rag_client.answer_question(query.strip()))
+        except rag_client.RAGServiceError as exc:
+            return jsonify({"error": str(exc)}), 503
+
+    @app.post("/api/rag/refresh")
+    def rag_refresh():
+        if not rag_client.enabled():
+            return jsonify({"error": "RAG integration is disabled"}), 503
+        try:
+            return jsonify(rag_client.refresh_corpus())
+        except rag_client.RAGServiceError as exc:
+            return jsonify({"error": str(exc)}), 503
 
     return app
 
