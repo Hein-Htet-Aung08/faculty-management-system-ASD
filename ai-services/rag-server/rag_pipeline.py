@@ -469,6 +469,8 @@ def load_student3_context():
         )
     )
 
+    status_members = {}
+
     for profile in profiles:
         staff_id = profile.get("staff_id")
         text = (
@@ -485,6 +487,29 @@ def load_student3_context():
                 feature="workload_and_availability_management",
                 student=3,
                 text=text,
+            )
+        )
+
+        status = profile.get("status")
+        if status and profile.get("staff_name"):
+            status_members.setdefault(status, []).append(profile["staff_name"])
+
+    # One roster chunk per status, so "which staff are overloaded?" has a
+    # single chunk holding the complete answer - otherwise top-k retrieval
+    # only ever surfaces a couple of individual profiles. Names only, kept
+    # short: extra words dilute its similarity against single-person chunks
+    # (same lesson as the Student 1 status rosters above).
+    for status, members in sorted(status_members.items()):
+        slug = re.sub(r"[^a-z0-9]+", "_", status.lower()).strip("_")
+        chunks.append(
+            make_chunk(
+                chunk_id=f"student3_status_{slug}",
+                source_id=f"student3/status/{slug}",
+                authority_tier="tier_1",
+                feature="workload_and_availability_management",
+                student=3,
+                text=f"{status} staff roster ({len(members)}): {', '.join(members)}.",
+                metadata={"source_type": "status_roster", "status": status},
             )
         )
 
@@ -1717,6 +1742,8 @@ Return a concise grounded answer.
 """.strip()
 
     try:
+        # llama3.1:8b generation on a CPU-only box routinely takes
+        # 80-130s+; 120s was cutting off slow-but-correct answers.
         response = requests.post(
             ollama_generate_url,
             json={
@@ -1727,7 +1754,7 @@ Return a concise grounded answer.
                 "stream":
                     False,
             },
-            timeout=120,
+            timeout=240,
         )
 
         response.raise_for_status()
