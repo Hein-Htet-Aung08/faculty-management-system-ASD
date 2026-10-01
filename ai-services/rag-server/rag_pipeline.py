@@ -1879,15 +1879,144 @@ def load_student4_context():
 # ============================================================
 
 def load_student5_context():
-    """
-    OWNER: Student 5
+    resources = {
+        "reviews": "performance-reviews",
+        "goals": "development-goals",
+        "programs": "training-programs",
+        "training": "staff-training",
+        "recommendations": "development-recommendations",
+    }
+    records = {}
+    try:
+        for name, resource in resources.items():
+            rows = call_feature_api("GET", STUDENT5_BACKEND_URL, f"/api/{resource}")
+            if not isinstance(rows, list):
+                raise ValueError(f"unexpected {resource} response")
+            records[name] = rows
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[rag_pipeline] student5 backend unavailable: {exc}")
+        return []
 
-    Return RAG chunks for Performance and Professional Development.
+    staff_names = {}
+    try:
+        directory = call_feature_api("GET", STUDENT5_BACKEND_URL, "/api/integration/staff")
+        for staff in directory.get("staff", []):
+            if staff.get("staff_id") and staff.get("name"):
+                staff_names[staff["staff_id"]] = staff["name"]
+    except (requests.RequestException, AttributeError, TypeError):
+        pass
 
-    Each returned item should use make_chunk(...).
-    """
+    def staff_label(staff_id):
+        name = staff_names.get(staff_id)
+        return f"{name} (staff ID {staff_id})" if name else f"staff ID {staff_id}"
 
-    return []
+    def add_chunk(kind, row, key, text, staff_id=None):
+        record_id = row[key]
+        metadata = {"source_type": kind, "record_id": record_id}
+        if staff_id is not None:
+            metadata["staff_id"] = staff_id
+        return make_chunk(
+            chunk_id=f"student5_{kind}_{record_id}",
+            source_id=f"student5/{resources[kind]}/{record_id}",
+            authority_tier="tier_1",
+            feature="performance_professional_development",
+            student=5,
+            text=text,
+            metadata=metadata,
+        )
+
+    programs = {row["trainingID"]: row for row in records["programs"]}
+    goals = {row["goalID"]: row for row in records["goals"]}
+    chunks = []
+
+    for review in records["reviews"]:
+        staff_id = review["staffID"]
+        rating = review.get("rating")
+        chunks.append(add_chunk(
+            "reviews", review, "reviewID",
+            f"Performance review for {staff_label(staff_id)} on {review['reviewDate']}. "
+            f"Reviewer staff ID: {review['reviewerID']}. "
+            f"Rating: {f'{rating}/5' if rating is not None else 'not recorded'}. "
+            f"Feedback: {review.get('feedback') or 'not recorded'}. "
+            f"Review status: {review['status']}.",
+            staff_id,
+        ))
+
+    for goal in records["goals"]:
+        staff_id = goal["staffID"]
+        chunks.append(add_chunk(
+            "goals", goal, "goalID",
+            f"Development goal for {staff_label(staff_id)}: {goal['title']}. "
+            f"Description: {goal.get('description') or 'not recorded'}. "
+            f"Target date: {goal.get('targetDate') or 'not recorded'}. "
+            f"Progress: {goal['progress']}%. Goal status: {goal['status']}.",
+            staff_id,
+        ))
+
+    for program in records["programs"]:
+        chunks.append(add_chunk(
+            "programs", program, "trainingID",
+            f"Training program: {program['title']}. "
+            f"Skill area: {program.get('skillArea') or 'not recorded'}. "
+            f"Provider: {program.get('provider') or 'not recorded'}. "
+            f"Start date: {program.get('startDate') or 'not recorded'}. "
+            f"End date: {program.get('endDate') or 'not recorded'}. "
+            f"Description: {program.get('description') or 'not recorded'}.",
+        ))
+
+    for enrolment in records["training"]:
+        staff_id = enrolment["staffID"]
+        program = programs.get(enrolment["trainingID"], {})
+        chunks.append(add_chunk(
+            "training", enrolment, "staffTrainingID",
+            f"Staff training for {staff_label(staff_id)}: "
+            f"{program.get('title') or 'program title unavailable'} "
+            f"(training ID {enrolment['trainingID']}). "
+            f"Enrolment date: {enrolment.get('enrolmentDate') or 'not recorded'}. "
+            f"Completion date: {enrolment.get('completionDate') or 'not recorded'}. "
+            f"Training status: {enrolment['status']}.",
+            staff_id,
+        ))
+
+    for recommendation in records["recommendations"]:
+        staff_id = recommendation["staffID"]
+        goal_id = recommendation.get("goalID")
+        goal = goals.get(goal_id, {})
+        related_goal = goal.get("title") or (f"goal ID {goal_id}" if goal_id else "none")
+        chunks.append(add_chunk(
+            "recommendations", recommendation, "recommendationID",
+            f"Development recommendation for {staff_label(staff_id)}. "
+            f"Type: {recommendation['recommendationType']}. "
+            f"Proposed action: {recommendation['recommendation']}. "
+            f"Rationale: {recommendation.get('rationale') or 'not recorded'}. "
+            f"Related goal: {related_goal}. "
+            f"Generated on: {recommendation['dateGenerated']}. "
+            f"Decision status: {recommendation['status']}. "
+            "A recommendation is not proof that the action was completed.",
+            staff_id,
+        ))
+
+    staff_ids = {
+        row["staffID"] for name in ("reviews", "goals", "training", "recommendations")
+        for row in records[name]
+    }
+    chunks.append(make_chunk(
+        chunk_id="student5_summary_counts",
+        source_id="student5/summary",
+        authority_tier="tier_1",
+        feature="performance_professional_development",
+        student=5,
+        text=(
+            "Performance and Professional Development currently tracks "
+            f"{len(staff_ids)} staff member(s), {len(records['reviews'])} performance review(s), "
+            f"{len(records['goals'])} development goal(s), "
+            f"{len(records['programs'])} training program(s), "
+            f"{len(records['training'])} staff training record(s), and "
+            f"{len(records['recommendations'])} development recommendation(s)."
+        ),
+        metadata={"source_type": "summary"},
+    ))
+    return chunks
 
 
 # ============================================================

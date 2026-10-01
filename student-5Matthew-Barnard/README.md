@@ -123,6 +123,29 @@ with `{"staffID":1}` and `POST /api/mcp/training-by-skill` with
 enabled. MCP defaults to disabled outside the Compose deployment and is
 explicitly disabled in CI.
 
+## RAG Context
+
+The shared local RAG server reads this feature's five list APIs and adds one
+source chunk for each performance review, development goal, training program,
+staff training record, and development recommendation. It also adds a totals
+chunk. The server uses `/api/integration/staff` for names when available and
+keeps staff IDs when the staff service is offline. The RAG loader only reads
+backend APIs; it does not open this feature's SQLite database.
+
+Start this feature's backend and database before refreshing the shared RAG
+corpus. From the repository root, install the RAG requirements, then run:
+
+```powershell
+python -m pip install -r ai-services/rag-server/requirements.txt
+Set-Location ai-services/rag-server
+python rag_pipeline.py
+```
+
+`STUDENT5_BACKEND_URL` defaults to `http://localhost:5005` and can be set to a
+different backend address. The loader skips Student 5 context when a required
+feature API is unavailable; refresh the corpus again after the backend starts.
+The six Student 5 retrieval questions are in `ai-services/rag-server/rag_eval.py`.
+
 ## API Endpoints
 
 Each resource supports `GET`, `POST`, `PUT`, and `DELETE` requests through
