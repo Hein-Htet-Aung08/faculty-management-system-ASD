@@ -6,6 +6,8 @@ from requests import RequestException
 
 import ai_service
 import database_client
+import mcp_client
+import rag_client
 import staff_client
 
 RESOURCE_FILTERS = {
@@ -104,6 +106,8 @@ def create_app():
 
     @app.get("/api/ai/health")
     def ai_health():
+        if os.getenv("AI_MODE_ENABLED", "true").lower() != "true":
+            return jsonify({"error": "AI-Mode is disabled"}), 503
         try:
             return jsonify(ai_service.health_check())
         except (OpenAIError, OSError) as exc:
@@ -120,8 +124,66 @@ def create_app():
         except (RequestException, ValueError) as exc:
             return jsonify({"staff": [], "warning": f"staff service unavailable: {exc}"})
 
+    @app.get("/api/mcp/status")
+    def mcp_status():
+        return jsonify({"enabled": mcp_client.enabled()})
+
+    def mcp_result(tool_name, arguments):
+        try:
+            result = mcp_client.call_tool(tool_name, arguments)
+        except mcp_client.MCPServiceError as exc:
+            return jsonify({"error": str(exc)}), 503
+
+        if result.get("status") != "success":
+            if result.get("error") == "invalid_input":
+                status = 400
+            elif result.get("http_status") == 404:
+                status = 404
+            else:
+                status = 502
+            return jsonify(result), status
+        return jsonify(result)
+
+    @app.post("/api/mcp/development-summary")
+    def mcp_development_summary():
+        if not mcp_client.enabled():
+            return jsonify({"error": "MCP integration is disabled"}), 503
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "request body must be a JSON object"}), 400
+        staff_id = payload.get("staffID")
+        if (
+            isinstance(staff_id, bool)
+            or not isinstance(staff_id, (int, str))
+            or not str(staff_id).isdigit()
+        ):
+            return jsonify({"error": "staffID must be a positive integer"}), 400
+        try:
+            staff_id = int(staff_id)
+            if staff_id <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify({"error": "staffID must be a positive integer"}), 400
+        return mcp_result("student5_staff_development_summary", {"staff_id": staff_id})
+
+    @app.post("/api/mcp/training-by-skill")
+    def mcp_training_by_skill():
+        if not mcp_client.enabled():
+            return jsonify({"error": "MCP integration is disabled"}), 503
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "request body must be a JSON object"}), 400
+        skill_area = payload.get("skillArea")
+        if not isinstance(skill_area, str) or not 1 <= len(skill_area.strip()) <= 120:
+            return jsonify({"error": "skillArea must be 1 to 120 characters"}), 400
+        return mcp_result(
+            "student5_training_by_skill_area", {"skill_area": skill_area.strip()}
+        )
+
     @app.post("/api/ai/recommend-development")
     def recommend_development():
+        if os.getenv("AI_MODE_ENABLED", "true").lower() != "true":
+            return jsonify({"error": "AI-Mode is disabled"}), 503
         payload = request.get_json(silent=True)
         if not isinstance(payload, dict):
             return jsonify({"error": "request body must be a JSON object"}), 400
@@ -143,6 +205,34 @@ def create_app():
                 "error": "AI service is unavailable or returned an unusable response",
                 "detail": str(exc),
             }), 503
+
+    @app.get("/api/rag/status")
+    def rag_status():
+        return jsonify({"enabled": rag_client.enabled()})
+
+    @app.post("/api/rag/ask")
+    def rag_ask():
+        if not rag_client.enabled():
+            return jsonify({"error": "RAG integration is disabled"}), 503
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "request body must be a JSON object"}), 400
+        query = payload.get("query")
+        if not isinstance(query, str) or not 1 <= len(query.strip()) <= 500:
+            return jsonify({"error": "query must be 1 to 500 characters"}), 400
+        try:
+            return jsonify(rag_client.answer_question(query.strip()))
+        except rag_client.RAGServiceError as exc:
+            return jsonify({"error": str(exc)}), 503
+
+    @app.post("/api/rag/refresh")
+    def rag_refresh():
+        if not rag_client.enabled():
+            return jsonify({"error": "RAG integration is disabled"}), 503
+        try:
+            return jsonify(rag_client.refresh_corpus())
+        except rag_client.RAGServiceError as exc:
+            return jsonify({"error": str(exc)}), 503
 
     return app
 

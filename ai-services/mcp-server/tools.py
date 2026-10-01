@@ -470,10 +470,81 @@ def student4_research_history(department: str):
 # ============================================================
 # Student 5 - Performance & Professional Development
 # ============================================================
-#
-# OWNER: Student 5
-#
-# Add Student 5 MCP tool implementation functions here.
-#
-# Use STUDENT5_BACKEND_URL where appropriate.
-#
+
+def student5_staff_development_summary(staff_id):
+    if not isinstance(staff_id, int) or isinstance(staff_id, bool) or staff_id < 1:
+        return {
+            "status": "error",
+            "error": "invalid_input",
+            "details": "staff_id must be a positive integer",
+        }
+
+    resources = {
+        "reviews": "performance-reviews",
+        "goals": "development-goals",
+        "training": "staff-training",
+        "recommendations": "development-recommendations",
+    }
+    records = {}
+    for name, resource in resources.items():
+        result = call_feature_api(
+            "GET", STUDENT5_BACKEND_URL, f"/api/{resource}",
+            params={"staffID": staff_id},
+        )
+        if result["status"] != "success":
+            return result
+        records[name] = result["data"]
+
+    programs = call_feature_api(
+        "GET", STUDENT5_BACKEND_URL, "/api/training-programs"
+    )
+    if programs["status"] != "success":
+        return programs
+
+    program_titles = {
+        row["trainingID"]: row["title"] for row in programs["data"]
+    }
+    training = [
+        {**row, "trainingTitle": program_titles.get(row["trainingID"])}
+        for row in records["training"]
+    ]
+
+    return {
+        "status": "success",
+        "tool": "student5_staff_development_summary",
+        "data": {
+            "staffID": staff_id,
+            "reviews": records["reviews"],
+            "goals": records["goals"],
+            "training": training,
+            "recommendations": records["recommendations"],
+        },
+    }
+
+
+def student5_training_by_skill_area(skill_area):
+    if not isinstance(skill_area, str) or not skill_area.strip() or len(skill_area.strip()) > 120:
+        return {
+            "status": "error",
+            "error": "invalid_input",
+            "details": "skill_area must be 1 to 120 characters",
+        }
+
+    skill_area = skill_area.strip()
+    result = call_feature_api(
+        "GET", STUDENT5_BACKEND_URL, "/api/training-programs"
+    )
+    if result["status"] != "success":
+        return result
+
+    matches = [
+        row for row in result["data"]
+        if skill_area.casefold() in (row.get("skillArea") or "").casefold()
+    ]
+    return {
+        "status": "success",
+        "tool": "student5_training_by_skill_area",
+        "query": skill_area,
+        "match_count": len(matches),
+        "data": matches,
+    }
