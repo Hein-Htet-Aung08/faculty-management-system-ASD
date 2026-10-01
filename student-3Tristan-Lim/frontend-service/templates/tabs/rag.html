@@ -8,19 +8,12 @@
         body { margin: 0; background: transparent; }
         .actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: end; margin-bottom: 1rem; }
         .actions .form-field { flex: 1 1 16rem; }
-        pre.tool-result { overflow-x: auto; white-space: pre-wrap; }
     </style>
 </head>
 <body>
 
 <section class="panel-section">
     <h2>RAG Mode</h2>
-    <p>Calls the shared RAG server (<code>ai-services/rag-server</code>, port 5200),
-       which retrieves relevant chunks across every feature's data and answers
-       grounded only in what was retrieved, with citations and a confidence
-       category. If no relevant context is found, it returns an insufficient-context
-       response instead of an unsupported answer. Not gated by a toggle - matches
-       the rest of the app.</p>
 
     <div class="actions">
         <button type="button" class="btn" data-action="refresh">Refresh Corpus</button>
@@ -54,11 +47,76 @@
 
 <script src="/js/config.js"></script>
 <script>
-function showResult(panelId, data, ok) {
-    const panel = document.getElementById(panelId);
-    const css = ok ? "empty-state" : "error-state";
-    panel.innerHTML = `<pre class="tool-result ${css}">${JSON.stringify(data, null, 2)}</pre>`;
+// Renders RAG responses with the same ledger-table/stamp look the rest of
+// the dashboard uses, instead of a raw JSON dump.
+
+function esc(value) {
+    const div = document.createElement("div");
+    div.textContent = value === null || value === undefined ? "" : String(value);
+    return div.innerHTML;
 }
+
+function stamp(label) {
+    const css = {
+        high: "status-active",
+        medium: "status-applied",
+        low: "status-rejected",
+    }[String(label || "").toLowerCase()] || "status-proposed";
+    return `<span class="stamp ${css}">${esc(label || "Unknown")}</span>`;
+}
+
+function table(headers, rows) {
+    if (!rows.length) return '<p class="empty-state">No records.</p>';
+    const head = headers.map((h) => `<th>${esc(h)}</th>`).join("");
+    const body = rows
+        .map((row) => `<tr>${row.map((cell) => `<td>${esc(cell)}</td>`).join("")}</tr>`)
+        .join("");
+    return `<table class="ledger-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function errorBlock(data) {
+    return `<p class="error-state">${esc(data.error)}${data.details ? " - " + esc(data.details) : ""}</p>`;
+}
+
+function renderRefresh(data) {
+    if (data.error || data.status === "error") return errorBlock(data);
+    return table(
+        ["Field", "Value"],
+        Object.entries(data).map(([key, value]) => [key, value])
+    );
+}
+
+function renderRetrieve(data) {
+    if (data.error || data.status === "error") return errorBlock(data);
+    const results = data.results || [];
+    const summary = `<p class="project-id">Mode: ${esc(data.retrieval_mode)} &middot; ${results.length} result(s)</p>`;
+    const rows = results.map((r) => [
+        r.rank,
+        r.source_id,
+        r.authority_tier,
+        r.feature,
+        r.student,
+        (r.text || "").length > 160 ? r.text.slice(0, 160) + "..." : r.text,
+    ]);
+    return summary + table(["Rank", "Source", "Tier", "Feature", "Student", "Text"], rows);
+}
+
+function renderAsk(data) {
+    if (data.error && !data.citations) return errorBlock(data);
+
+    const header = `<p>${esc(data.answer)}</p><p class="project-id">Confidence: ${stamp(data.confidence_category)}</p>`;
+    const citations = data.citations || [];
+    const body = citations.length
+        ? table(
+              ["Chunk", "Source", "Tier", "Feature", "Student"],
+              citations.map((c) => [c.chunk_id, c.source_id, c.authority_tier, c.feature, c.student])
+          )
+        : '<p class="empty-state">No citations - insufficient context.</p>';
+
+    return header + (data.error ? errorBlock(data) : "") + body;
+}
+
+const RENDERERS = { "/rag/refresh": renderRefresh, "/rag/retrieve": renderRetrieve, "/rag/ask": renderAsk };
 
 async function callRag(panelId, path, body) {
     const panel = document.getElementById(panelId);
@@ -70,11 +128,12 @@ async function callRag(panelId, path, body) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
         });
-        showResult(panelId, await response.json(), response.ok);
+        const data = await response.json();
+        panel.innerHTML = RENDERERS[path](data);
     } catch (error) {
         panel.innerHTML =
             `<p class="error-state">Request failed. Is the backend running at ` +
-            `${BACKEND_URL}, and is the shared rag-server running on port 5200?</p><pre>${error}</pre>`;
+            `${BACKEND_URL}, and is the shared rag-server running on port 5200?</p><pre>${esc(error)}</pre>`;
     }
 }
 

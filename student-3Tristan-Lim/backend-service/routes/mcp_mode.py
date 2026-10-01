@@ -1,17 +1,12 @@
-import json
 import os
 from functools import wraps
 
 from flask import Blueprint, request
 
 from services.mcp_client import mcp_invoke
+from views.mcp_formatters import format_mcp_result
 
 mcp_bp = Blueprint("mcp_mode", __name__)
-
-
-def mcp_render_json(title, payload):
-    pretty = json.dumps(payload, indent=2, default=str)
-    return f'<div class="mcp-result"><h3>{title}</h3><pre>{pretty}</pre></div>'
 
 
 def _mcp_mode_active():
@@ -41,7 +36,7 @@ def _render_invoke(title, tool_name, args):
         data = response.get("data")
         message = response.get("error") or (data or {}).get("error") or "unknown error"
         return f"<p>MCP tool failed: {message}</p>", status
-    return mcp_render_json(title, response.get("data")), 200
+    return f'<div class="mcp-result">{format_mcp_result(title, response.get("data"))}</div>', 200
 
 
 @mcp_bp.post("/mcp/staff-count")
