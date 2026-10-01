@@ -49,7 +49,46 @@ function showRagMessage(
 }
 
 
-function showRagJson(
+function escapeRagHtml(
+  value
+) {
+  return String(
+    value ?? ""
+  ).replace(
+    /[&<>"']/g,
+    character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    })[character]
+  );
+}
+
+
+function ragRawJsonBlock(
+  data
+) {
+  return `
+    <details class="raw-json-details">
+      <summary>
+        View raw JSON
+      </summary>
+
+      <pre>${escapeRagHtml(
+        JSON.stringify(
+          data,
+          null,
+          2
+        )
+      )}</pre>
+    </details>
+  `;
+}
+
+
+function showRagRetrieval(
   panel,
   data
 ) {
@@ -57,27 +96,159 @@ function showRagJson(
     panel
   );
 
-  const pre =
-    document.createElement(
-      "pre"
+  if (
+    data.status !== "success"
+  ) {
+    showRagMessage(
+      panel,
+      data.error ||
+        "RAG retrieval failed.",
+      "error-state"
     );
 
-  pre.textContent =
-    JSON.stringify(
-      data,
-      null,
-      2
-    );
+    return;
+  }
 
-  pre.style.whiteSpace =
-    "pre-wrap";
+  const results =
+    data.results || [];
 
-  pre.style.overflowWrap =
-    "anywhere";
+  const cards =
+    results
+      .map(
+        result => `
+          <article class="retrieval-card">
 
-  panel.appendChild(
-    pre
-  );
+            <div class="retrieval-card-header">
+
+              <div>
+                <span class="tool-result-eyebrow">
+                  RESULT #${escapeRagHtml(
+                    result.rank
+                  )}
+                </span>
+
+                <h4>
+                  ${escapeRagHtml(
+                    result.source_id ||
+                    result.chunk_id ||
+                    "Retrieved Context"
+                  )}
+                </h4>
+              </div>
+
+              <span class="stamp status-active">
+                ${escapeRagHtml(
+                  result.authority_tier ||
+                  "unknown"
+                )}
+              </span>
+
+            </div>
+
+            <div class="retrieval-meta">
+
+              <span>
+                Feature:
+                <strong>
+                  ${escapeRagHtml(
+                    result.feature ||
+                    "Unknown"
+                  )}
+                </strong>
+              </span>
+
+              <span>
+                Student:
+                <strong>
+                  ${escapeRagHtml(
+                    result.student ||
+                    "Unknown"
+                  )}
+                </strong>
+              </span>
+
+              <span>
+                Chunk:
+                <strong>
+                  ${escapeRagHtml(
+                    result.chunk_id ||
+                    "Unknown"
+                  )}
+                </strong>
+              </span>
+
+            </div>
+
+            <p class="retrieval-text">
+              ${escapeRagHtml(
+                result.text ||
+                "No text returned."
+              )}
+            </p>
+
+          </article>
+        `
+      )
+      .join("");
+
+  panel.innerHTML = `
+    <div class="tool-result-card">
+
+      <div class="tool-result-header">
+
+        <div>
+          <span class="tool-result-eyebrow">
+            RAG CORPUS
+          </span>
+
+          <h3>
+            Knowledge Base Refreshed
+          </h3>
+        </div>
+
+        <span class="stamp status-active">
+          Ready
+        </span>
+
+      </div>
+
+      <div class="result-fact-grid">
+
+        <div class="result-fact">
+          <span>Chunks Indexed</span>
+          <strong>
+            ${escapeRagHtml(
+              data.chunk_count
+            )}
+          </strong>
+        </div>
+
+        <div class="result-fact">
+          <span>Vector Store</span>
+          <strong>
+            ${escapeRagHtml(
+              data.vector_store_status ||
+              "Unknown"
+            )}
+          </strong>
+        </div>
+
+        <div class="result-fact">
+          <span>Collection</span>
+          <strong>
+            ${escapeRagHtml(
+              data.collection ||
+              "Unknown"
+            )}
+          </strong>
+        </div>
+
+      </div>
+
+      ${ragRawJsonBlock(data)}
+
+    </div>
+  `;
 }
 
 
@@ -259,7 +430,7 @@ if (
             }
           );
 
-        showRagJson(
+        showRagRetrieval(
           panel,
           data
         );
