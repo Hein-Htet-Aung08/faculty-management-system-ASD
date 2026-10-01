@@ -2769,6 +2769,10 @@ def generate_with_ollama(
         If the supplied context contains enough evidence to answer the question,
         provide a concise grounded answer.
 
+        If the question asks who or which (a list), include EVERY matching
+        person or item found anywhere in the context, including list or
+        roster entries, not only those with their own detailed record.
+
         If the supplied context does not contain enough evidence to answer the question,
         return exactly:
 
