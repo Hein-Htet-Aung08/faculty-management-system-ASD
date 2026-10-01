@@ -598,18 +598,58 @@
                 </div>
 
 
-                <div class="form-field">
+                <div class="form-field span-2">
 
-                    <label for="allocation-staff-id">
-                        Staff ID
+                    <label for="allocation-staff-search">
+                        Assigned Staff
                     </label>
 
-                    <input
-                        id="allocation-staff-id"
-                        type="number"
-                        min="1"
-                        placeholder="Leave blank if unassigned"
-                    >
+                    <div class="staff-picker">
+
+                        <input
+                            id="allocation-staff-search"
+                            type="text"
+                            placeholder="Search staff by name..."
+                            autocomplete="off"
+                        >
+
+                        <input
+                            id="allocation-staff-id"
+                            type="hidden"
+                        >
+
+                        <div
+                            id="allocation-staff-options"
+                            class="staff-picker-options"
+                            hidden
+                        ></div>
+
+                        <div
+                            id="allocation-selected-staff"
+                            class="selected-staff"
+                            hidden
+                        >
+
+                            <span
+                                id="allocation-selected-staff-label"
+                            ></span>
+
+                            <button
+                                id="allocation-clear-staff"
+                                class="btn secondary"
+                                type="button"
+                            >
+                                Clear selection
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <p class="staff-picker-hint">
+                        Optional. Leave unassigned if no staff member
+                        has been selected.
+                    </p>
 
                 </div>
 

@@ -1,6 +1,26 @@
 const allocationForm = document.getElementById("allocation-form");
 const allocationOfferInput = document.getElementById("allocation-offer-id");
 const allocationStaffInput = document.getElementById("allocation-staff-id");
+const allocationStaffPicker =
+  createStaffPicker({
+    searchInputId:
+      "allocation-staff-search",
+
+    hiddenInputId:
+      "allocation-staff-id",
+
+    optionsId:
+      "allocation-staff-options",
+
+    selectedId:
+      "allocation-selected-staff",
+
+    selectedLabelId:
+      "allocation-selected-staff-label",
+
+    clearButtonId:
+      "allocation-clear-staff"
+  });
 const allocationClassroomInput = document.getElementById("allocation-classroom-id");
 const allocationDayInput = document.getElementById("allocation-day");
 const allocationDateRangeInput = document.getElementById("allocation-date-range");
@@ -643,9 +663,10 @@ async function startEditingAllocation(
     allocationOfferInput.value =
       allocation.offer_id || "";
 
-    allocationStaffInput.value =
-      allocation
-        .assigned_staff_member ?? "";
+    await allocationStaffPicker.selectById(
+      allocation.assigned_staff_member,
+      allocation.staff_display
+    );
 
     allocationClassroomInput.value =
       allocation.classroom_id || "";
@@ -770,6 +791,7 @@ async function deleteAllocation(
 
 function resetAllocationForm() {
   allocationForm.reset();
+  allocationStaffPicker.clear();
 
   editingAllocationId = null;
 

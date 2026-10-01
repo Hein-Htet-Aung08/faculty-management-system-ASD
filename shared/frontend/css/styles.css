@@ -811,7 +811,7 @@ table.ledger-table tbody tr:hover {
   display: none;
 }
 
-#mcp-selected-staff-label {
+.selected-staff > span {
   font-weight: 600;
 }
 

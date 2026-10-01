@@ -21,37 +21,26 @@ const mcpValidationForm =
     "mcp-validation-form"
   );
 
-const mcpStaffSearch =
-  document.getElementById(
-    "mcp-staff-search"
-  );
+const mcpStaffPicker =
+  createStaffPicker({
+    searchInputId:
+      "mcp-staff-search",
 
-const mcpStaffId =
-  document.getElementById(
-    "mcp-staff-id"
-  );
+    hiddenInputId:
+      "mcp-staff-id",
 
-const mcpStaffOptions =
-  document.getElementById(
-    "mcp-staff-options"
-  );
+    optionsId:
+      "mcp-staff-options",
 
-const mcpSelectedStaff =
-  document.getElementById(
-    "mcp-selected-staff"
-  );
+    selectedId:
+      "mcp-selected-staff",
 
-const mcpSelectedStaffLabel =
-  document.getElementById(
-    "mcp-selected-staff-label"
-  );
+    selectedLabelId:
+      "mcp-selected-staff-label",
 
-const mcpClearStaff =
-  document.getElementById(
-    "mcp-clear-staff"
-  );
-
-let mcpStaffMembers = [];
+    clearButtonId:
+      "mcp-clear-staff"
+  });
 
 function getMcpMode() {
   return (
@@ -503,255 +492,6 @@ function renderValidationCard(
     </div>
   `;
 }
-
-async function loadMcpStaffOptions() {
-  if (
-    !mcpStaffSearch
-  ) {
-    return;
-  }
-
-  try {
-    mcpStaffMembers =
-      await apiRequest(
-        "/staff-options"
-      );
-
-  } catch (
-    error
-  ) {
-    mcpStaffMembers = [];
-
-    mcpStaffSearch.placeholder =
-      "Unable to load staff";
-  }
-}
-
-
-function renderMcpStaffOptions(
-  filter = ""
-) {
-  if (
-    !mcpStaffOptions
-  ) {
-    return;
-  }
-
-  const search =
-    filter
-      .trim()
-      .toLowerCase();
-
-  const matches =
-    mcpStaffMembers.filter(
-      staff => {
-        const searchable = [
-          staff.name,
-          staff.position,
-          staff.department_name
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        return searchable.includes(
-          search
-        );
-      }
-    );
-
-  mcpStaffOptions.innerHTML =
-    "";
-
-  if (
-    matches.length === 0
-  ) {
-    const empty =
-      document.createElement(
-        "div"
-      );
-
-    empty.className =
-      "staff-picker-empty";
-
-    empty.textContent =
-      "No matching staff members.";
-
-    mcpStaffOptions.appendChild(
-      empty
-    );
-
-    mcpStaffOptions.hidden =
-      false;
-
-    return;
-  }
-
-  matches.forEach(
-    staff => {
-      const option =
-        document.createElement(
-          "button"
-        );
-
-      option.type =
-        "button";
-
-      option.className =
-        "staff-picker-option";
-
-      const name =
-        document.createElement(
-          "strong"
-        );
-
-      name.textContent =
-        staff.name;
-
-      const details =
-        document.createElement(
-          "span"
-        );
-
-      const detailParts = [
-        staff.position,
-        staff.department_name,
-        staff.status
-      ].filter(Boolean);
-
-      details.textContent =
-        detailParts.join(
-          " · "
-        );
-
-      option.appendChild(
-        name
-      );
-
-      option.appendChild(
-        details
-      );
-
-      option.addEventListener(
-        "click",
-        () => {
-          selectMcpStaff(
-            staff
-          );
-        }
-      );
-
-      mcpStaffOptions.appendChild(
-        option
-      );
-    }
-  );
-
-  mcpStaffOptions.hidden =
-    false;
-}
-
-
-function selectMcpStaff(
-  staff
-) {
-  mcpStaffId.value =
-    staff.staff_id;
-
-  mcpStaffSearch.value =
-    staff.name;
-
-  mcpStaffOptions.hidden =
-    true;
-
-  mcpSelectedStaffLabel.textContent =
-    `${staff.name}` +
-    (
-      staff.position
-        ? ` · ${staff.position}`
-        : ""
-    );
-
-  mcpSelectedStaff.hidden =
-    false;
-}
-
-function clearMcpStaff() {
-  mcpStaffId.value =
-    "";
-
-  mcpStaffSearch.value =
-    "";
-
-  mcpSelectedStaff.hidden =
-    true;
-
-  mcpSelectedStaffLabel.textContent =
-    "";
-
-  renderMcpStaffOptions(
-    ""
-  );
-
-  mcpStaffSearch.focus();
-}
-
-if (
-  mcpStaffSearch
-) {
-  mcpStaffSearch.addEventListener(
-    "focus",
-    () => {
-      renderMcpStaffOptions(
-        mcpStaffSearch.value
-      );
-    }
-  );
-
-  mcpStaffSearch.addEventListener(
-    "input",
-    () => {
-      mcpStaffId.value =
-        "";
-
-      mcpSelectedStaff.hidden =
-        true;
-
-      renderMcpStaffOptions(
-        mcpStaffSearch.value
-      );
-    }
-  );
-}
-
-
-if (
-  mcpClearStaff
-) {
-  mcpClearStaff.addEventListener(
-    "click",
-    clearMcpStaff
-  );
-}
-
-
-document.addEventListener(
-  "click",
-  event => {
-    if (
-      mcpStaffSearch &&
-      mcpStaffOptions &&
-      !event.target.closest(
-        ".staff-picker"
-      )
-    ) {
-      mcpStaffOptions.hidden =
-        true;
-    }
-  }
-);
-
-
-loadMcpStaffOptions();
 
 if (
   mcpModeToggle
