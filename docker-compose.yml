@@ -275,6 +275,10 @@ services:
       PORT: 5005
       STAFF_SERVICE_URL: http://staff-backend:5001
       STAFF_TIMEOUT: 3
+      MCP_ENABLED: "true"
+      MCP_SERVER_URL: http://host.docker.internal:5201/mcp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       student5-database:
         condition: service_healthy

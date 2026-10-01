@@ -4,10 +4,14 @@ on:
   push:
     paths:
       - "student-5Matthew-Barnard/**"
+      - "ai-services/mcp-server/**"
+      - "docker-compose.yml"
       - ".github/workflows/student-5-MatthewBarnard.yml"
   pull_request:
     paths:
       - "student-5Matthew-Barnard/**"
+      - "ai-services/mcp-server/**"
+      - "docker-compose.yml"
       - ".github/workflows/student-5-MatthewBarnard.yml"
   workflow_dispatch:
 
@@ -42,6 +46,10 @@ jobs:
         working-directory: student-5Matthew-Barnard/backend-service
         run: python -m unittest discover -s tests -v
 
+      - name: Test Student 5 shared MCP tools
+        working-directory: ai-services/mcp-server
+        run: python -m unittest discover -s tests -v
+
   smoke-test:
     name: Build and smoke-test containers
     needs: test
@@ -51,7 +59,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate Compose configuration
-        run: docker compose -f student-5Matthew-Barnard/docker-compose.yml config
+        run: |
+          docker compose -f student-5Matthew-Barnard/docker-compose.yml config
+          docker compose config --format json | python -c 'import json,sys; c=json.load(sys.stdin); s=c["services"]["student5-backend"]; assert s["environment"]["MCP_ENABLED"] == "true"; assert s["environment"]["MCP_SERVER_URL"].endswith(":5201/mcp"); assert "mcp-server" not in c["services"]'
 
       - name: Build all three feature services
         run: |
@@ -66,7 +76,8 @@ jobs:
             -e PORT=5105 -e DATABASE_PATH=/app/data/performance_dev.db student5-database:ci
           docker run -d --name student5-backend --network student5-ci -p 5005:5005 \
             -e PORT=5005 -e DATABASE_SERVICE_URL=http://student5-database:5105 \
-            -e OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 -e LLM_TIMEOUT=5 student5-backend:ci
+            -e OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 -e LLM_TIMEOUT=5 \
+            -e MCP_ENABLED=false student5-backend:ci
           docker run -d --name student5-frontend --network student5-ci -p 8005:80 \
             -v "$PWD/shared/frontend/css:/usr/share/nginx/html/css:ro" student5-frontend:ci
 
@@ -144,6 +155,16 @@ jobs:
           grep -q "Ollama is unavailable" /tmp/ai-response
           echo "PASS frontend assets and explicit AI unavailable response"
 
+      - name: Verify MCP remains disabled in CI
+        run: |
+          curl -fsS http://localhost:8005/api/mcp/status | python -c 'import json,sys; assert json.load(sys.stdin)["enabled"] is False'
+          code=$(curl -s -o /tmp/student5-mcp-response -w "%{http_code}" \
+            -X POST -H 'Content-Type: application/json' -d '{"staffID":1}' \
+            http://localhost:8005/api/mcp/development-summary)
+          [ "$code" = "503" ] || { cat /tmp/student5-mcp-response; exit 1; }
+          grep -q 'MCP integration is disabled' /tmp/student5-mcp-response
+          echo "PASS MCP integration is present and disabled in CI"
+
       - name: Show service logs
         if: always()
         run: |
@@ -166,7 +187,7 @@ jobs:
         run: |
           mkdir -p evidence
           cat > evidence/student-5-ci-summary.md <<EOF
-          # Student 5 Release 0 CI evidence
+          # Student 5 Release 1 MCP CI evidence
 
           - Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           - Commit: ${{ github.sha }}
@@ -176,14 +197,15 @@ jobs:
           This run validated Python tests, three Docker image builds, service health,
           ten-or-more seed records per table, all five resource endpoints, a complete
           CRUD lifecycle through the frontend proxy, frontend assets, and graceful
-          behaviour when Ollama is unavailable on the CI runner.
+          behaviour when Ollama is unavailable on the CI runner. It also checked
+          the shared MCP tools, MCP host configuration, and MCP disabled mode.
 
-          The shared software-development agentic loop is intentionally outside this
-          base-feature evidence and must be documented from genuine loop executions.
+          The shared agentic loop is outside this feature workflow and needs
+          separate evidence from genuine local executions.
           EOF
 
       - name: Upload evidence artifact
         uses: actions/upload-artifact@v4
         with:
-          name: student-5-release-0-evidence
+          name: student-5-release-1-mcp-evidence
           path: evidence/

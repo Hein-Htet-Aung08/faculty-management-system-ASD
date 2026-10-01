@@ -36,6 +36,7 @@
         <button class="tab-button nav-button" data-resource="staff-training">Staff training</button>
         <button class="tab-button nav-button" data-resource="development-recommendations">Recommendations</button>
         <button class="tab-button nav-button ai-nav" data-resource="ai-mode">AI-Mode</button>
+        <button class="tab-button nav-button" data-resource="mcp-mode">MCP Tools</button>
       </nav>
 
       <section id="resource-panel" class="workspace-card">
@@ -97,6 +98,41 @@
         </div>
 
         <div id="ai-result" class="ai-result" hidden></div>
+      </section>
+
+      <section id="mcp-panel" class="workspace-card" hidden>
+        <div class="workspace-heading">
+          <div>
+            <p class="eyebrow accent">Shared MCP server</p>
+            <h2>Development tools</h2>
+            <p>Look up recorded development activity or find training programs by skill area.</p>
+          </div>
+          <div id="mcp-status" class="ai-status">Not checked</div>
+        </div>
+
+        <div class="mcp-workbench">
+          <div class="mcp-tool">
+            <h3>Staff development summary</h3>
+            <div class="mcp-action">
+              <label>Staff ID
+                <input id="mcp-staff-id" type="number" min="1" value="1" />
+              </label>
+              <button id="mcp-summary-button" class="btn primary-button">Get summary</button>
+            </div>
+            <div id="mcp-summary-result" class="mcp-result" role="status" aria-live="polite" hidden></div>
+          </div>
+
+          <div class="mcp-tool">
+            <h3>Find training by skill area</h3>
+            <div class="mcp-action">
+              <label>Skill area
+                <input id="mcp-skill-area" type="text" maxlength="120" value="Leadership" />
+              </label>
+              <button id="mcp-training-button" class="btn primary-button">Find programs</button>
+            </div>
+            <div id="mcp-training-result" class="mcp-result" role="status" aria-live="polite" hidden></div>
+          </div>
+        </div>
       </section>
     </main>
 

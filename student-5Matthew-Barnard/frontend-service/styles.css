@@ -134,6 +134,16 @@ tbody tr:hover { background: #f9fbfd; }
 .ai-result p { color: #4c5f65; line-height: 1.55; }
 .ai-meta { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
 .ai-meta > span:not(.status-pill) { padding: 4px 8px; border-radius: 999px; background: #e4efed; font-size: 11px; font-weight: 750; }
+.mcp-workbench { display: grid; gap: 20px; margin-top: 28px; }
+.mcp-tool { padding: 22px; border: 1px solid var(--line); border-radius: 15px; background: #f9fbfa; }
+.mcp-tool h3 { margin: 0 0 16px; font-size: 19px; }
+.mcp-action { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.mcp-action label { width: min(280px, 100%); }
+.mcp-result { margin-top: 20px; }
+.mcp-result h3 { margin: 0 0 14px; }
+.mcp-section { margin-top: 20px; }
+.mcp-section h4 { margin: 0 0 9px; font-size: 15px; }
+.mcp-section p { color: var(--muted); }
 dialog { width: min(720px, calc(100% - 28px)); padding: 0; border: 0; border-radius: 18px; box-shadow: 0 30px 90px rgba(20,34,52,.3); }
 dialog::backdrop { background: rgba(9, 20, 34, .62); backdrop-filter: blur(3px); }
 #record-form { padding: 28px; }

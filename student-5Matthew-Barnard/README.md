@@ -27,6 +27,7 @@ Browser :8005
 Nginx frontend -- /api --> Flask backend :5005 --> Database service :5105 --> SQLite
                                   |
                                   +--> Shared Ollama service :11434
+                                  +--> Shared local MCP server :5201
 ```
 
 The frontend is served by Nginx, which also sends `/api` requests to the
@@ -88,6 +89,39 @@ can be reviewed, edited, accepted, or rejected by a user.
 
 The normal management pages continue to work when Ollama is unavailable. Only
 the AI recommendation request will show an error.
+
+## MCP Tools
+
+The MCP Tools tab uses two read-only tools on the shared local MCP server.
+Staff development summary shows a staff member's reviews, goals, training and
+recommendations. Training by skill area finds catalogue programs using a
+case-insensitive match. Both requests travel from the frontend through this
+feature's backend to the shared server. The server reads the existing Student 5
+backend APIs; it does not access the SQLite database directly.
+
+Start the shared MCP server on the host after installing its requirements:
+
+```powershell
+python -m pip install -r ai-services/mcp-server/requirements.txt
+Set-Location ai-services/mcp-server
+python server.py
+```
+
+Run these commands from the repository root before opening another terminal to
+start the integrated Docker Compose application. The MCP server listens at
+`http://localhost:5201/mcp`. The integrated Compose configuration enables MCP
+for Student 5 and connects its backend to the host through
+`host.docker.internal`. When running the backend directly on the host, set
+`MCP_ENABLED=true` and `MCP_SERVER_URL=http://localhost:5201/mcp`.
+
+To validate through the UI, open `http://localhost:8005`, choose MCP Tools,
+request the summary for staff ID 1, and search for skill area `Leadership`.
+Both should return recorded data, including the Academic Leadership Foundations
+training title. The backend also exposes `POST /api/mcp/development-summary`
+with `{"staffID":1}` and `POST /api/mcp/training-by-skill` with
+`{"skillArea":"Leadership"}`. `GET /api/mcp/status` reports whether MCP is
+enabled. MCP defaults to disabled outside the Compose deployment and is
+explicitly disabled in CI.
 
 ## API Endpoints
 

@@ -97,7 +97,7 @@ async function api(path, options = {}) {
     ...options
   });
   const body = response.status === 204 ? null : await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body?.error || `Request failed (${response.status})`);
+  if (!response.ok) throw new Error(body?.details || body?.error || `Request failed (${response.status})`);
   return body;
 }
 
@@ -212,12 +212,20 @@ function activateResource(resource) {
   if (resource === 'ai-mode') {
     $('#resource-panel').hidden = true;
     $('#ai-panel').hidden = false;
+    $('#mcp-panel').hidden = true;
+    return;
+  }
+  if (resource === 'mcp-mode') {
+    $('#resource-panel').hidden = true;
+    $('#ai-panel').hidden = true;
+    $('#mcp-panel').hidden = false;
     return;
   }
   currentResource = resource;
   const config = resources[resource];
   $('#resource-panel').hidden = false;
   $('#ai-panel').hidden = true;
+  $('#mcp-panel').hidden = true;
   $('#resource-kicker').textContent = config.kicker;
   $('#resource-title').textContent = config.title;
   $('#resource-description').textContent = config.description;
@@ -351,6 +359,73 @@ async function generateAiRecommendation() {
   }
 }
 
+async function checkMcp() {
+  try {
+    const result = await api('/mcp/status');
+    $('#mcp-status').textContent = result.enabled ? 'MCP enabled' : 'MCP disabled';
+    $('#mcp-status').className = `ai-status ${result.enabled ? 'ready' : 'failed'}`;
+  } catch (_) {
+    $('#mcp-status').textContent = 'Backend unavailable';
+    $('#mcp-status').className = 'ai-status failed';
+  }
+}
+
+function mcpTable(columns, rows) {
+  if (!rows.length) return '<p>No records found.</p>';
+  const head = columns.map(([, title]) => `<th>${escapeHtml(title)}</th>`).join('');
+  const body = rows.map((row) => `<tr>${columns.map(([field]) =>
+    `<td>${escapeHtml(row[field] ?? '—')}</td>`).join('')}</tr>`).join('');
+  return `<div class="table-wrap"><table class="ledger-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function mcpSection(title, columns, rows) {
+  return `<section class="mcp-section"><h4>${escapeHtml(title)} (${rows.length})</h4>${mcpTable(columns, rows)}</section>`;
+}
+
+async function runMcp(buttonSelector, resultSelector, path, payload, render) {
+  const button = $(buttonSelector);
+  const resultBox = $(resultSelector);
+  button.disabled = true;
+  resultBox.hidden = false;
+  resultBox.textContent = 'Calling MCP tool…';
+  try {
+    const result = await api(path, { method: 'POST', body: JSON.stringify(payload) });
+    resultBox.innerHTML = render(result);
+  } catch (error) {
+    resultBox.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function showDevelopmentSummary(result) {
+  const data = result.data;
+  const name = staffDirectory.get(Number(data.staffID));
+  const title = name ? `${escapeHtml(name)} <small class="record-id">#${data.staffID}</small>`
+    : `Staff #${escapeHtml(data.staffID)}`;
+  return `<h3>${title}</h3>`
+    + mcpSection('Performance reviews', [
+      ['reviewDate', 'Date'], ['rating', 'Rating'], ['feedback', 'Feedback'], ['status', 'Status']
+    ], data.reviews)
+    + mcpSection('Development goals', [
+      ['title', 'Goal'], ['progress', 'Progress (%)'], ['targetDate', 'Target'], ['status', 'Status']
+    ], data.goals)
+    + mcpSection('Staff training', [
+      ['trainingTitle', 'Program'], ['enrolmentDate', 'Enrolled'], ['status', 'Status']
+    ], data.training)
+    + mcpSection('Recommendations', [
+      ['recommendation', 'Recommendation'], ['rationale', 'Rationale'], ['status', 'Decision']
+    ], data.recommendations);
+}
+
+function showTrainingPrograms(result) {
+  return `<h3>${escapeHtml(result.match_count)} program(s) for ${escapeHtml(result.query)}</h3>`
+    + mcpTable([
+      ['title', 'Program'], ['provider', 'Provider'], ['startDate', 'Starts'],
+      ['endDate', 'Ends'], ['skillArea', 'Skill area']
+    ], result.data);
+}
+
 document.querySelectorAll('.nav-button').forEach((button) => {
   button.addEventListener('click', () => activateResource(button.dataset.resource));
 });
@@ -367,10 +442,19 @@ $('#close-dialog').addEventListener('click', () => $('#record-dialog').close());
 $('#cancel-dialog').addEventListener('click', () => $('#record-dialog').close());
 $('#check-ai').addEventListener('click', checkAi);
 $('#generate-ai').addEventListener('click', generateAiRecommendation);
+$('#mcp-summary-button').addEventListener('click', () => runMcp(
+  '#mcp-summary-button', '#mcp-summary-result', '/mcp/development-summary',
+  { staffID: Number($('#mcp-staff-id').value) }, showDevelopmentSummary
+));
+$('#mcp-training-button').addEventListener('click', () => runMcp(
+  '#mcp-training-button', '#mcp-training-result', '/mcp/training-by-skill',
+  { skillArea: $('#mcp-skill-area').value.trim() }, showTrainingPrograms
+));
 
 async function initialise() {
   await loadStaffDirectory();
   await loadMetrics();
+  await checkMcp();
   activateResource('development-goals');
 }
 
