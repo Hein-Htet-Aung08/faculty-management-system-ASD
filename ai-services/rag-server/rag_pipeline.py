@@ -1059,7 +1059,7 @@ def load_student2_context():
         )
 
 
-        # --------------------------------------------------------
+    # --------------------------------------------------------
     # Teaching Allocations
     # --------------------------------------------------------
 
@@ -1268,6 +1268,162 @@ def load_student2_context():
 
                     "classroom_id":
                         classroom_id,
+                },
+            )
+        )
+
+    # --------------------------------------------------------
+    # Classroom Allocation Summaries
+    # --------------------------------------------------------
+
+    allocations_by_classroom = {}
+
+    for allocation in allocations:
+        classroom_id = (
+            allocation.get(
+                "classroom_id"
+            )
+        )
+
+        if not classroom_id:
+            continue
+
+        if (
+            allocation.get(
+                "allocation_status"
+            )
+            == "CANCELLED"
+        ):
+            continue
+
+        allocations_by_classroom.setdefault(
+            classroom_id,
+            [],
+        ).append(
+            allocation
+        )
+
+
+    for (
+        classroom_id,
+        classroom_allocations,
+    ) in allocations_by_classroom.items():
+
+        classroom = (
+            classroom_by_id.get(
+                classroom_id,
+                {},
+            )
+        )
+
+        schedule_descriptions = []
+
+        for allocation in classroom_allocations:
+            allocation_id = (
+                allocation.get(
+                    "allocation_id"
+                )
+            )
+
+            offer_id = (
+                allocation.get(
+                    "offer_id"
+                )
+            )
+
+            offer = (
+                offer_by_id.get(
+                    offer_id,
+                    {},
+                )
+            )
+
+            subject_code = (
+                offer.get(
+                    "subject_code"
+                )
+            )
+
+            subject = (
+                subject_by_code.get(
+                    subject_code,
+                    {},
+                )
+            )
+
+            subject_name = (
+                subject.get(
+                    "name"
+                )
+                or "unknown subject"
+            )
+
+            schedule_descriptions.append(
+                (
+                    f"Teaching allocation {allocation_id} "
+                    f"for {subject_name} "
+                    f"(subject {subject_code}) "
+                    f"uses classroom {classroom_id} on "
+                    f"{allocation.get('day')} "
+                    f"during {allocation.get('date_range')} "
+                    f"{offer.get('year')}, "
+                    f"from {allocation.get('start_time')} "
+                    f"to {allocation.get('end_time')}. "
+                    f"Therefore classroom {classroom_id} "
+                    f"is unavailable for another teaching "
+                    f"allocation during that scheduled time. "
+                    f"Allocation status: "
+                    f"{allocation.get('allocation_status')}."
+                )
+            )
+
+        chunks.append(
+            make_chunk(
+                chunk_id=(
+                    "student2_classroom_allocation_summary_"
+                    f"{classroom_id}"
+                ),
+
+                source_id=(
+                    "student2/classrooms/"
+                    f"{classroom_id}/allocations"
+                ),
+
+                authority_tier=
+                    "tier_1",
+
+                feature=
+                    "teaching_subject_and_classroom_allocation",
+
+                student=
+                    2,
+
+                text=(
+                    f"Classroom allocation schedule for "
+                    f"{classroom_id}. "
+                    f"Room type: "
+                    f"{classroom.get('room_type')}. "
+                    f"Capacity: "
+                    f"{classroom.get('capacity')} students. "
+                    f"This classroom has "
+                    f"{len(classroom_allocations)} "
+                    f"non-cancelled teaching allocation(s). "
+                    + " ".join(
+                        schedule_descriptions
+                    )
+                ),
+
+                metadata={
+                    "source_type":
+                        "classroom_allocation_summary",
+
+                    "classroom_id":
+                        classroom_id,
+
+                    "allocation_count":
+                        len(
+                            classroom_allocations
+                        ),
                 },
             )
         )

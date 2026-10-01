@@ -598,18 +598,58 @@
                 </div>
 
 
-                <div class="form-field">
+                <div class="form-field span-2">
 
-                    <label for="allocation-staff-id">
-                        Staff ID
+                    <label for="allocation-staff-search">
+                        Assigned Staff
                     </label>
 
-                    <input
-                        id="allocation-staff-id"
-                        type="number"
-                        min="1"
-                        placeholder="Leave blank if unassigned"
-                    >
+                    <div class="staff-picker">
+
+                        <input
+                            id="allocation-staff-search"
+                            type="text"
+                            placeholder="Search staff by name..."
+                            autocomplete="off"
+                        >
+
+                        <input
+                            id="allocation-staff-id"
+                            type="hidden"
+                        >
+
+                        <div
+                            id="allocation-staff-options"
+                            class="staff-picker-options"
+                            hidden
+                        ></div>
+
+                        <div
+                            id="allocation-selected-staff"
+                            class="selected-staff"
+                            hidden
+                        >
+
+                            <span
+                                id="allocation-selected-staff-label"
+                            ></span>
+
+                            <button
+                                id="allocation-clear-staff"
+                                class="btn secondary"
+                                type="button"
+                            >
+                                Clear selection
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <p class="staff-picker-hint">
+                        Optional. Leave unassigned if no staff member
+                        has been selected.
+                    </p>
 
                 </div>
 
@@ -1193,9 +1233,6 @@
             <form
                 id="mcp-classroom-form"
                 class="form-grid"
-                hx-post="http://localhost:5002/mcp/check-classroom-availability"
-                hx-target="#mcp-classroom-result"
-                hx-swap="innerHTML"
             >
 
                 <div class="form-field">
@@ -1321,9 +1358,6 @@
             <form
                 id="mcp-validation-form"
                 class="form-grid"
-                hx-post="http://localhost:5002/mcp/validate-teaching-allocation"
-                hx-target="#mcp-validation-result"
-                hx-swap="innerHTML"
             >
 
                 <div class="form-field">
@@ -1504,58 +1538,61 @@
                 </div>
 
 
-                <div class="form-field">
+                <div class="form-field span-2">
 
-                    <label for="mcp-staff-id">
-                        Staff ID
+                    <label for="mcp-staff-search">
+                        Assigned Staff
                     </label>
 
-                    <input
-                        id="mcp-staff-id"
-                        name="assigned_staff_member"
-                        type="number"
-                        min="1"
-                        placeholder="Optional"
-                    >
+                    <div class="staff-picker">
+
+                        <input
+                            id="mcp-staff-search"
+                            type="text"
+                            placeholder="Search staff by name..."
+                            autocomplete="off"
+                        >
+
+                        <input
+                            id="mcp-staff-id"
+                            name="assigned_staff_member"
+                            type="hidden"
+                        >
+
+                        <div
+                            id="mcp-staff-options"
+                            class="staff-picker-options"
+                            hidden
+                        ></div>
+
+                        <div
+                            id="mcp-selected-staff"
+                            class="selected-staff"
+                            hidden
+                        >
+
+                            <span
+                                id="mcp-selected-staff-label"
+                            ></span>
+
+                            <button
+                                id="mcp-clear-staff"
+                                class="btn secondary"
+                                type="button"
+                            >
+                                Clear selection
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <p class="staff-picker-hint">
+                        Optional. Leave unassigned if no staff member
+                        should be validated.
+                    </p>
 
                 </div>
-
-
-                <div class="form-field">
-
-                    <label for="mcp-allocation-status">
-                        Allocation Status
-                    </label>
-
-                    <select
-                        id="mcp-allocation-status"
-                        name="allocation_status"
-                    >
-
-                        <option value="">
-                            Use backend default
-                        </option>
-
-                        <option value="PENDING">
-                            Pending
-                        </option>
-
-                        <option value="CONFIRMED">
-                            Confirmed
-                        </option>
-
-                        <option value="NEEDS_ASSIGNMENT">
-                            Needs Assignment
-                        </option>
-
-                        <option value="CANCELLED">
-                            Cancelled
-                        </option>
-
-                    </select>
-
-                </div>
-
 
                 <div class="form-field">
 
