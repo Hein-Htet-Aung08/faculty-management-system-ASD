@@ -24,12 +24,14 @@ def print_menu():
                 "",
                 divider(),
                 "Agentic Loop",
-                "  1) DB            - validate every student's database (real queries)",
-                "  2) Endpoints     - test every student's live endpoints (real HTTP)",
-                "  3) Architecture  - file layout + docker-compose (two-model review)",
-                "  4) AI-Mode       - review every student's Ollama integration (static analysis)",
-                "  5) Run All",
-                "  6) Student 5     - review development goal integrity",
+                "  1) DB             - validate every student's database (real queries)",
+                "  2) Endpoints      - test every student's live endpoints (real HTTP)",
+                "  3) Architecture   - file layout + docker-compose (two-model review)",
+                "  4) AI-Mode        - review every student's Ollama integration (static analysis)",
+                "  5) Development Integrity (Student 5) - review development goal integrity",
+                "  6) MCP            - validate shared MCP integration",
+                "  7) RAG            - validate shared RAG integration",
+                "  8) Run All",
                 "  0) Exit",
                 divider(),
             ]
@@ -197,3 +199,49 @@ def write_architecture_report(app_dir, evidence, proposal, critique):
         "critique": critique,
     }
     return _write_pair(reports_dir, stem, markdown, payload)
+
+def write_rag_validation_report(
+    repo_root,
+    evidence,
+    deterministic_summary,
+    implementation,
+    review,
+):
+    reports_dir = (
+        Path(repo_root)
+        / "reports"
+    )
+
+    reports_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    path = (
+        reports_dir
+        / "rag-validation-report.md"
+    )
+
+    body = (
+        "# RAG Validation Report\n\n"
+        "## DETERMINISTIC VALIDATION SUMMARY\n\n"
+        f"{deterministic_summary}\n\n"
+        "The deterministic validation summary above is authoritative "
+        "for functional pass/fail. The model outputs below are advisory "
+        "and do not override collected evidence.\n\n"
+        "## OBSERVE\n\n"
+        f"```text\n{evidence}\n```\n\n"
+        "## IMPLEMENTATION AGENT ASSESSMENT "
+        "(ADVISORY)\n\n"
+        f"{implementation}\n\n"
+        "## REVIEW AGENT ASSESSMENT "
+        "(ADVISORY)\n\n"
+        f"{review}\n"
+    )
+
+    path.write_text(
+        body,
+        encoding="utf-8",
+    )
+
+    return path

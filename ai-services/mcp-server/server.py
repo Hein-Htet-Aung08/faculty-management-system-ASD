@@ -77,23 +77,79 @@ AVAILABLE_TOOLS.append(
 #
 # OWNER: Student 2 - Hein
 #
-# Register Student 2 tools here.
-#
-# Planned initial tools:
-#
-# student2_validate_teaching_allocation
-# student2_check_classroom_availability
-#
-# Pattern:
-#
-# @mcp.tool()
-# def student2_<tool_name>(...):
-#     return tools.student2_<tool_name>(...)
-#
-# AVAILABLE_TOOLS.append(
-#     "student2_<tool_name>"
-# )
-#
+
+
+@mcp.tool()
+def student2_validate_teaching_allocation(
+    offer_id: str,
+    classroom_id: str,
+    day: str,
+    date_range: str,
+    start_time: str,
+    end_time: str,
+    class_type: str,
+    expected_class_size: int,
+    assigned_staff_member: int | None = None,
+    allocation_status: str | None = None,
+):
+    """
+    Validate a proposed teaching allocation against Student 2's
+    subject, classroom, scheduling and staff-availability rules.
+    """
+
+    return (
+        tools
+        .student2_validate_teaching_allocation(
+            offer_id=offer_id,
+            classroom_id=classroom_id,
+            day=day,
+            date_range=date_range,
+            start_time=start_time,
+            end_time=end_time,
+            class_type=class_type,
+            expected_class_size=
+                expected_class_size,
+            assigned_staff_member=
+                assigned_staff_member,
+            allocation_status=
+                allocation_status,
+        )
+    )
+
+
+AVAILABLE_TOOLS.append(
+    "student2_validate_teaching_allocation"
+)
+
+
+@mcp.tool()
+def student2_check_classroom_availability(
+    classroom_id: str,
+    date: str,
+    year: int,
+    start_time: str,
+    end_time: str,
+):
+    """
+    Check whether a Student 2 classroom is free for a specified
+    date and time.
+    """
+
+    return (
+        tools
+        .student2_check_classroom_availability(
+            classroom_id=classroom_id,
+            date=date,
+            year=year,
+            start_time=start_time,
+            end_time=end_time,
+        )
+    )
+
+
+AVAILABLE_TOOLS.append(
+    "student2_check_classroom_availability"
+)
 
 
 # ============================================================

@@ -194,6 +194,10 @@ jobs:
             -e WORKLOAD_SERVICE_URL=http://unavailable-workload-service:5003 \
             -e OLLAMA_BASE_URL=http://unavailable-ollama:11434/v1 \
             -e OLLAMA_MODEL=qwen2.5:0.5b \
+            -e MCP_ENABLED=false \
+            -e MCP_SERVER_URL=http://unavailable-mcp:5201/mcp \
+            -e RAG_ENABLED=false \
+            -e RAG_SERVER_URL=http://unavailable-rag:5200 \
             allocation-backend:ci
 
       - name: Wait for backend service
@@ -507,6 +511,57 @@ jobs:
           )
           PY
 
+      - name: Verify MCP and RAG are disabled during CI/CD
+        run: |
+          BASE_URL="http://localhost:${BACKEND_PORT}"
+
+          echo "Checking MCP CI gate"
+
+          code=$(curl -s \
+            -o /tmp/student2-mcp-disabled \
+            -w '%{http_code}' \
+            --max-time 10 \
+            -X POST \
+            -H 'X-MCP-Mode: on' \
+            "$BASE_URL/mcp/check-classroom-availability" \
+            || true)
+
+          if [ "$code" != "403" ]; then
+            echo "FAIL: MCP expected HTTP 403, got $code"
+            cat /tmp/student2-mcp-disabled || true
+            exit 1
+          fi
+
+          grep -q \
+            "MCP mode is off" \
+            /tmp/student2-mcp-disabled
+
+          echo "PASS: MCP integration retained but disabled during CI"
+
+          echo "Checking RAG CI gate"
+
+          code=$(curl -s \
+            -o /tmp/student2-rag-disabled \
+            -w '%{http_code}' \
+            --max-time 10 \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{"query":"What expertise is required for Advanced Software Development?"}' \
+            "$BASE_URL/rag/ask" \
+            || true)
+
+          if [ "$code" != "403" ]; then
+            echo "FAIL: RAG expected HTTP 403, got $code"
+            cat /tmp/student2-rag-disabled || true
+            exit 1
+          fi
+
+          grep -q \
+            "RAG mode is off" \
+            /tmp/student2-rag-disabled
+
+          echo "PASS: RAG integration retained but disabled during CI"
+
       - name: Verify frontend files are served
         run: |
           for asset in \
@@ -519,6 +574,8 @@ jobs:
             "/js/classrooms.js" \
             "/js/allocations.js" \
             "/js/ai.js" \
+            "/js/mcp.js" \
+            "/js/rag.js" \
             "/css/styles.css"
           do
             code=$(curl -s \
@@ -555,7 +612,7 @@ jobs:
         if: always()
         run: |
           cat > ci-evidence/student-2-ci-summary.md <<EOF
-          # Student 2 Release 0 CI Evidence
+          # Student 2 Release 1 CI Evidence
 
           Repository: ${{ github.repository }}
 
@@ -585,6 +642,10 @@ jobs:
           - Classroom capacity business-rule validation
           - Back-to-back scheduling validation
           - Static frontend asset validation
+          - MCP frontend integration asset validation
+          - RAG frontend integration asset validation
+          - MCP retained but explicitly disabled during CI
+          - RAG retained but explicitly disabled during CI
 
           ## Scope
 
@@ -592,12 +653,17 @@ jobs:
 
           Student 1 Academic Staff Management,
           Student 3 Workload and Availability,
-          and the shared Ollama runtime are not started
-          by this individual CI workflow.
+          the shared Ollama runtime,
+          the shared local MCP server,
+          and the shared local RAG server
+          are not started by this individual CI workflow.
 
-          Full cross-service AI behaviour is validated
-          separately in the integrated project environment.
-          EOF
+          MCP and RAG integration remains in the Student 2 application
+          but is explicitly disabled during CI/CD using MCP_ENABLED=false
+          and RAG_ENABLED=false.
+
+          Full cross-service AI, MCP and RAG behaviour is validated
+          separately in the integrated local project environment.
 
           cat ci-evidence/student-2-ci-summary.md
 

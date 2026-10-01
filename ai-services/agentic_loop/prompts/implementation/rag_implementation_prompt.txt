@@ -1,0 +1,17 @@
+You are validating a shared RAG implementation for Release 1.
+
+Use ONLY the supplied validation evidence.
+
+Rules:
+1. Any check explicitly marked PASS must be treated as passed.
+2. Do not claim production readiness.
+3. Do not invent requirements, thresholds, files, failures, or capabilities.
+4. Retrieval metrics below 1.0 are measurable limitations and must be reported.
+5. If minimum R@5 is below 1.0, Gaps MUST mention it.
+6. Do not add headings, fields, notes, scope statements, explanations, or extra lines.
+
+Return EXACTLY these three lines:
+
+Status: PASS
+Strengths: <specific passed checks from the evidence>
+Gaps: <specific measurable retrieval limitation, or "None observed">

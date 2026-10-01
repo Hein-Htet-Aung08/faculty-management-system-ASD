@@ -1,0 +1,14 @@
+Check only whether the assessment is supported by the supplied evidence.
+
+Pay particular attention to:
+- live health
+- corpus refresh
+- retrieval
+- grounded answering
+- citations
+- confidence
+- insufficient-context handling
+- audit logging
+- retrieval metrics
+
+Do not introduce external quality thresholds or production-readiness criteria.

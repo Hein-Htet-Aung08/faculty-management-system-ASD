@@ -68,4 +68,17 @@ def build_mode_config():
             per_student=True,
             student_numbers=("5",),
         ),
+        "rag": ModeConfig(
+            key="rag",
+            label="RAG validation review",
+            prompt_family="lab8",
+            implementation_prompts=(
+                "implementation/rag_implementation_prompt.txt",
+            ),
+            review_prompts=(
+                "review/rag_review_prompt.txt",
+                "review/rag_reasoning_prompt.txt",
+            ),
+            per_student=False,
+        ),
     }
