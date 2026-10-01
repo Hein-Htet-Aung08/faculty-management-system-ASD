@@ -128,6 +128,7 @@ def test_rag_answer_includes_citations_and_confidence(client, rag_on, monkeypatc
     assert response.json["insufficient_context"] is False
     assert sent[0][0] == "answer"
     assert sent[0][1]["query"] == "Who knows robotics?"
+    assert sent[0][1]["k"] == ai_services.RAG_TOP_K == 8
 
 
 @pytest.mark.parametrize("model_answer", ["Insufficient context.", "insufficient context", ""])
