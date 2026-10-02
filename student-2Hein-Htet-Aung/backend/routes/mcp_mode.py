@@ -5,6 +5,7 @@ from functools import wraps
 
 from flask import (
     Blueprint,
+    jsonify,
     request,
 )
 
@@ -124,23 +125,33 @@ def _render_invoke(
             or "unknown error"
         )
 
-        return (
-            "<p>"
-            f"MCP tool failed: {message}"
-            "</p>",
-            status,
-        )
+        return jsonify(
+            {
+                "status":
+                    "error",
+                "tool":
+                    tool_name,
+                "title":
+                    title,
+                "error":
+                    message,
+            }
+        ), status
 
-    return (
-        mcp_render_json(
-            title,
-            response.get(
-                "data"
-            ),
-        ),
-        200,
-    )
-
+    return jsonify(
+        {
+            "status":
+                "success",
+            "tool":
+                tool_name,
+            "title":
+                title,
+            "data":
+                response.get(
+                    "data"
+                ),
+        }
+    ), 200
 
 @mcp_bp.post(
     "/mcp/check-classroom-availability"

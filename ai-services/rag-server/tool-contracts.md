@@ -84,4 +84,16 @@ summary-counts chunk, all tagged `feature="research_grant_management"`, `student
 
 Student 5 contributes performance and professional-development context through `load_student5_context()`.
 
-TODO: Define Student 5 context sources and chunk contracts.
+- Source: Student 5 backend/API (`STUDENT5_BACKEND_URL`, default `http://localhost:5005`). The loader reads `GET /api/performance-reviews`, `/api/development-goals`, `/api/training-programs`, `/api/staff-training`, and `/api/development-recommendations`. It optionally reads `GET /api/integration/staff` for display names. It never opens the feature database directly.
+- Every chunk uses `feature="performance_professional_development"`, `student=5`, and `authority_tier="tier_1"`.
+
+| Chunk | `chunk_id` / `source_id` | Content |
+|---|---|---|
+| Performance review | `student5_reviews_<id>` / `student5/performance-reviews/<id>` | Review date, reviewer ID, rating, feedback and status for one staff member |
+| Development goal | `student5_goals_<id>` / `student5/development-goals/<id>` | Title, description, target date, progress and status |
+| Training program | `student5_programs_<id>` / `student5/training-programs/<id>` | Title, skill area, provider, dates and description |
+| Staff training | `student5_training_<id>` / `student5/staff-training/<id>` | Staff member, linked program title, enrolment and completion dates, and participation status |
+| Recommendation | `student5_recommendations_<id>` / `student5/development-recommendations/<id>` | Proposed action, rationale, related goal, generation date and decision status |
+| Totals | `student5_summary_counts` / `student5/summary` | Counts for staff and each of the five record types |
+
+Staff IDs remain usable when the staff directory is unavailable. Recommendations are labelled as proposals; a `Pending` or `Accepted` decision does not prove the action was completed. If a required Student 5 API cannot be read, this loader returns no Student 5 chunks so the shared refresh can still index other features.

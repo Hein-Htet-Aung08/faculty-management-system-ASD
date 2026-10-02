@@ -11,7 +11,10 @@ from services.database_api import (
     update_teaching_allocation_response,
     delete_teaching_allocation_response,
 )
-from services.staff_api import get_staff_by_id_response
+from services.staff_api import (
+    get_staff,
+    get_staff_by_id_response,
+)
 from views.html_formatters import (
     format_teaching_allocation_html,
     format_teaching_allocations_html,
@@ -21,6 +24,73 @@ from services.workload_api import get_staff_availability_slots
 
 allocations_bp = Blueprint("allocations", __name__)
 
+@allocations_bp.get("/staff-options")
+def get_staff_options():
+    try:
+        rows = get_staff()
+
+        staff_by_id = {}
+
+        for row in rows:
+            staff_id = row.get(
+                "staff_id"
+            )
+
+            if staff_id is None:
+                continue
+
+            if (
+                staff_id
+                not in staff_by_id
+            ):
+                staff_by_id[
+                    staff_id
+                ] = {
+                    "staff_id":
+                        staff_id,
+                    "name":
+                        row.get(
+                            "name"
+                        )
+                        or f"Staff {staff_id}",
+                    "position":
+                        row.get(
+                            "position"
+                        )
+                        or "",
+                    "department_name":
+                        row.get(
+                            "department_name"
+                        )
+                        or "",
+                    "status":
+                        row.get(
+                            "status"
+                        )
+                        or "",
+                }
+
+        staff = sorted(
+            staff_by_id.values(),
+            key=lambda item:
+                item[
+                    "name"
+                ].lower(),
+        )
+
+        return jsonify(
+            staff
+        ), 200
+
+    except requests.RequestException as exc:
+        return jsonify(
+            {
+                "error":
+                    "Failed to retrieve staff options.",
+                "details":
+                    str(exc),
+            }
+        ), 503
 
 def resolve_staff(allocation):
     staff_id = allocation["assigned_staff_member"]

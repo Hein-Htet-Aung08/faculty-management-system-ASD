@@ -97,7 +97,7 @@ async function api(path, options = {}) {
     ...options
   });
   const body = response.status === 204 ? null : await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body?.error || `Request failed (${response.status})`);
+  if (!response.ok) throw new Error(body?.details || body?.error || `Request failed (${response.status})`);
   return body;
 }
 
@@ -212,12 +212,30 @@ function activateResource(resource) {
   if (resource === 'ai-mode') {
     $('#resource-panel').hidden = true;
     $('#ai-panel').hidden = false;
+    $('#mcp-panel').hidden = true;
+    $('#rag-panel').hidden = true;
+    return;
+  }
+  if (resource === 'mcp-mode') {
+    $('#resource-panel').hidden = true;
+    $('#ai-panel').hidden = true;
+    $('#mcp-panel').hidden = false;
+    $('#rag-panel').hidden = true;
+    return;
+  }
+  if (resource === 'rag-mode') {
+    $('#resource-panel').hidden = true;
+    $('#ai-panel').hidden = true;
+    $('#mcp-panel').hidden = true;
+    $('#rag-panel').hidden = false;
     return;
   }
   currentResource = resource;
   const config = resources[resource];
   $('#resource-panel').hidden = false;
   $('#ai-panel').hidden = true;
+  $('#mcp-panel').hidden = true;
+  $('#rag-panel').hidden = true;
   $('#resource-kicker').textContent = config.kicker;
   $('#resource-title').textContent = config.title;
   $('#resource-description').textContent = config.description;
@@ -351,6 +369,137 @@ async function generateAiRecommendation() {
   }
 }
 
+async function checkMcp() {
+  try {
+    const result = await api('/mcp/status');
+    $('#mcp-status').textContent = result.enabled ? 'MCP enabled' : 'MCP disabled';
+    $('#mcp-status').className = `ai-status ${result.enabled ? 'ready' : 'failed'}`;
+  } catch (_) {
+    $('#mcp-status').textContent = 'Backend unavailable';
+    $('#mcp-status').className = 'ai-status failed';
+  }
+}
+
+function mcpTable(columns, rows) {
+  if (!rows.length) return '<p>No records found.</p>';
+  const head = columns.map(([, title]) => `<th>${escapeHtml(title)}</th>`).join('');
+  const body = rows.map((row) => `<tr>${columns.map(([field]) =>
+    `<td>${escapeHtml(row[field] ?? '—')}</td>`).join('')}</tr>`).join('');
+  return `<div class="table-wrap"><table class="ledger-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function mcpSection(title, columns, rows) {
+  return `<section class="mcp-section"><h4>${escapeHtml(title)} (${rows.length})</h4>${mcpTable(columns, rows)}</section>`;
+}
+
+async function runMcp(buttonSelector, resultSelector, path, payload, render) {
+  const button = $(buttonSelector);
+  const resultBox = $(resultSelector);
+  button.disabled = true;
+  resultBox.hidden = false;
+  resultBox.textContent = 'Calling MCP tool…';
+  try {
+    const result = await api(path, { method: 'POST', body: JSON.stringify(payload) });
+    resultBox.innerHTML = render(result);
+  } catch (error) {
+    resultBox.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function showDevelopmentSummary(result) {
+  const data = result.data;
+  const name = staffDirectory.get(Number(data.staffID));
+  const title = name ? `${escapeHtml(name)} <small class="record-id">#${data.staffID}</small>`
+    : `Staff #${escapeHtml(data.staffID)}`;
+  return `<h3>${title}</h3>`
+    + mcpSection('Performance reviews', [
+      ['reviewDate', 'Date'], ['rating', 'Rating'], ['feedback', 'Feedback'], ['status', 'Status']
+    ], data.reviews)
+    + mcpSection('Development goals', [
+      ['title', 'Goal'], ['progress', 'Progress (%)'], ['targetDate', 'Target'], ['status', 'Status']
+    ], data.goals)
+    + mcpSection('Staff training', [
+      ['trainingTitle', 'Program'], ['enrolmentDate', 'Enrolled'], ['status', 'Status']
+    ], data.training)
+    + mcpSection('Recommendations', [
+      ['recommendation', 'Recommendation'], ['rationale', 'Rationale'], ['status', 'Decision']
+    ], data.recommendations);
+}
+
+function showTrainingPrograms(result) {
+  return `<h3>${escapeHtml(result.match_count)} program(s) for ${escapeHtml(result.query)}</h3>`
+    + mcpTable([
+      ['title', 'Program'], ['provider', 'Provider'], ['startDate', 'Starts'],
+      ['endDate', 'Ends'], ['skillArea', 'Skill area']
+    ], result.data);
+}
+
+async function checkRag() {
+  try {
+    const result = await api('/rag/status');
+    $('#rag-status').textContent = result.enabled ? 'RAG enabled' : 'RAG disabled';
+    $('#rag-status').className = `ai-status ${result.enabled ? 'ready' : 'failed'}`;
+  } catch (_) {
+    $('#rag-status').textContent = 'Backend unavailable';
+    $('#rag-status').className = 'ai-status failed';
+  }
+}
+
+function showRagAnswer(result) {
+  const answer = String(result.answer || '').trim();
+  if (!answer || answer.toLowerCase().startsWith('insufficient context')) {
+    return '<p class="eyebrow ai-accent">Confidence: Insufficient</p><h3>Insufficient context</h3><p>There is not enough relevant recorded information to answer this question.</p>';
+  }
+  const citations = Array.isArray(result.citations) ? result.citations : [];
+  const sources = citations.length
+    ? `<h4>Sources</h4><ol class="rag-sources">${citations.map((citation) =>
+      `<li>${escapeHtml(citation.source_id)} <span>${escapeHtml(citation.authority_tier)}</span></li>`
+    ).join('')}</ol>`
+    : '<p>No sources returned.</p>';
+  return `<p class="eyebrow ai-accent">Confidence: ${escapeHtml(result.confidence_category || 'Unknown')}</p>
+    <h3>Grounded answer</h3><p>${escapeHtml(answer)}</p>${sources}`;
+}
+
+async function askRag() {
+  const query = $('#rag-query').value.trim();
+  const resultBox = $('#rag-result');
+  if (!query) {
+    resultBox.hidden = false;
+    resultBox.innerHTML = '<p class="form-error">Enter a question first.</p>';
+    return;
+  }
+  const button = $('#rag-ask-button');
+  button.disabled = true;
+  resultBox.hidden = false;
+  resultBox.textContent = 'Retrieving context and generating an answer…';
+  try {
+    const result = await api('/rag/ask', { method: 'POST', body: JSON.stringify({ query }) });
+    resultBox.innerHTML = showRagAnswer(result);
+  } catch (error) {
+    resultBox.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function refreshRag() {
+  const button = $('#rag-refresh-button');
+  const resultBox = $('#rag-result');
+  button.disabled = true;
+  resultBox.hidden = false;
+  resultBox.textContent = 'Refreshing context from current records…';
+  try {
+    const result = await api('/rag/refresh', { method: 'POST' });
+    resultBox.innerHTML = `<p>Context refreshed: ${escapeHtml(result.chunk_count)} chunks indexed.</p>`;
+  } catch (error) {
+    resultBox.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 document.querySelectorAll('.nav-button').forEach((button) => {
   button.addEventListener('click', () => activateResource(button.dataset.resource));
 });
@@ -367,10 +516,22 @@ $('#close-dialog').addEventListener('click', () => $('#record-dialog').close());
 $('#cancel-dialog').addEventListener('click', () => $('#record-dialog').close());
 $('#check-ai').addEventListener('click', checkAi);
 $('#generate-ai').addEventListener('click', generateAiRecommendation);
+$('#mcp-summary-button').addEventListener('click', () => runMcp(
+  '#mcp-summary-button', '#mcp-summary-result', '/mcp/development-summary',
+  { staffID: Number($('#mcp-staff-id').value) }, showDevelopmentSummary
+));
+$('#mcp-training-button').addEventListener('click', () => runMcp(
+  '#mcp-training-button', '#mcp-training-result', '/mcp/training-by-skill',
+  { skillArea: $('#mcp-skill-area').value.trim() }, showTrainingPrograms
+));
+$('#rag-ask-button').addEventListener('click', askRag);
+$('#rag-refresh-button').addEventListener('click', refreshRag);
 
 async function initialise() {
   await loadStaffDirectory();
   await loadMetrics();
+  await checkMcp();
+  await checkRag();
   activateResource('development-goals');
 }
 
