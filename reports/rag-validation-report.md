@@ -16,7 +16,7 @@ RAG VALIDATION EVIDENCE
 - Structural files: PASS
 - Required tools: PASS (refresh_corpus, retrieve_context, answer_question)
 - Live health: PASS ({'status': 'ok', 'service': 'faculty-management-rag'})
-- Corpus refresh: PASS (138 chunks, vector store ready)
+- Corpus refresh: PASS (73 chunks, vector store ready)
 - Retrieval: PASS (5 chunk(s), mode=vector)
 - Validation query: Which staff member has expertise in machine learning?
 - Grounded answer: John Smith (staff ID 1) has expertise in machine learning.
@@ -27,15 +27,14 @@ RAG VALIDATION EVIDENCE
 - Retrieval metrics: 20 benchmark(s), mean P@5=0.470, mean R@5=0.975, minimum R@5=0.500
 ```
 
-## IMPLEMENTATION ASSESSMENT (ADVISORY MODEL OUTPUT)
+## IMPLEMENTATION AGENT ASSESSMENT (ADVISORY)
 
 Status: PASS
-Strengths: Structural files, required tools, live health, corpus refresh, retrieval, validation query, grounded answer, citations, confidence, audit logging, retrieval metrics, and measurement capabilities are all met.
+Strengths: Structural files, required tools, live health, corpus refresh, retrieval, validation query response, citations, confidence, insufficient-context behaviour, audit logging.
+Gaps: None observed
 
-Gaps: Insufficient-context behaviour, audit logging, and retrieval metrics are not observed.
+## REVIEW AGENT ASSESSMENT (ADVISORY)
 
-## REVIEW (ADVISORY MODEL OUTPUT)
-
-Risk: Insufficient-context behaviour is marked as PASS, contradicting the Gap: Insufficient-context behaviour is not observed.
+Risk: None observed
 Correction: None
 Retest: No additional retest required

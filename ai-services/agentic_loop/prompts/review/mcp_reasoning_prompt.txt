@@ -1,0 +1,11 @@
+Check only whether the assessment is supported by the supplied evidence.
+
+Pay particular attention to:
+- real MCP protocol transport (streamable-http, not stdio or a custom REST wrapper)
+- statically registered tools in server.py
+- requirements.txt declaring the mcp package
+- live tool listing over the real protocol
+- live tool invocation
+- unknown-tool error handling
+
+Do not introduce external quality thresholds or production-readiness criteria.

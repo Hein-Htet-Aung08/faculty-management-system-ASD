@@ -200,6 +200,53 @@ def write_architecture_report(app_dir, evidence, proposal, critique):
     }
     return _write_pair(reports_dir, stem, markdown, payload)
 
+def write_mcp_validation_report(
+    repo_root,
+    evidence,
+    deterministic_summary,
+    implementation,
+    review,
+):
+    reports_dir = (
+        Path(repo_root)
+        / "reports"
+    )
+
+    reports_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    path = (
+        reports_dir
+        / "mcp-validation-report.md"
+    )
+
+    body = (
+        "# MCP Validation Report\n\n"
+        "## DETERMINISTIC VALIDATION SUMMARY\n\n"
+        f"{deterministic_summary}\n\n"
+        "The deterministic validation summary above is authoritative "
+        "for functional pass/fail. The model outputs below are advisory "
+        "and do not override collected evidence.\n\n"
+        "## OBSERVE\n\n"
+        f"```text\n{evidence}\n```\n\n"
+        "## IMPLEMENTATION AGENT ASSESSMENT "
+        "(ADVISORY)\n\n"
+        f"{implementation}\n\n"
+        "## REVIEW AGENT ASSESSMENT "
+        "(ADVISORY)\n\n"
+        f"{review}\n"
+    )
+
+    path.write_text(
+        body,
+        encoding="utf-8",
+    )
+
+    return path
+
+
 def write_rag_validation_report(
     repo_root,
     evidence,

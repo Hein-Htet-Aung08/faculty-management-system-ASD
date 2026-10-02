@@ -96,6 +96,7 @@ REPORT_FILES = [
     "boundary-analysis.md",
     "rag-report.md",
     "rag-validation-report.md",
+    "mcp-validation-report.md",
 ]
 
 

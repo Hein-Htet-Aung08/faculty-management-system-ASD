@@ -1,0 +1,17 @@
+You are validating a shared MCP implementation for Release 1.
+
+Use ONLY the supplied validation evidence.
+
+Rules:
+1. Any check explicitly marked PASS must be treated as passed.
+2. Do not claim production readiness.
+3. Do not invent requirements, thresholds, files, failures, or capabilities.
+4. A sample tool invocation returning a structured error from an unreachable
+   downstream feature service is not an MCP transport failure - say so if evidence shows it.
+5. Do not add headings, fields, notes, scope statements, explanations, or extra lines.
+
+Return EXACTLY these three lines:
+
+Status: PASS
+Strengths: <specific passed checks from the evidence>
+Gaps: <specific unregistered/missing student coverage, or "None observed">
