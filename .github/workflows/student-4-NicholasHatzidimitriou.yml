@@ -5,11 +5,21 @@ on:
     branches: [main, "student-4-*"]
     paths:
       - "student-4Nicholas-Hatzidimitriou/**"
+      - "ai-services/mcp-server/**"
+      - "ai-services/rag-server/**"
+      - "docker-compose.yml"
       - ".github/workflows/student-4-NicholasHatzidimitriou.yml"
   pull_request:
     branches: [main]
     paths:
       - "student-4Nicholas-Hatzidimitriou/**"
+      - "ai-services/mcp-server/**"
+      - "ai-services/rag-server/**"
+      - "docker-compose.yml"
+
+env:
+  MCP_ENABLED: "false"
+  RAG_ENABLED: "false"
 
 jobs:
   validate-python:
@@ -85,6 +95,26 @@ jobs:
               print(f'{t}: {count} records OK')
           "
 
+  validate-mcp-rag-compose-config:
+    name: Validate shared MCP/RAG wiring in docker-compose.yml
+    runs-on: ubuntu-latest
+    needs: validate-python
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate student4-backend points at the shared host MCP/RAG servers
+        run: |
+          docker compose -f docker-compose.yml config --format json > compose.json
+          jq -e '.services["student4-backend"].environment
+                 | .MCP_ENABLED == "true"
+                   and (.MCP_SERVER_URL | test("host.docker.internal:5201"))
+                   and .RAG_ENABLED == "true"
+                   and (.RAG_SERVER_URL | test("host.docker.internal:5200"))' compose.json
+          # AI-Mode, MCP and RAG must not be defined as compose services for this feature
+          jq -e '.services["student4-backend"].depends_on | keys == ["student4-database"]' compose.json
+          echo "PASS: student4-backend points at host MCP/RAG and depends only on its own database"
+
   build-docker-images:
     name: Build Docker images
     runs-on: ubuntu-latest
@@ -101,3 +131,99 @@ jobs:
 
       - name: Build database-service image
         run: docker build -t student4-database:ci ./student-4Nicholas-Hatzidimitriou/database-service
+
+  smoke-test-mcp-rag-disabled:
+    name: Runtime smoke test (MCP/RAG disabled)
+    runs-on: ubuntu-latest
+    needs: build-docker-images
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build images
+        run: |
+          docker build -t student4-backend:ci ./student-4Nicholas-Hatzidimitriou/backend
+          docker build -t student4-database:ci ./student-4Nicholas-Hatzidimitriou/database-service
+
+      - name: Create isolated CI network
+        run: docker network create student4-ci-network
+
+      - name: Start database service
+        run: |
+          docker run -d --name student4-database-ci --network student4-ci-network \
+            -p 5104:5104 student4-database:ci
+
+      - name: Start backend service (MCP/RAG disabled)
+        run: |
+          docker run -d --name student4-backend-ci --network student4-ci-network \
+            -p 5004:5004 \
+            -e DATABASE_SERVICE_URL=http://student4-database-ci:5104 \
+            -e STAFF_SERVICE_URL=http://unavailable-staff-service:5001 \
+            -e WORKLOAD_SERVICE_URL=http://unavailable-workload-service:5003 \
+            -e OLLAMA_BASE_URL=http://unavailable-ollama:11434/v1 \
+            -e OLLAMA_MODEL=qwen2.5:0.5b \
+            -e MCP_ENABLED=false \
+            -e MCP_SERVER_URL=http://unavailable-mcp:5201/mcp \
+            -e RAG_ENABLED=false \
+            -e RAG_SERVER_URL=http://unavailable-rag:5200 \
+            student4-backend:ci
+
+      - name: Wait for backend health check
+        run: |
+          for attempt in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5004/health || true)
+            if [ "$code" = "200" ]; then
+              echo "PASS: backend is healthy"
+              exit 0
+            fi
+            echo "Waiting for backend... attempt $attempt"
+            sleep 2
+          done
+          echo "Backend failed to become healthy"
+          docker logs student4-backend-ci || true
+          exit 1
+
+      - name: Verify seeded project data is served
+        run: |
+          count=$(curl -fs http://localhost:5004/projects | jq -e 'length')
+          echo "Projects returned: $count"
+          test "$count" -ge 10
+          echo "PASS: at least 10 seeded projects returned via the backend container"
+
+      - name: Verify MCP is retained but cleanly disabled
+        run: |
+          code=$(curl -s -o /tmp/mcp-disabled -w '%{http_code}' \
+            -X POST -H 'X-MCP-Mode: on' http://localhost:5004/mcp/project-count || true)
+          if [ "$code" != "403" ]; then
+            echo "FAIL: MCP expected HTTP 403, got $code"
+            cat /tmp/mcp-disabled || true
+            exit 1
+          fi
+          grep -q "MCP mode is off" /tmp/mcp-disabled
+          echo "PASS: MCP integration retained but disabled during CI"
+
+      - name: Verify RAG is retained but cleanly disabled
+        run: |
+          code=$(curl -s -o /tmp/rag-disabled -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -d '{"query":"What is the Financial Risk Modelling with AI project about?"}' \
+            http://localhost:5004/api/rag/ask || true)
+          if [ "$code" != "403" ]; then
+            echo "FAIL: RAG expected HTTP 403, got $code"
+            cat /tmp/rag-disabled || true
+            exit 1
+          fi
+          grep -q "RAG mode is off" /tmp/rag-disabled
+          echo "PASS: RAG integration retained but disabled during CI"
+
+      - name: Collect container logs on failure
+        if: failure()
+        run: |
+          docker logs student4-backend-ci || true
+          docker logs student4-database-ci || true
+
+      - name: Clean up CI containers
+        if: always()
+        run: |
+          docker rm -f student4-backend-ci student4-database-ci 2>/dev/null || true
+          docker network rm student4-ci-network 2>/dev/null || true

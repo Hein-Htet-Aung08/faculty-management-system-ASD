@@ -16,6 +16,10 @@ RAG_ENABLED = os.getenv("RAG_ENABLED", "false").lower() == "true"
 RAG_SERVER_URL = os.getenv("RAG_SERVER_URL", "http://localhost:5200")
 # Grounded answers wait on the local LLM, so allow longer than a normal API call
 RAG_TIMEOUT_SECONDS = float(os.getenv("RAG_TIMEOUT_SECONDS", "130"))
+# Chunks retrieved per question. Above the server default of 5 because list
+# questions ("who is active?") depend on a roster chunk that can rank just
+# outside the top 5 when it ties with individual staff profiles.
+RAG_TOP_K = int(os.getenv("RAG_TOP_K", "8"))
 
 INSUFFICIENT_CONTEXT = "Insufficient context."
 
@@ -95,7 +99,7 @@ def ask_rag(question):
     retrieved context -- in both cases no citations are shown, since nothing
     was actually used to support an answer.
     """
-    data = _post_rag("answer", {"query": question, "caller": "student1-staff-management"})
+    data = _post_rag("answer", {"query": question, "k": RAG_TOP_K, "caller": "student1-staff-management"})
 
     if data.get("status") != "success":
         detail = data.get("details") or data.get("error") or "unknown error"

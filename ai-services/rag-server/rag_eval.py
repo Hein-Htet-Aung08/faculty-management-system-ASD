@@ -209,7 +209,30 @@ STUDENT4_BENCHMARKS = [
 # ============================================================
 
 STUDENT5_BENCHMARKS = [
-    # Add Student 5 benchmark queries here.
+    {
+        "query": "What is the progress and target date of the Strengthen academic leadership development goal?",
+        "relevant_chunk_ids": ["student5_goals_1"],
+    },
+    {
+        "query": "Which training program teaches learning analytics and who provides it?",
+        "relevant_chunk_ids": ["student5_programs_6"],
+    },
+    {
+        "query": "When did staff ID 8 complete Academic Workload Planning?",
+        "relevant_chunk_ids": ["student5_training_8"],
+    },
+    {
+        "query": "What did staff ID 1's performance review say about teaching leadership?",
+        "relevant_chunk_ids": ["student5_reviews_1"],
+    },
+    {
+        "query": "What academic leadership recommendation is pending for staff ID 1?",
+        "relevant_chunk_ids": ["student5_recommendations_1"],
+    },
+    {
+        "query": "How many performance reviews, development goals and training programs are tracked?",
+        "relevant_chunk_ids": ["student5_summary_counts"],
+    },
 ]
 
 

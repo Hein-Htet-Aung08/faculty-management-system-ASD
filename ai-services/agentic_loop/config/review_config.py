@@ -68,6 +68,19 @@ def build_mode_config():
             per_student=True,
             student_numbers=("5",),
         ),
+        "mcp": ModeConfig(
+            key="mcp",
+            label="MCP validation review",
+            prompt_family="lab7",
+            implementation_prompts=(
+                "implementation/mcp_implementation_prompt.txt",
+            ),
+            review_prompts=(
+                "review/mcp_review_prompt.txt",
+                "review/mcp_reasoning_prompt.txt",
+            ),
+            per_student=False,
+        ),
         "rag": ModeConfig(
             key="rag",
             label="RAG validation review",

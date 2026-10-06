@@ -225,11 +225,21 @@ AVAILABLE_TOOLS.append("student4_research_history")
 # ============================================================
 # Student 5 - Performance & Professional Development
 # ============================================================
-#
-# OWNER: Student 5
-#
-# Register Student 5 shared-MCP tools here.
-#
+
+@mcp.tool()
+def student5_staff_development_summary(staff_id: int):
+    return tools.student5_staff_development_summary(staff_id)
+
+
+AVAILABLE_TOOLS.append("student5_staff_development_summary")
+
+
+@mcp.tool()
+def student5_training_by_skill_area(skill_area: str):
+    return tools.student5_training_by_skill_area(skill_area)
+
+
+AVAILABLE_TOOLS.append("student5_training_by_skill_area")
 
 
 # ============================================================
