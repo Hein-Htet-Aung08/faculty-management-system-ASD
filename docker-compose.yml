@@ -1,31 +1,6 @@
 services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11434:11434" 
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - faculty-network
-    restart: unless-stopped
-
-  ollama-init:
-    image: ollama/ollama:latest
-    container_name: ollama-init
-    depends_on:
-      - ollama
-    environment:
-      - OLLAMA_HOST=http://ollama:11434
-    entrypoint: /bin/sh
-    command: 
-      - -c
-      - |
-        ollama pull qwen2.5:0.5b 
-        ollama pull llama3.1:8b
-    networks:
-      - faculty-network
-    restart: "no"
+  # AI-Mode (Ollama), MCP and RAG run on the host, not in compose (Release 1).
+  # Backends reach them via host.docker.internal; models: `ollama pull <model>` on the host.
 
   #Shared unified home page 
   home:
@@ -101,7 +76,7 @@ services:
       - DATABASE_SERVICE_URL=http://allocation-database:6002
       - STAFF_SERVICE_URL=http://staff-backend:5001
       - WORKLOAD_SERVICE_URL=http://student3-backend:5003
-      - OLLAMA_BASE_URL=http://ollama:11434/v1
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
       - OLLAMA_MODEL=qwen2.5:0.5b
       - MCP_ENABLED=true
       - MCP_SERVER_URL=http://host.docker.internal:5201/mcp
@@ -113,7 +88,6 @@ services:
       - allocation-database
       - staff-backend
       - student3-backend
-      - ollama
     networks:
       - faculty-network
     restart: unless-stopped
@@ -151,7 +125,7 @@ services:
       - "5003:5003"
     environment:
       DATABASE_SERVICE_URL: http://student3-database:5103
-      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
       OLLAMA_MODEL: qwen2.5:0.5b
       STAFF_SERVICE_URL: http://staff-backend:5001
       MCP_ENABLED: "true"
@@ -162,7 +136,6 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - student3-database
-      - ollama
     networks:
       - faculty-network
     restart: unless-stopped
@@ -269,7 +242,7 @@ services:
     environment:
       DATABASE_SERVICE_URL: http://student5-database:5105
       DATABASE_TIMEOUT: 5
-      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
       OLLAMA_MODEL: qwen2.5:0.5b
       LLM_TIMEOUT: 120
       AI_MODE_ENABLED: "true"
@@ -285,8 +258,6 @@ services:
     depends_on:
       student5-database:
         condition: service_healthy
-      ollama:
-        condition: service_started
     networks:
       - faculty-network
     restart: unless-stopped
@@ -316,7 +287,6 @@ volumes:
   student3_data:
   student4_data:
   student5_data:
-  ollama_data:
   allocation-data:
 
 networks:
