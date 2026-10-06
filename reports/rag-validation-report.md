@@ -16,7 +16,7 @@ RAG VALIDATION EVIDENCE
 - Structural files: PASS
 - Required tools: PASS (refresh_corpus, retrieve_context, answer_question)
 - Live health: PASS ({'status': 'ok', 'service': 'faculty-management-rag'})
-- Corpus refresh: PASS (73 chunks, vector store ready)
+- Corpus refresh: PASS (209 chunks, vector store ready)
 - Retrieval: PASS (5 chunk(s), mode=vector)
 - Validation query: Which staff member has expertise in machine learning?
 - Grounded answer: John Smith (staff ID 1) has expertise in machine learning.
@@ -30,8 +30,9 @@ RAG VALIDATION EVIDENCE
 ## IMPLEMENTATION AGENT ASSESSMENT (ADVISORY)
 
 Status: PASS
-Strengths: Structural files, required tools, live health, corpus refresh, retrieval, validation query response, citations, confidence, insufficient-context behaviour, audit logging.
-Gaps: None observed
+Strengths: The RAG implementation is operational, grounded, measurable, and suitable for Release 1.
+
+Gaps: None observed.
 
 ## REVIEW AGENT ASSESSMENT (ADVISORY)
 
