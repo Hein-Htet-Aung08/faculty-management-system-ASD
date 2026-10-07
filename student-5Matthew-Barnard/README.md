@@ -42,15 +42,20 @@ the feature can still display and manage records using their staff IDs.
 
 ## Running the Full Application
 
-From the repository root, run:
+Make sure Ollama is running on your computer. If it is not already running,
+run `ollama serve` in a separate terminal. From the repository root, run:
 
 ```powershell
+ollama pull qwen2.5:0.5b
+ollama pull llama3.1:8b
 docker compose up --build -d
-docker compose exec ollama ollama pull qwen2.5:0.5b
 ```
 
 Open `http://localhost:8000` for the group homepage, or
 `http://localhost:8005` to open this feature directly.
+
+Ollama, MCP and RAG run on your computer outside Docker. Start the MCP and RAG
+servers using the commands below to use their tabs.
 
 To stop the application, run:
 
@@ -60,11 +65,11 @@ docker compose down
 
 ## Running This Feature by Itself
 
-From the `student-5Matthew-Barnard` folder, run:
+Keep Ollama running on your computer as above. From the
+`student-5Matthew-Barnard` folder, run:
 
 ```powershell
 docker compose up --build
-docker compose exec ollama ollama pull qwen2.5:0.5b
 ```
 
 Open `http://localhost:8005`. To stop the containers, run:
@@ -78,9 +83,10 @@ it remains available after the containers are restarted.
 
 ## AI Mode
 
-AI Mode uses `qwen2.5:0.5b` through the shared Ollama container. It combines a
-staff member's details, current goal, and the available training programs to
-suggest a suitable development activity.
+AI Mode uses `qwen2.5:0.5b` through the shared Ollama service running on your
+computer. The backend connects through `host.docker.internal:11434`. It
+combines a staff member's details, current goal, and the available training
+programs to suggest a suitable development activity.
 
 The backend checks the response before saving it. If the response contains
 invalid database values, it asks the model to correct them once. If the second
