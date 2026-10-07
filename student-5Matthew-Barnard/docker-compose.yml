@@ -1,12 +1,4 @@
 services:
-  ollama:
-    image: ollama/ollama:latest
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - faculty-network
-    restart: unless-stopped
-
   student5-frontend:
     build: ./frontend-service
     ports:
@@ -46,7 +38,7 @@ services:
       DATABASE_SERVICE_URL: http://student5-database:5105
       DATABASE_TIMEOUT: "5"
       PORT: "5005"
-      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
       OLLAMA_MODEL: qwen2.5:0.5b
       LLM_TIMEOUT: "120"
       AI_MODE_ENABLED: "true"
@@ -61,8 +53,6 @@ services:
     depends_on:
       student5-database:
         condition: service_healthy
-      ollama:
-        condition: service_started
     healthcheck:
       test:
         - CMD
@@ -77,7 +67,6 @@ services:
 
 volumes:
   matthew-performance-data:
-  ollama_data:
 
 networks:
   faculty-network:
