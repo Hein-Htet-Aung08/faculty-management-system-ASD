@@ -21,6 +21,7 @@ from routes.ai_mode import ai_mode_bp
 from routes.mcp_mode import mcp_bp
 from routes.rag_source import rag_source_bp
 from routes.rag_mode import rag_bp
+from routes.multi_agent_mode import multi_agent_bp
 
 
 def create_app():
@@ -67,6 +68,10 @@ def create_app():
 
     app.register_blueprint(
         rag_bp
+    )
+
+    app.register_blueprint(
+        multi_agent_bp
     )
 
     return app

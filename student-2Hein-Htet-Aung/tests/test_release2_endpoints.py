@@ -12,6 +12,7 @@ from app import create_app
 from routes import allocations as allocation_routes
 from routes import classrooms as classroom_routes
 from routes import ai_mode as ai_mode_routes
+from routes import multi_agent_mode as multi_agent_routes
 
 @pytest.fixture
 def client():
@@ -253,3 +254,150 @@ def test_ai_mode_disabled(client, monkeypatch):
 
     assert response.status_code == 503
     assert response.get_json()["error"] == "AI-Mode is disabled"
+
+
+def test_multi_agent_disabled_by_default(client, monkeypatch):
+    monkeypatch.delenv("MULTI_AGENT_ENABLED", raising=False)
+
+    response = client.post(
+        "/multi-agent/workflow",
+        json={"user_request": "Review classroom allocations"},
+    )
+
+    assert response.status_code == 403
+
+
+def test_multi_agent_forces_student2_feature(client, monkeypatch):
+    monkeypatch.setenv("MULTI_AGENT_ENABLED", "true")
+    captured = {}
+
+    def fake_request(method, url, **kwargs):
+        captured["method"] = method
+        captured["url"] = url
+        captured["payload"] = kwargs["json"]
+
+        return SimpleNamespace(
+            status_code=200,
+            json=lambda: {"status": "awaiting_human_review"},
+        )
+
+    monkeypatch.setattr(
+        multi_agent_routes.requests,
+        "request",
+        fake_request,
+    )
+
+    response = client.post(
+        "/multi-agent/workflow",
+        json={
+            "user_request": "Review teaching allocations",
+            "feature": "student3",
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured["method"] == "POST"
+    assert captured["url"].endswith("/workflow")
+    assert captured["payload"] == {
+        "user_request": "Review teaching allocations",
+        "feature": "student2",
+    }
+
+
+def test_multi_agent_history_is_student2_only(client, monkeypatch):
+    monkeypatch.setenv("MULTI_AGENT_ENABLED", "true")
+    captured = {}
+
+    def fake_request(method, url, **kwargs):
+        captured["params"] = kwargs["params"]
+
+        return SimpleNamespace(
+            status_code=200,
+            json=lambda: {"status": "success", "workflows": []},
+        )
+
+    monkeypatch.setattr(
+        multi_agent_routes.requests,
+        "request",
+        fake_request,
+    )
+
+    response = client.get("/multi-agent/workflow/history")
+
+    assert response.status_code == 200
+    assert captured["params"]["feature"] == "student2"
+
+
+def test_multi_agent_blocks_foreign_workflow_decision(
+    client, monkeypatch
+):
+    monkeypatch.setenv("MULTI_AGENT_ENABLED", "true")
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append(method)
+
+        return SimpleNamespace(
+            status_code=200,
+            json=lambda: {"feature": "student3"},
+        )
+
+    monkeypatch.setattr(
+        multi_agent_routes.requests,
+        "request",
+        fake_request,
+    )
+
+    response = client.post(
+        "/multi-agent/workflow/test-id/decision",
+        json={"decision": "Accept", "reviewer": "Tester"},
+    )
+
+    assert response.status_code == 404
+    assert calls == ["GET"]
+
+
+def test_multi_agent_forwards_human_decision(
+    client, monkeypatch
+):
+    monkeypatch.setenv("MULTI_AGENT_ENABLED", "true")
+    forwarded = {}
+
+    def fake_request(method, url, **kwargs):
+        if method == "GET":
+            return SimpleNamespace(
+                status_code=200,
+                json=lambda: {"feature": "student2"},
+            )
+
+        forwarded["body"] = kwargs["json"]
+
+        return SimpleNamespace(
+            status_code=200,
+            json=lambda: {
+                "feature": "student2",
+                "status": "accepted",
+            },
+        )
+
+    monkeypatch.setattr(
+        multi_agent_routes.requests,
+        "request",
+        fake_request,
+    )
+
+    response = client.post(
+        "/multi-agent/workflow/test-id/decision",
+        json={
+            "decision": "Accept",
+            "reviewer": "Tester",
+            "notes": "Evidence reviewed",
+        },
+    )
+
+    assert response.status_code == 200
+    assert forwarded["body"] == {
+        "decision": "Accept",
+        "reviewer": "Tester",
+        "notes": "Evidence reviewed",
+    }

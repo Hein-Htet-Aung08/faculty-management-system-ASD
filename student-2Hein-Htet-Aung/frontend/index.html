@@ -80,6 +80,10 @@
             RAG Tools
         </button>
 
+        <button class="tab-button" data-tab="multi-agent">
+            Multi-Agent
+        </button>
+
     </nav>
 
 </header>
@@ -1802,6 +1806,82 @@
 
     </section>
 
+    <section id="multi-agent" class="panel-section" hidden>
+        <h2>Multi-Agent Workflow</h2>
+        <p>Planner → Worker → Reviewer → Human Decision</p>
+
+        <form id="ma-run-form">
+            <div class="form-field">
+                <label for="ma-request">Your request</label>
+                <textarea id="ma-request" rows="3" required
+                    placeholder="Review classroom allocations for potential conflicts"></textarea>
+            </div>
+            <button class="btn" id="ma-run-button" type="submit">
+                Run Workflow
+            </button>
+        </form>
+
+        <div id="ma-message" role="status"></div>
+
+        <div id="ma-output" hidden>
+            <h3>Planner</h3>
+            <pre id="ma-plan" style="white-space:pre-wrap"></pre>
+
+            <h3>Worker</h3>
+            <pre id="ma-worker" style="white-space:pre-wrap"></pre>
+
+            <h3>Automated Evidence Checks</h3>
+            <pre id="ma-checks" style="white-space:pre-wrap"></pre>
+
+            <h3>Evidence Sources</h3>
+            <pre id="ma-evidence" style="white-space:pre-wrap"></pre>
+
+            <h3>Reviewer</h3>
+            <pre id="ma-reviewer" style="white-space:pre-wrap"></pre>
+        </div>
+
+        <form id="ma-decision-form" hidden>
+            <h3>Human Review</h3>
+
+            <div class="form-field">
+                <label for="ma-decision">Decision</label>
+                <select id="ma-decision">
+                    <option value="Accept">Accept</option>
+                    <option value="Partially Accept">Partially Accept</option>
+                    <option value="Correct">Correct</option>
+                    <option value="Reject">Reject</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="ma-reviewer-name">Reviewer name</label>
+                <input id="ma-reviewer-name" required>
+            </div>
+
+            <div class="form-field">
+                <label for="ma-notes">Review notes</label>
+                <textarea id="ma-notes" rows="2"></textarea>
+            </div>
+
+            <div class="form-field" id="ma-correction-container" hidden>
+                <label for="ma-correction">Required correction</label>
+                <textarea id="ma-correction" rows="2"></textarea>
+            </div>
+
+            <button class="btn" type="submit">
+                Record Human Decision
+            </button>
+        </form>
+
+        <div class="panel-section">
+            <h3>Workflow History</h3>
+            <button class="btn secondary" id="ma-refresh" type="button">
+                Refresh History
+            </button>
+            <ul id="ma-history"></ul>
+        </div>
+    </section>
+
 </main>
 
 
@@ -1814,6 +1894,7 @@
 <script src="js/ai.js"></script>
 <script src="js/mcp.js"></script>
 <script src="js/rag.js"></script>
+<script src="js/multi_agent.js"></script>
 <script src="js/tabs.js"></script>
 
 </body>
