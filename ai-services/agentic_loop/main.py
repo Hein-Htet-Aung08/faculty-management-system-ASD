@@ -13,6 +13,9 @@ MENU_TO_MODE = {
     "5": "development_integrity",
     "6": "mcp",
     "7": "rag",
+    "9": "multi_agent_workflow_review",
+    "10": "testing_report_review",
+    "11": "cloud_deployment_report_review",
 }
 
 MODE_ORDER = [
@@ -23,6 +26,9 @@ MODE_ORDER = [
     "development_integrity",
     "mcp",
     "rag",
+    "multi_agent_workflow_review",
+    "testing_report_review",
+    "cloud_deployment_report_review",
 ]
 
 
