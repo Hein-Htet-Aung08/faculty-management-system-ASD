@@ -3,14 +3,20 @@ platform darwin -- Python 3.14.3, pytest-9.1.1, pluggy-1.7.0 -- /Users/hein/Docu
 cachedir: .pytest_cache
 rootdir: /Users/hein/Documents/UTS/Spring 2026/Advanced Software Development/Project/faculty-management-system-ASD
 plugins: anyio-4.14.2, platformdirs-4.13.5
-collecting ... collected 7 items
+collecting ... collected 13 items
 
-student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_accepts_valid_allocation PASSED [ 14%]
-student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_rejects_oversized_class PASSED [ 28%]
-student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_rejects_classroom_conflict PASSED [ 42%]
-student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_rejects_missing_payload PASSED [ 57%]
-student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_classroom_available_after_existing_class PASSED [ 71%]
-student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_classroom_unavailable_during_existing_class PASSED [ 85%]
-student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_classroom_requires_valid_year PASSED [100%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_accepts_valid_allocation PASSED [  7%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_rejects_oversized_class PASSED [ 15%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_rejects_classroom_conflict PASSED [ 23%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_rejects_missing_payload PASSED [ 30%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_classroom_available_after_existing_class PASSED [ 38%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_classroom_unavailable_during_existing_class PASSED [ 46%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_classroom_requires_valid_year PASSED [ 53%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_ai_mode_disabled PASSED [ 61%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_multi_agent_disabled_by_default PASSED [ 69%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_multi_agent_forces_student2_feature PASSED [ 76%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_multi_agent_history_is_student2_only PASSED [ 84%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_multi_agent_blocks_foreign_workflow_decision PASSED [ 92%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_multi_agent_forwards_human_decision PASSED [100%]
 
-============================== 7 passed in 0.91s ===============================
+============================== 13 passed in 0.96s ==============================
