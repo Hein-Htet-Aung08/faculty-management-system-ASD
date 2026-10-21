@@ -91,10 +91,17 @@ jobs:
 
       - name: Release 2 endpoint tests
         run: |
+          set -o pipefail
           mkdir -p ci-evidence
           python -m pytest -v \
             "$STUDENT_DIR/tests/test_release2_endpoints.py" \
             | tee ci-evidence/release2-endpoint-tests.txt
+
+      - name: Shared Multi-Agent tests
+        run: |
+          python -m unittest discover \
+            -s ai-services/multi-agent-server/tests \
+            -v
 
       - name: Upload Release 2 endpoint evidence
         if: always()
