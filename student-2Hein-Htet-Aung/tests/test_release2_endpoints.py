@@ -11,7 +11,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 from app import create_app
 from routes import allocations as allocation_routes
 from routes import classrooms as classroom_routes
-
+from routes import ai_mode as ai_mode_routes
 
 @pytest.fixture
 def client():
@@ -238,3 +238,18 @@ def test_classroom_requires_valid_year(client):
 
     assert response.status_code == 400
     assert "year" in response.get_json()["error"].lower()
+
+def test_ai_mode_disabled(client, monkeypatch):
+    monkeypatch.setattr(
+        ai_mode_routes.llm_client,
+        "AI_MODE_ENABLED",
+        False,
+    )
+
+    response = client.post(
+        "/teaching-allocations/recommend",
+        json={"offer_id": "41114_SPR_2026"},
+    )
+
+    assert response.status_code == 503
+    assert response.get_json()["error"] == "AI-Mode is disabled"

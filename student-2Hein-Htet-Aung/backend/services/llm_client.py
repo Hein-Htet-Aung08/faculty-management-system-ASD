@@ -1,6 +1,10 @@
 import json
 import os
 
+AI_MODE_ENABLED = (
+    os.getenv("AI_MODE_ENABLED", "false").lower() == "true"
+)
+
 from openai import OpenAI
 
 from services.prompt_loader import load_prompt
