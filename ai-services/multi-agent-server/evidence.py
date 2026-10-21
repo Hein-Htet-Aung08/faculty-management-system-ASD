@@ -143,8 +143,45 @@ def student1_evidence():
 # the Worker cites. Also update your evidence_description in
 # FEATURES below.
 
+
 def student2_evidence():
-    not_implemented(2)
+    context = fetch_json(
+        STUDENT2_BACKEND_URL,
+        "/api/rag/context",
+    )
+
+    if not isinstance(context, dict):
+        raise EvidenceError(
+            "Student 2 evidence must be a JSON object."
+        )
+
+    collections = {
+        "subjects": "subject_code",
+        "subject_offers": "offer_id",
+        "classrooms": "classroom_id",
+        "teaching_allocations": "allocation_id",
+    }
+
+    items = []
+
+    for collection, id_field in collections.items():
+        rows = as_list(context.get(collection))
+
+        for index, record in enumerate(rows, start=1):
+            if not isinstance(record, dict):
+                continue
+
+            record_id = record.get(id_field) or index
+
+            items.append(
+                evidence_item(
+                    f"student2/{collection}/{record_id}",
+                    record,
+                )
+            )
+
+    return items
+
 
 
 # ============================================================
@@ -249,7 +286,10 @@ FEATURES = {
     "student2": {
         "name": "Teaching, Subject and Classroom Allocation",
         "owner": "Hein Htet Aung",
-        "evidence_description": "TODO: describe the evidence your section supplies",
+        "evidence_description": (
+            "subject records, subject offers, classroom capacities "
+            "and facilities, teaching allocations, schedules and staff assignments"
+        ),
         "collect": student2_evidence,
     },
     "student3": {

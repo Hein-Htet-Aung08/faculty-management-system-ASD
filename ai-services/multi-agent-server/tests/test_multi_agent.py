@@ -154,7 +154,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(items[1]["record"]["department"], "Computer Science")
 
     def test_unfilled_sections_report_not_implemented(self):
-        for student in (1, 2, 4, 5):
+        for student in (1, 4, 5):
             with self.assertRaisesRegex(evidence.EvidenceError, f"Student {student} evidence is not implemented"):
                 evidence.FEATURES[f"student{student}"]["collect"]()
 
@@ -173,6 +173,39 @@ class EvidenceTests(unittest.TestCase):
     def test_parse_sections_handles_markdown_bold_headings(self):
         sections = parse_sections("**Risk:** Low\n**Recommendation:** Accept", ["Risk", "Recommendation"])
         self.assertEqual(sections, {"Risk": "Low", "Recommendation": "Accept"})
+
+    
+    def test_student2_collects_all_four_evidence_types(self):
+        context = {
+            "subjects": [
+                {"subject_code": "41114", "name": "Advanced Software Development"}
+            ],
+            "subject_offers": [
+                {"offer_id": "41114_SPR_2026", "year": "2026"}
+            ],
+            "classrooms": [
+                {"classroom_id": "CB11.04.406", "capacity": 30}
+            ],
+            "teaching_allocations": [
+                {"allocation_id": 4, "classroom_id": "CB11.04.406",
+                 "email": "private@example.com"}
+            ],
+        }
+
+        with patch.object(evidence, "fetch_json", return_value=context):
+            items = evidence.student2_evidence()
+
+        self.assertEqual(
+            [item["source"] for item in items],
+            [
+                "student2/subjects/41114",
+                "student2/subject_offers/41114_SPR_2026",
+                "student2/classrooms/CB11.04.406",
+                "student2/teaching_allocations/4",
+            ],
+        )
+        self.assertNotIn("email", items[3]["record"])
+
 
 
 class ApiTests(TempLogs):

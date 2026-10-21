@@ -1,0 +1,39 @@
+
+repos:
+  - repo: local
+    hooks:
+      - id: student2-ruff-security
+        name: Student 2 - Ruff Security Scan
+        entry: >-
+          ruff check --select S
+          --per-file-ignores 'student-2Hein-Htet-Aung/tests/*.py:S101'
+          student-2Hein-Htet-Aung/backend
+          student-2Hein-Htet-Aung/database
+          student-2Hein-Htet-Aung/tests
+        language: python
+        additional_dependencies: ["ruff==0.16.8"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: student2-detect-secrets
+        name: Student 2 - Secret Detection
+        entry: detect-secrets-hook
+        language: python
+        additional_dependencies: ["detect-secrets==1.5.0"]
+        files: ^student-2Hein-Htet-Aung/
+        types: [text]
+        stages: [pre-commit]
+
+      - id: student2-pip-audit
+        name: Student 2 - Dependency Audit
+        entry: >-
+          pip-audit
+          -r student-2Hein-Htet-Aung/backend/requirements.txt
+          -r student-2Hein-Htet-Aung/database/requirements.txt
+          --progress-spinner off
+        language: python
+        additional_dependencies: ["pip-audit==2.10.1"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

@@ -19,6 +19,8 @@ ai-services/rag-server/chroma/
 ai-services/rag-server/chroma_db/
 ai-services/rag-server/rag-audit.jsonl
 
+/reports/release2/
+
 # Multi-Agent Server runtime logs (regenerated on every run)
 ai-services/multi-agent-server/workflow_history.jsonl
 ai-services/multi-agent-server/coordination_audit.jsonl

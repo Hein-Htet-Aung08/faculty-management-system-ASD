@@ -6,7 +6,7 @@ from services.database_api import (
     get_subject_by_code_response,
     get_subject_offer_by_id_response,
 )
-from services.llm_client import recommend_teaching_staff
+from services import llm_client
 from services.staff_api import (
     get_staff,
     get_staff_by_id_response,
@@ -265,6 +265,9 @@ def review_recommendations(
 
 @ai_mode_bp.post("/teaching-allocations/recommend")
 def recommend_allocation_staff():
+    if not llm_client.AI_MODE_ENABLED:
+        return jsonify({"error": "AI-Mode is disabled"}), 503
+
     data = request.get_json(silent=True)
 
     if not data:
@@ -310,7 +313,7 @@ def recommend_allocation_staff():
                 }
             ), status
 
-        ai_result = recommend_teaching_staff(context)
+        ai_result = llm_client.recommend_teaching_staff(context)
 
         recommendations = ai_result.get(
             "recommendations",

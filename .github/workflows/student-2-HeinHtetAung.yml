@@ -49,6 +49,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r "$STUDENT_DIR/backend/requirements.txt"
           python -m pip install -r "$STUDENT_DIR/database/requirements.txt"
+          python -m pip install pytest
 
       - name: Validate Python syntax
         run: |
@@ -87,6 +88,27 @@ jobs:
             -s "$STUDENT_DIR/tests" \
             -p "test_*.py" \
             -v
+
+      - name: Release 2 endpoint tests
+        run: |
+          set -o pipefail
+          mkdir -p ci-evidence
+          python -m pytest -v \
+            "$STUDENT_DIR/tests/test_release2_endpoints.py" \
+            | tee ci-evidence/release2-endpoint-tests.txt
+
+      - name: Shared Multi-Agent tests
+        run: |
+          python -m unittest discover \
+            -s ai-services/multi-agent-server/tests \
+            -v
+
+      - name: Upload Release 2 endpoint evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-2-release2-endpoint-tests
+          path: ci-evidence/release2-endpoint-tests.txt
 
   build:
     name: Build Docker images
