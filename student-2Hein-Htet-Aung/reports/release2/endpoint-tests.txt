@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.3, pytest-9.1.1, pluggy-1.7.0 -- /Users/hein/Documents/UTS/Spring 2026/Advanced Software Development/Project/faculty-management-system-ASD/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/hein/Documents/UTS/Spring 2026/Advanced Software Development/Project/faculty-management-system-ASD
+plugins: anyio-4.14.2, platformdirs-4.13.5
+collecting ... collected 7 items
+
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_accepts_valid_allocation PASSED [ 14%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_rejects_oversized_class PASSED [ 28%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_rejects_classroom_conflict PASSED [ 42%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_validation_rejects_missing_payload PASSED [ 57%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_classroom_available_after_existing_class PASSED [ 71%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_classroom_unavailable_during_existing_class PASSED [ 85%]
+student-2Hein-Htet-Aung/tests/test_release2_endpoints.py::test_classroom_requires_valid_year PASSED [100%]
+
+============================== 7 passed in 0.91s ===============================
