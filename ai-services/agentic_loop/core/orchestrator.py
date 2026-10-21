@@ -6,6 +6,8 @@ from collectors import (
     endpoints_collector,
     mcp_collector,
     rag_collector,
+    multi_agent_workflow_collector,
+    testing_report_collector,
 )
 from pathlib import Path
 from collectors.common import find_student_dirs, student_label, student_number
@@ -21,6 +23,8 @@ from pipelines import (
     endpoints_pipeline,
     mcp_pipeline,
     rag_pipeline,
+    multi_agent_workflow_pipeline,
+    testing_report_pipeline,
 )
 import re
 
@@ -89,10 +93,32 @@ def run_mode(mode_key, app_dir, repo_root, *, modes=None, registry=None, runner=
             runner,
         )
 
-    if cfg.per_student:
-        return _run_per_student(cfg, app_dir, repo_root, registry, runner)
-    return _run_architecture(cfg, app_dir, repo_root, registry, runner)
+    if mode_key == "multi_agent_workflow_review":
+        return _run_multi_agent_workflow_review(
+            cfg, app_dir, repo_root, registry, runner
+        )
 
+    if mode_key == "testing_report_review":
+        return _run_testing_report_review(
+            cfg, app_dir, repo_root, registry, runner
+        )
+
+    if mode_key == "cloud_deployment_report_review":
+        return (
+            f"[{cfg.label}]\n"
+            "Status: NOT_READY\n"
+            "Deployment evidence is not yet available.\n"
+            "No AI review was executed."
+        )
+
+    if cfg.per_student:
+        return _run_per_student(
+            cfg, app_dir, repo_root, registry, runner
+        )
+
+    return _run_architecture(
+        cfg, app_dir, repo_root, registry, runner
+    )
 
 def _run_per_student(cfg, app_dir, repo_root, registry, runner):
     mode_key = cfg.key
@@ -751,3 +777,207 @@ def _run_architecture(cfg, app_dir, repo_root, registry, runner):
     reporter.print_architecture_result(evidence, proposal_text, critique_text)
     report_path = reporter.write_architecture_report(app_dir, evidence, proposal_text, critique_text)
     return f"Full report written: {report_path}"
+
+def _run_multi_agent_workflow_review(
+    cfg, app_dir, repo_root, registry, runner
+):
+    tag = "MULTI-AGENT WORKFLOW REVIEW"
+
+    reporter.print_running_header(cfg.label)
+
+    _log(tag, "OBSERVE", "Reading workflow evidence.")
+
+    try:
+        ok, evidence = multi_agent_workflow_collector.collect(
+            app_dir, repo_root
+        )
+    except Exception as exc:
+        return (
+            f"OBSERVE FAILED: {type(exc).__name__}: {exc}"
+        )
+
+    if not ok:
+        _log(tag, "OBSERVE", "Evidence unavailable.")
+        return evidence
+
+    release_blocked = (
+        "Assessment: REVIEW_REQUIRED" in evidence
+        or "Group coverage: INCOMPLETE" in evidence
+    )
+
+    deterministic_verdict = (
+        "NOT_READY"
+        if release_blocked
+        else "HUMAN_VALIDATION_REQUIRED"
+    )
+
+    evidence = (
+        f"DETERMINISTIC RELEASE VERDICT: "
+        f"{deterministic_verdict}\n"
+        "This verdict is authoritative. "
+        "AI assessments are advisory only.\n\n"
+        + evidence
+    )
+
+    _log(tag, "OBSERVE", "Evidence collected.")
+
+    try:
+        task_prompt = registry.read(
+            cfg.prompt_family,
+            cfg.implementation_prompts[0],
+        )
+
+        review_prompt = registry.read(
+            cfg.prompt_family,
+            cfg.review_prompts[0],
+        )
+    except (FileNotFoundError, OSError) as exc:
+        return f"PROMPT LOADING FAILED: {exc}"
+
+    implementation_user = (
+        multi_agent_workflow_pipeline.build_implementation_prompt(
+            task_prompt, evidence
+        )
+    )
+
+    implementation_system = (
+        "You are an evidence-grounded multi-agent "
+        "workflow validation analyst."
+    )
+
+    _log(tag, "ACT", "Running implementation assessment.")
+
+    implementation, error = runner.call(
+        implementation_system,
+        implementation_user,
+        review=False,
+    )
+
+    if error:
+        return f"IMPLEMENTATION MODEL FAILED: {error}"
+
+    review_user = (
+        multi_agent_workflow_pipeline.build_review_prompt(
+            implementation, evidence
+        )
+    )
+
+    _log(tag, "ADAPT", "Running independent reviewer.")
+
+    review, error = runner.call(
+        review_prompt,
+        review_user,
+        review=True,
+    )
+
+    if error:
+        return f"REVIEW MODEL FAILED: {error}"
+
+    print("\nOBSERVE:\n" + evidence)
+    print("\nIMPLEMENTATION ASSESSMENT:\n" + implementation)
+    print("\nINDEPENDENT REVIEW:\n" + review)
+
+    report_path = reporter.write_release2_review_report(
+        repo_root,
+        cfg.key,
+        cfg.label,
+        evidence,
+        implementation,
+        review,
+    )
+
+    _log(tag, "RECORD", f"Report saved: {report_path}")
+
+    return (
+        f"{cfg.label} completed.\n"
+        f"Report: {report_path}\n"
+        "AI findings are advisory and require human validation."
+    )
+
+def _run_testing_report_review(
+    cfg, app_dir, repo_root, registry, runner
+):
+    tag = "TESTING REPORT REVIEW"
+
+    reporter.print_running_header(cfg.label)
+    _log(tag, "OBSERVE", "Collecting testing evidence.")
+
+    try:
+        ok, evidence = testing_report_collector.collect(
+            app_dir, repo_root
+        )
+    except Exception as exc:
+        return f"OBSERVE FAILED: {type(exc).__name__}: {exc}"
+
+    if not ok:
+        return evidence
+
+    _log(tag, "OBSERVE", "Testing evidence collected.")
+
+    try:
+        task_prompt = registry.read(
+            cfg.prompt_family,
+            cfg.implementation_prompts[0],
+        )
+
+        review_prompt = registry.read(
+            cfg.prompt_family,
+            cfg.review_prompts[0],
+        )
+    except (FileNotFoundError, OSError) as exc:
+        return f"PROMPT LOADING FAILED: {exc}"
+
+    implementation_user = (
+        testing_report_pipeline.build_implementation_prompt(
+            task_prompt, evidence
+        )
+    )
+
+    implementation, error = runner.call(
+        "You are an evidence-grounded software testing analyst.",
+        implementation_user,
+        review=False,
+    )
+
+    if error:
+        return f"IMPLEMENTATION MODEL FAILED: {error}"
+
+    _log(tag, "ACT", "Implementation assessment complete.")
+
+    review_user = (
+        testing_report_pipeline.build_review_prompt(
+            implementation, evidence
+        )
+    )
+
+    review, error = runner.call(
+        review_prompt,
+        review_user,
+        review=True,
+    )
+
+    if error:
+        return f"REVIEW MODEL FAILED: {error}"
+
+    _log(tag, "ADAPT", "Independent review complete.")
+
+    print("\nOBSERVE:\n" + evidence)
+    print("\nIMPLEMENTATION ASSESSMENT:\n" + implementation)
+    print("\nINDEPENDENT REVIEW:\n" + review)
+
+    report_path = reporter.write_release2_review_report(
+        repo_root,
+        cfg.key,
+        cfg.label,
+        evidence,
+        implementation,
+        review,
+    )
+
+    _log(tag, "RECORD", f"Report saved: {report_path}")
+
+    return (
+        f"{cfg.label} completed.\n"
+        f"Report: {report_path}\n"
+        "Deterministic findings remain authoritative."
+    )
