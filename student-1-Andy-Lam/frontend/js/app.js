@@ -1,6 +1,8 @@
-const API_BASE = "http://127.0.0.1:5001";
+// Set in js/config.js so the same build works locally and in the cloud
+const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://127.0.0.1:5001";
 let currentStaffId = null;
 let editingStaffId = null;
+let aiModeEnabled = false;
 
 
 // --- RENDERING ---
@@ -205,7 +207,7 @@ async function generateAnalysis() {
         resultDiv.textContent = "Failed to reach the AI service.";
     }
 
-    button.disabled = false;
+    button.disabled = !aiModeEnabled;
 }
 
 // --- AI ASSISTANT: SHARED MCP + RAG (Release 1) ---
@@ -232,7 +234,7 @@ async function postJson(path, body) {
 
 async function loadAiServicesStatus() {
     const note = document.getElementById("ai-services-note");
-    let status = { mcp_enabled: false, rag_enabled: false };
+    let status = { ai_mode_enabled: false, mcp_enabled: false, rag_enabled: false };
 
     try {
         const response = await fetch(`${API_BASE}/api/ai-services/status`);
@@ -241,10 +243,15 @@ async function loadAiServicesStatus() {
         note.textContent = "Could not reach the Staff Management backend.";
     }
 
+    aiModeEnabled = Boolean(status.ai_mode_enabled);
+    const analysisButton = document.getElementById("generate-analysis-btn");
+    analysisButton.disabled = !aiModeEnabled;
+    analysisButton.title = aiModeEnabled ? "" : "AI-Mode is disabled on this server";
     document.querySelectorAll(".mcp-btn").forEach(btn => btn.disabled = !status.mcp_enabled);
     document.querySelectorAll(".rag-btn").forEach(btn => btn.disabled = !status.rag_enabled);
 
     const disabled = [];
+    if (!aiModeEnabled) disabled.push("AI-Mode");
     if (!status.mcp_enabled) disabled.push("MCP");
     if (!status.rag_enabled) disabled.push("RAG");
     if (disabled.length && !note.textContent) {

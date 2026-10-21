@@ -1,6 +1,8 @@
 import os
 from openai import APIConnectionError, APITimeoutError, OpenAI
  
+# Off by default so the cloud deployment runs without AI; compose turns it on locally
+AI_MODE_ENABLED = os.getenv("AI_MODE_ENABLED", "false").lower() == "true"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:0.5b")
 OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "30"))

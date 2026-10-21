@@ -20,8 +20,9 @@ on:
 
 env:
   STUDENT_DIR: student-1-Andy-Lam
-  # MCP and RAG integration stays in the code but is switched off in CI:
+  # AI-Mode, MCP and RAG integration stays in the code but is switched off in CI:
   # the shared servers (and Ollama) run on a developer's machine, not here.
+  AI_MODE_ENABLED: 'false'
   MCP_ENABLED: 'false'
   RAG_ENABLED: 'false'
   BACKEND_PORT: '5001'
@@ -53,7 +54,7 @@ jobs:
       - name: Check backend imports correctly
         run: python -c "import sys; sys.path.insert(0, '$STUDENT_DIR/backend'); import app"
 
-      - name: Run unit tests (MCP/RAG servers faked or disabled)
+      - name: Run unit tests (AI-Mode/MCP/RAG faked or disabled)
         run: python -m pytest "$STUDENT_DIR/tests" -v
 
       - name: Validate docker-compose MCP/RAG configuration
@@ -61,7 +62,8 @@ jobs:
           docker compose config --format json > compose.json
           # Integration is retained: staff-backend is configured for the shared servers
           jq -e '.services["staff-backend"].environment
-                 | .MCP_ENABLED == "true"
+                 | .AI_MODE_ENABLED == "true"
+                   and .MCP_ENABLED == "true"
                    and (.MCP_SERVER_URL | test("host.docker.internal:5201"))
                    and .RAG_ENABLED == "true"
                    and (.RAG_SERVER_URL | test("host.docker.internal:5200"))' compose.json
@@ -78,7 +80,7 @@ jobs:
       - name: Build frontend Docker image
         run: docker build -t staff-frontend "$STUDENT_DIR/frontend"
 
-      - name: Run containers and smoke test (MCP/RAG disabled)
+      - name: Run containers and smoke test (AI-Mode/MCP/RAG disabled)
         run: |
           set -euo pipefail
 
@@ -89,8 +91,8 @@ jobs:
 
           docker run -d --name staff-backend -p "$BACKEND_PORT:5001" \
             -v staff-ci-data:/app/data -e DB_PATH=/app/data/staff.db \
-            -e MCP_ENABLED -e RAG_ENABLED staff-backend
-          docker run -d --name staff-frontend -p "$FRONTEND_PORT:80" staff-frontend
+            -e AI_MODE_ENABLED -e MCP_ENABLED -e RAG_ENABLED staff-backend
+          docker run -d --name staff-frontend -p "$FRONTEND_PORT:80"             -e API_BASE="http://localhost:$BACKEND_PORT" staff-frontend
 
           API="http://localhost:$BACKEND_PORT"
           for attempt in $(seq 1 30); do
@@ -102,9 +104,9 @@ jobs:
           curl -fs "$API/api/staff" | jq -e 'length >= 10'
           curl -fs "$API/api/staff/1" | jq -e '.name == "John Smith"'
 
-          echo "--- Release 1: MCP/RAG reported disabled, routes refuse cleanly"
-          curl -fs "$API/api/ai-services/status" | jq -e '. == {"mcp_enabled": false, "rag_enabled": false}'
-          for route in mcp/staff-profile rag/ask; do
+          echo "--- AI-Mode/MCP/RAG reported disabled, routes refuse cleanly"
+          curl -fs "$API/api/ai-services/status" | jq -e '. == {"ai_mode_enabled": false, "mcp_enabled": false, "rag_enabled": false}'
+          for route in staff/1/generate_analysis mcp/staff-profile rag/ask; do
             code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
               -d '{"staff_id": 1, "question": "test"}' "$API/api/$route")
             echo "POST /api/$route -> $code"
@@ -114,8 +116,10 @@ jobs:
           echo "--- Frontend container serves the page and AI Assistant panel"
           curl -fs "http://localhost:$FRONTEND_PORT/" | grep -q 'id="ai-assistant"'
           curl -fs "http://localhost:$FRONTEND_PORT/js/app.js" > /dev/null
+          # API_BASE env var is written into config.js at container start
+          curl -fs "http://localhost:$FRONTEND_PORT/js/config.js" | grep -q "http://localhost:$BACKEND_PORT"
 
-          echo "PASS: Student 1 containers run with MCP/RAG disabled"
+          echo "PASS: Student 1 containers run with AI-Mode/MCP/RAG disabled"
 
       - name: Container logs on failure
         if: failure()

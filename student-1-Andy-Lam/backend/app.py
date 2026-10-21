@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from llm_client import generate_response
+import llm_client
 import ai_services_client as ai_services
 from flask_cors import CORS
 from datetime import date
@@ -239,6 +240,9 @@ def get_all_departments():
 
 @app.route("/api/staff/<int:staff_id>/generate_analysis", methods=["POST"])
 def generate_staff_analysis(staff_id):
+    if not llm_client.AI_MODE_ENABLED:
+        return jsonify({"error": "AI-Mode is disabled"}), 503
+
     conn = get_db_connection()
  
     staff = conn.execute(
@@ -329,8 +333,9 @@ def generate_staff_analysis(staff_id):
 
 @app.route("/api/ai-services/status")
 def get_ai_services_status():
-    # Lets the frontend show or hide the MCP/RAG panel
+    # Lets the frontend enable or disable the AI-Mode, MCP and RAG buttons
     return jsonify({
+        "ai_mode_enabled": llm_client.AI_MODE_ENABLED,
         "mcp_enabled": ai_services.MCP_ENABLED,
         "rag_enabled": ai_services.RAG_ENABLED
     })

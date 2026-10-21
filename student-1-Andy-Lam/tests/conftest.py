@@ -15,8 +15,9 @@ DATABASE_DIR = STUDENT_DIR / "database"
 # on import), not pytest tests -- keep them out of automated runs and CI.
 collect_ignore = ["manual"]
 
-# MCP/RAG are always off in tests; individual tests switch them on with
-# the servers replaced by fakes, so no shared server is ever contacted.
+# AI-Mode/MCP/RAG are always off in tests; individual tests switch them on with
+# the model and servers replaced by fakes, so nothing external is ever contacted.
+os.environ["AI_MODE_ENABLED"] = "false"
 os.environ["MCP_ENABLED"] = "false"
 os.environ["RAG_ENABLED"] = "false"
 
