@@ -150,6 +150,21 @@ tbody tr:hover { background: #f9fbfd; }
 .rag-sources { margin: 10px 0 0; padding-left: 22px; color: var(--muted); overflow-wrap: anywhere; }
 .rag-sources li { margin: 8px 0; }
 .rag-sources span { margin-left: 8px; font-size: 11px; }
+.multi-agent-workbench { display: grid; gap: 22px; margin-top: 28px; }
+.multi-agent-workbench form > textarea { margin: 10px 0 14px; }
+.multi-agent-workbench button:disabled { opacity: .6; cursor: wait; }
+.multi-agent-review-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0; padding: 0; border: 0; }
+.workflow-stage { margin-top: 18px; padding: 20px; border: 1px solid var(--line); border-radius: 13px; background: #f9fbfa; }
+.workflow-stage h3 { margin: 0 0 12px; }
+.workflow-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.workflow-meta { display: block; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.workflow-history { display: grid; gap: 14px; padding-left: 20px; }
+.workflow-history button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.workflow-history .workflow-meta { margin-top: 6px; }
+#multi-agent-panel [hidden] { display: none; }
+@media (max-width: 640px) {
+  .multi-agent-review-fields { grid-template-columns: 1fr; }
+}
 dialog { width: min(720px, calc(100% - 28px)); padding: 0; border: 0; border-radius: 18px; box-shadow: 0 30px 90px rgba(20,34,52,.3); }
 dialog::backdrop { background: rgba(9, 20, 34, .62); backdrop-filter: blur(3px); }
 #record-form { padding: 28px; }
