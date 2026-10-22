@@ -48,6 +48,22 @@
     return div.innerHTML;
   }
 
+  const STATUS_STAMP = {
+    awaiting_human_review: 'status-proposed',
+    accepted: 'status-active',
+    partially_accepted: 'status-applied',
+    corrected: 'status-in-progress',
+    rejected: 'status-rejected',
+  };
+
+  function stamp(text, css) {
+    return `<span class="stamp ${css}">${escapeHtml(text)}</span>`;
+  }
+
+  function statusStamp(status) {
+    return stamp(String(status || 'unknown').replaceAll('_', ' '), STATUS_STAMP[status] || 'status-proposed');
+  }
+
   function section(sections, heading, fallback) {
     const text = sections && sections[heading];
     return escapeHtml(text && text.trim() ? text : fallback);
@@ -197,10 +213,27 @@
     try {
       const res = await fetch(`${API_BASE}/api/multi-agent/workflow/history`);
       const data = await res.json();
-      const rows = (data.workflows || [])
-        .map((w) => `<li><code>${escapeHtml(w.workflow_id)}</code> - "${escapeHtml(w.user_request)}" - ${escapeHtml(w.status)}${w.decision ? ` (${escapeHtml(w.decision)})` : ''}</li>`)
-        .join('') || '<li class="empty-state">No workflows recorded yet.</li>';
-      historyPanel.innerHTML = `<ul style="margin-top:0.75rem;">${rows}</ul>`;
+      const workflows = data.workflows || [];
+
+      if (!workflows.length) {
+        historyPanel.innerHTML = '<p class="empty-state">No workflows recorded yet.</p>';
+      } else {
+        const rows = workflows.map((w) => `
+          <tr>
+            <td>${escapeHtml(new Date(w.timestamp).toLocaleString())}</td>
+            <td>${escapeHtml(w.user_request)}</td>
+            <td>${statusStamp(w.status)}</td>
+            <td>${escapeHtml(w.decision || 'Pending')}</td>
+            <td>${escapeHtml(w.evidence_count)}</td>
+          </tr>
+        `).join('');
+        historyPanel.innerHTML = `
+          <table class="ledger-table">
+            <thead><tr><th>Time</th><th>Request</th><th>Status</th><th>Decision</th><th>Evidence</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
       historyToggle.textContent = 'Hide recent workflows';
     } catch (err) {
       historyPanel.innerHTML = `<p class="error-state">Request failed: ${escapeHtml(err.message)}</p>`;
