@@ -1,6 +1,8 @@
-const API_BASE = "http://127.0.0.1:5001";
+// Set in js/config.js so the same build works locally and in the cloud
+const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://127.0.0.1:5001";
 let currentStaffId = null;
 let editingStaffId = null;
+let aiModeEnabled = false;
 
 
 // --- RENDERING ---
@@ -205,7 +207,7 @@ async function generateAnalysis() {
         resultDiv.textContent = "Failed to reach the AI service.";
     }
 
-    button.disabled = false;
+    button.disabled = !aiModeEnabled;
 }
 
 // --- AI ASSISTANT: SHARED MCP + RAG (Release 1) ---
@@ -232,7 +234,7 @@ async function postJson(path, body) {
 
 async function loadAiServicesStatus() {
     const note = document.getElementById("ai-services-note");
-    let status = { mcp_enabled: false, rag_enabled: false };
+    let status = { ai_mode_enabled: false, mcp_enabled: false, rag_enabled: false, multi_agent_enabled: false };
 
     try {
         const response = await fetch(`${API_BASE}/api/ai-services/status`);
@@ -241,14 +243,28 @@ async function loadAiServicesStatus() {
         note.textContent = "Could not reach the Staff Management backend.";
     }
 
+    aiModeEnabled = Boolean(status.ai_mode_enabled);
+    const analysisButton = document.getElementById("generate-analysis-btn");
+    analysisButton.disabled = !aiModeEnabled;
+    analysisButton.title = aiModeEnabled ? "" : "AI-Mode is disabled on this server";
     document.querySelectorAll(".mcp-btn").forEach(btn => btn.disabled = !status.mcp_enabled);
     document.querySelectorAll(".rag-btn").forEach(btn => btn.disabled = !status.rag_enabled);
+    setMultiAgentButtons(!status.multi_agent_enabled);
 
     const disabled = [];
+    if (!aiModeEnabled) disabled.push("AI-Mode");
     if (!status.mcp_enabled) disabled.push("MCP");
     if (!status.rag_enabled) disabled.push("RAG");
+    if (!status.multi_agent_enabled) disabled.push("Multi-Agent");
     if (disabled.length && !note.textContent) {
-        note.textContent = `${disabled.join(" and ")} integration is disabled on this server.`;
+        const names = disabled.length > 1
+            ? `${disabled.slice(0, -1).join(", ")} and ${disabled[disabled.length - 1]}`
+            : disabled[0];
+        note.textContent = `${names} integration is disabled on this server.`;
+    }
+
+    if (status.multi_agent_enabled) {
+        loadWorkflowHistory();
     }
 }
 
@@ -381,6 +397,164 @@ async function refreshRag() {
     buttons.forEach(btn => btn.disabled = false);
 }
 
+// --- MULTI-AGENT WORKFLOW: SHARED MULTI-AGENT SERVER (Release 2) ---
+let maWorkflowId = null;
+
+const WORKFLOW_STAMP = {
+    awaiting_human_review: "status-proposed",
+    accepted: "status-active",
+    partially_accepted: "status-proposed",
+    corrected: "status-proposed",
+    rejected: "status-on-hold"
+};
+
+function workflowStamp(status) {
+    const label = String(status || "unknown").replace(/_/g, " ");
+    return `<span class="stamp ${WORKFLOW_STAMP[status] || "status-proposed"}">${escapeHtml(label)}</span>`;
+}
+
+async function getJson(path) {
+    const response = await fetch(`${API_BASE}${path}`);
+    const data = await response.json();
+    return { ok: response.ok, data };
+}
+
+function renderWorkflow(workflow) {
+    const step = (title, text) => `
+        <div class="ma-step">
+            <h4>${title}</h4>
+            <pre>${escapeHtml(text || "No output.")}</pre>
+        </div>
+    `;
+    const checks = (workflow.automated_checks || [])
+        .map(c => `<li>${c.passed ? "PASS" : "FAIL"} &mdash; ${escapeHtml(c.check)}: ${escapeHtml(c.detail)}</li>`)
+        .join("");
+    const sources = (workflow.evidence || [])
+        .map(item => `<li>${escapeHtml(item.source)}</li>`)
+        .join("");
+
+    const decision = workflow.human_decision || {};
+    const decisionHtml = decision.status === "recorded" ? `
+        <div class="ma-step">
+            <h4>4. Human Review</h4>
+            <p><strong>${escapeHtml(decision.decision)}</strong> by ${escapeHtml(decision.reviewer)}</p>
+            ${decision.notes ? `<p>${escapeHtml(decision.notes)}</p>` : ""}
+            ${decision.correction ? `<pre>${escapeHtml(decision.correction)}</pre>` : ""}
+        </div>
+    ` : "";
+
+    return `
+        <div class="ai-meta">${workflowStamp(workflow.status)} <span>${escapeHtml(workflow.workflow_id)}</span></div>
+        ${step("1. Planner Agent", workflow.planner_result?.plan)}
+        ${step("2. Worker Agent", workflow.worker_result?.output)}
+        <div class="ma-step">
+            <h4>Automated Checks</h4>
+            <ul class="ai-citations">${checks || "<li>No checks recorded.</li>"}</ul>
+        </div>
+        ${step("3. Reviewer Agent", workflow.reviewer_result?.review)}
+        ${decisionHtml}
+        <details><summary>Evidence supplied to the Worker (${(workflow.evidence || []).length})</summary>
+            <ul class="ai-citations">${sources || "<li>None</li>"}</ul>
+        </details>
+    `;
+}
+
+function showWorkflow(workflow) {
+    maWorkflowId = workflow.workflow_id;
+    document.getElementById("ma-result").innerHTML = renderWorkflow(workflow);
+    document.getElementById("ma-decision-form").hidden = workflow.human_decision?.status !== "pending";
+}
+
+function setMultiAgentButtons(disabled) {
+    document.querySelectorAll(".ma-btn").forEach(btn => btn.disabled = disabled);
+}
+
+async function runWorkflow(event) {
+    event.preventDefault();
+    const userRequest = document.getElementById("ma-request").value.trim();
+    const resultDiv = document.getElementById("ma-result");
+
+    setMultiAgentButtons(true);
+    document.getElementById("ma-decision-form").hidden = true;
+    resultDiv.textContent = "Running Planner, Worker and Reviewer agents. This can take a few minutes...";
+
+    try {
+        const { ok, data } = await postJson("/api/multi-agent/workflow", { user_request: userRequest });
+        if (ok) {
+            showWorkflow(data);
+            loadWorkflowHistory();
+        } else {
+            resultDiv.innerHTML = `<div class="error-state">${escapeHtml(data.error)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="error-state">Failed to reach the Staff Management backend.</div>`;
+    }
+
+    setMultiAgentButtons(false);
+}
+
+async function submitDecision(event) {
+    event.preventDefault();
+    if (!maWorkflowId) return;
+
+    const body = {
+        decision: document.getElementById("ma-decision").value,
+        reviewer: document.getElementById("ma-reviewer").value.trim(),
+        notes: document.getElementById("ma-notes").value.trim()
+    };
+    if (body.decision === "Correct") {
+        body.correction = document.getElementById("ma-correction").value.trim();
+    }
+
+    setMultiAgentButtons(true);
+    try {
+        const { ok, data } = await postJson(`/api/multi-agent/workflow/${encodeURIComponent(maWorkflowId)}/decision`, body);
+        if (ok) {
+            showWorkflow(data);
+            loadWorkflowHistory();
+        } else {
+            alert(`Decision not saved: ${data.error}`);
+        }
+    } catch (error) {
+        alert("Failed to reach the Staff Management backend.");
+    }
+    setMultiAgentButtons(false);
+}
+
+async function openWorkflow(workflowId) {
+    try {
+        const { ok, data } = await getJson(`/api/multi-agent/workflow/${encodeURIComponent(workflowId)}`);
+        if (ok) {
+            showWorkflow(data);
+        } else {
+            document.getElementById("ma-result").innerHTML = `<div class="error-state">${escapeHtml(data.error)}</div>`;
+        }
+    } catch (error) {
+        document.getElementById("ma-result").innerHTML = `<div class="error-state">Failed to reach the Staff Management backend.</div>`;
+    }
+}
+
+async function loadWorkflowHistory() {
+    const list = document.getElementById("ma-history");
+
+    try {
+        const { ok, data } = await getJson("/api/multi-agent/workflow/history?limit=20");
+        if (!ok) {
+            list.innerHTML = `<li class="empty-state">${escapeHtml(data.error)}</li>`;
+            return;
+        }
+
+        list.innerHTML = (data.workflows || []).map(item => `
+            <li>
+                ${workflowStamp(item.status)}
+                <button type="button" class="btn secondary" data-workflow-id="${escapeHtml(item.workflow_id)}">${escapeHtml(item.user_request)}</button>
+            </li>
+        `).join("") || `<li class="empty-state">No workflows yet.</li>`;
+    } catch (error) {
+        list.innerHTML = `<li class="empty-state">Failed to reach the Staff Management backend.</li>`;
+    }
+}
+
 // EVENT LISTENERS
 document.getElementById("add-staff-btn").addEventListener("click", showAddForm);
 
@@ -454,6 +628,19 @@ document.getElementById("mcp-search-form").addEventListener("submit", function(e
 
 document.getElementById("rag-form").addEventListener("submit", askRag);
 document.getElementById("rag-refresh-btn").addEventListener("click", refreshRag);
+
+document.getElementById("ma-run-form").addEventListener("submit", runWorkflow);
+document.getElementById("ma-decision-form").addEventListener("submit", submitDecision);
+document.getElementById("ma-history-btn").addEventListener("click", loadWorkflowHistory);
+document.getElementById("ma-decision").addEventListener("change", function() {
+    const correcting = this.value === "Correct";
+    document.getElementById("ma-correction-field").hidden = !correcting;
+    document.getElementById("ma-correction").required = correcting;
+});
+document.getElementById("ma-history").addEventListener("click", function(event) {
+    const button = event.target.closest("button[data-workflow-id]");
+    if (button) openWorkflow(button.dataset.workflowId);
+});
 
 // INITIAL PAGE LOAD
 loadStaffList();
