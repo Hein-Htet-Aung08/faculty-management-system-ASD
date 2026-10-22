@@ -32,7 +32,7 @@ def _inspect_sqlite(db_path):
         counts = {}
         for table in tables:
             try:
-                counts[table] = conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+                counts[table] = conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]  # noqa: S608 - table comes from sqlite_master, not external input
             except sqlite3.Error as exc:
                 counts[table] = f"error({exc})"
         return tables, counts

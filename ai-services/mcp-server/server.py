@@ -9,7 +9,7 @@ import tools
 
 mcp = FastMCP(
     "Faculty Management System MCP",
-    host="0.0.0.0",
+    host="0.0.0.0",  # noqa: S104 - container backends reach this over host.docker.internal
     port=5201,
 )
 

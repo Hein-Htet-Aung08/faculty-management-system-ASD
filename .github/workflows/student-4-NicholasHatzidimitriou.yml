@@ -259,7 +259,7 @@ jobs:
       - name: Write post-commit test results and audit evidence
         if: always()
         run: |
-          mkdir -p reports/release2/student4
+          mkdir -p student-4Nicholas-Hatzidimitriou/reports/release2
           STATUS="PASS"
           if [ "${PYTEST_EXIT:-1}" != "0" ]; then
             STATUS="FAIL"
@@ -277,15 +277,15 @@ jobs:
             echo '```'
             cat /tmp/post-commit-test-output.txt 2>/dev/null || echo "(tests did not run - an earlier step in this job failed)"
             echo '```'
-          } > reports/release2/student4/post-commit-test-results.md
+          } > student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-test-results.md
 
-          printf '{"status": "%s", "timestamp": "%s"}\n' "$STATUS" "$TIMESTAMP" >> reports/release2/student4/post-commit-audit.jsonl
+          printf '{"status": "%s", "timestamp": "%s"}\n' "$STATUS" "$TIMESTAMP" >> student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-audit.jsonl
 
           if [ "$STATUS" = "FAIL" ]; then
-            echo "FAIL: post-commit endpoint tests failed - see reports/release2/student4/post-commit-test-results.md"
+            echo "FAIL: post-commit endpoint tests failed - see student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-test-results.md"
             exit 1
           fi
-          echo "PASS: post-commit endpoint tests, results written to reports/release2/student4/post-commit-test-results.md"
+          echo "PASS: post-commit endpoint tests, results written to student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-test-results.md"
 
       - name: Upload post-commit test evidence
         if: always()
@@ -293,8 +293,8 @@ jobs:
         with:
           name: student4-post-commit-test-evidence
           path: |
-            reports/release2/student4/post-commit-test-results.md
-            reports/release2/student4/post-commit-audit.jsonl
+            student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-test-results.md
+            student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-audit.jsonl
 
       - name: Collect container logs on failure
         if: failure()
