@@ -1,0 +1,31 @@
+AWS EC2 Manual Deployment Evidence
+Timestamp: 2026-10-22T15:35:25Z
+Commit: d0ac4bda376d29379e7bdcefcfdcb6129687a486
+
+NAME                                                  IMAGE                                                                     COMMAND                  SERVICE               CREATED             STATUS                 PORTS
+faculty-management-system-asd-allocation-backend-1    sha256:e704f0e88f23ef65a396674448dfb367eb71cec87da83110b450ef469ef8485d   "python app.py"          allocation-backend    5 hours ago         Up 5 hours             5002/tcp
+faculty-management-system-asd-allocation-database-1   sha256:0f05f994d9d92573fd50926e6196328273d6eb62ac1f4aa5f1f2805f14b275ed   "python app.py"          allocation-database   5 hours ago         Up 5 hours             6002/tcp
+faculty-management-system-asd-allocation-frontend-1   faculty-management-system-asd-allocation-frontend                         "/docker-entrypoint.…"   allocation-frontend   About an hour ago   Up About an hour       80/tcp
+faculty-management-system-asd-cloud-gateway-1         nginx:1.27-alpine                                                         "/docker-entrypoint.…"   cloud-gateway         5 hours ago         Up 5 hours             0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:8001-8005->8001-8005/tcp, [::]:8001-8005->8001-8005/tcp
+faculty-management-system-asd-staff-backend-1         sha256:829f7cfe5039b74d20d34dfb9677366e58b7afdcb7c9ccd4d709b32ebce6fc0f   "python app.py"          staff-backend         5 hours ago         Up 5 hours             5001/tcp
+faculty-management-system-asd-staff-database-1        sha256:a0cd8dade7fa7d483109fcb9f241eed66c5acbc0b9f15f82045beedd9a0c9f86   "tail -f /dev/null"      staff-database        5 hours ago         Up 5 hours             
+faculty-management-system-asd-staff-frontend-1        sha256:4efe63373cde5c3e19680f8b8d78649e5804fc31e47aefe54d3ee67a62554bef   "/docker-entrypoint.…"   staff-frontend        4 hours ago         Up 4 hours             80/tcp
+student3-backend                                      faculty-management-system-asd-student3-backend                            "python backend-serv…"   student3-backend      About an hour ago   Up About an hour       5003/tcp
+student3-database                                     faculty-management-system-asd-student3-database                           "python app.py"          student3-database     About an hour ago   Up About an hour       5103/tcp
+student3-frontend                                     faculty-management-system-asd-student3-frontend                           "/docker-entrypoint.…"   student3-frontend     About an hour ago   Up About an hour       80/tcp
+student4-backend                                      sha256:95540e66f0d70ab7260230119cad81ff61c0f26ecadbf02dd142144ee308a494   "python app.py"          student4-backend      5 hours ago         Up 5 hours             5004/tcp
+student4-database                                     sha256:58b16db9bd05d02ea9865a47128dab8d374ce30c33cb746080d3f9f19401ebe1   "python app.py"          student4-database     5 hours ago         Up 5 hours             5104/tcp
+student4-frontend                                     sha256:e645c91fa168eef4a1a62b5a5beacf5c1ffa4d1acd24b703246b2d979c970219   "./docker-entrypoint…"   student4-frontend     5 hours ago         Up 5 hours             8004/tcp
+student5-backend                                      sha256:a8e73b90aae816f909551fd0c386d6fbed82f9c8531df0bdb08fb09a05215642   "python app.py"          student5-backend      5 hours ago         Up 5 hours (healthy)   5005/tcp
+student5-database                                     sha256:3c140d02772df717f557b08914390ea9c9abc2b90640bee473452fecae0a7770   "python app.py"          student5-database     5 hours ago         Up 5 hours (healthy)   5105/tcp
+student5-frontend                                     sha256:b90a9a5b35914b12410362c5ecb0aed23e9ed220263da7b25e1be15a5a6ef937   "/docker-entrypoint.…"   student5-frontend     5 hours ago         Up 5 hours             80/tcp
+unified-home                                          nginx:alpine                                                              "/docker-entrypoint.…"   home                  5 hours ago         Up 5 hours             80/tcp
+
+Port 80: 200
+Port 8001: 200
+Port 8002: 200
+Port 8003: 200
+Port 8004: 200
+Port 8005: 200
+
+Student 2 subjects: 200
