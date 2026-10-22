@@ -3,14 +3,12 @@ name: AWS Cloud Deployment
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-    paths:
-      - "deploy/**"
-      - "docker-compose.yml"
-      - "docker-compose.cloud.yml"
-      - ".github/workflows/cloud-deployment.yml"
 
 permissions:
   contents: read
@@ -96,3 +94,157 @@ jobs:
         run: |
           echo "Cloud configuration validation passed."
           echo "Deployment is not enabled yet."
+    
+      - name: Start integrated cloud stack for CI
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.cloud.yml \
+            up -d --wait
+
+      - name: Test integrated frontend and API endpoints
+        run: |
+          set -euo pipefail
+
+          check_url() {
+            local url="$1"
+            echo "Checking $url"
+            curl --fail --silent --show-error \
+              --retry 10 \
+              --retry-delay 3 \
+              --retry-all-errors \
+              --max-time 15 \
+              --output /dev/null \
+              "$url"
+          }
+
+          for port in 80 8001 8002 8003 8004 8005; do
+            check_url "http://127.0.0.1:$port/"
+          done
+
+          check_url "http://127.0.0.1:8001/api/staff"
+          check_url "http://127.0.0.1:8002/subjects"
+          check_url "http://127.0.0.1:8003/api/staff-workload/profiles"
+          check_url "http://127.0.0.1:8004/projects"
+          check_url "http://127.0.0.1:8005/api/development-goals"
+
+          echo "PASS: Integrated cloud CI smoke tests"
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.cloud.yml \
+            logs --tail=100
+
+      - name: Stop CI containers
+        if: always()
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.cloud.yml \
+            down
+
+  deploy:
+    name: Deploy to AWS EC2
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    concurrency:
+      group: faculty-aws-production
+      cancel-in-progress: false
+
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+
+    steps:
+      - name: Configure verified SSH access
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p ~/.ssh
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" \
+            > ~/.ssh/faculty-deploy-key
+
+          printf '%s\n' "$SSH_KNOWN_HOSTS" \
+            > ~/.ssh/known_hosts
+
+          chmod 600 ~/.ssh/faculty-deploy-key
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy approved commit to EC2
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i ~/.ssh/faculty-deploy-key \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=20 \
+            "$EC2_USER@$EC2_HOST" \
+            "bash -se -- '$GITHUB_SHA'" <<'REMOTE' \
+            | tee "$RUNNER_TEMP/cloud-deployment-run.log"
+          set -Eeuo pipefail
+
+          TARGET_SHA="$1"
+          cd /home/ubuntu/faculty-management-system-ASD
+
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "ERROR: EC2 working tree is not clean."
+            exit 1
+          fi
+
+          git fetch origin main
+          git switch main
+          git merge --ff-only "$TARGET_SHA"
+
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+
+          if [[ "$ACTUAL_SHA" != "$TARGET_SHA" ]]; then
+            echo "ERROR: Deployed commit does not match CI commit."
+            exit 1
+          fi
+
+          echo "Deploying commit: $TARGET_SHA"
+          ./deploy/deploy.sh
+
+          check_url() {
+            local url="$1"
+            echo "Checking $url"
+            curl --fail --silent --show-error \
+              --retry 10 \
+              --retry-delay 3 \
+              --retry-all-errors \
+              --max-time 15 \
+              --output /dev/null \
+              "$url"
+          }
+
+          for port in 80 8001 8002 8003 8004 8005; do
+            check_url "http://127.0.0.1:$port/"
+          done
+
+          check_url "http://127.0.0.1:8002/subjects"
+
+          echo "AWS DEPLOYMENT SUCCESSFUL"
+          REMOTE
+
+      - name: Upload deployment log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-deployment-log
+          path: ${{ runner.temp }}/cloud-deployment-run.log
+          if-no-files-found: warn
+
