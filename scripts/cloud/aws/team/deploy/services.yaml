@@ -1,0 +1,371 @@
+# Manifest-driven service list for the shared AWS cloud deployment.
+#
+# One entry under `stacks:` per student's app (frontend + backend + database,
+# co-located in one ECS Fargate task - the "one task per stack" pattern from
+# the Release 2 brief). `unified-home` is its own single-container stack.
+#
+# status: "ready"   - fully filled in, scripts will deploy it.
+#         "todo"     - scripts skip it with a warning (or fail if STRICT=true
+#                      is set) rather than guessing values. Fill in every
+#                      field marked TODO(owner: ...) below, then flip this to
+#                      "ready".
+#
+# Container ports are the port the process listens on INSIDE the container
+# (Fargate's awsvpc mode has no host-port mapping like docker-compose does -
+# this is not the same number as the "8001:80" style mapping in the local
+# docker-compose.yml).
+#
+# Same-task container-to-container calls (e.g. backend -> its own database)
+# use 127.0.0.1:<port> - all containers in one Fargate task share localhost.
+# This was the actual cause of a real 502 error during Student 4's personal
+# test: the nginx proxy was pointing at a Docker-Compose-only hostname that
+# doesn't exist on Fargate. See the README's troubleshooting section.
+#
+# Cross-stack calls (e.g. Student 4's backend -> Student 1's staff backend)
+# use the Cloud Map / ECS Service Connect alias in `service_connect_name`
+# below, e.g. http://staff-backend:5001 - deploy.sh sets up a Service Connect
+# namespace so these friendly names resolve, the same way Docker Compose
+# service names do locally. Nobody should hardcode a task IP or an ALB DNS
+# name here.
+#
+# ingress:
+#   internal - reachable only from inside the VPC (every backend, every
+#              database, every frontend except unified-home's own).
+#   external - gets a public route through the Application Load Balancer.
+#              Only unified-home should be external, per the brief's default
+#              design (proxy_pass from unified-home to each frontend instead
+#              of exposing five separate public endpoints).
+
+project_prefix_default: faculty-fms
+region_default: ap-southeast-2
+
+stacks:
+  - name: student4
+    owner: "Student 4 - Nicholas"
+    status: ready
+    containers:
+      - role: database
+        container_name: student4-database
+        service_connect_name: student4-database
+        container_port: 5104
+        ingress: internal
+        build:
+          context: .
+          dockerfile: student-4Nicholas-Hatzidimitriou/database-service/Dockerfile
+        env:
+          PORT: "5104"
+          DATA_DIR: /app/data
+          FLASK_DEBUG: "false"
+
+      - role: backend
+        container_name: student4-backend
+        service_connect_name: student4-backend
+        container_port: 5004
+        ingress: internal
+        depends_on: [student4-database]
+        build:
+          context: .
+          dockerfile: student-4Nicholas-Hatzidimitriou/backend/Dockerfile
+        env:
+          PORT: "5004"
+          FLASK_DEBUG: "false"
+          DATABASE_SERVICE_URL: "http://127.0.0.1:5104"
+          STAFF_SERVICE_URL: "http://staff-backend:5001"
+          WORKLOAD_SERVICE_URL: "http://student3-backend:5003"
+          AI_MODE_ENABLED: "false"
+          MCP_ENABLED: "false"
+          RAG_ENABLED: "false"
+          MULTI_AGENT_ENABLED: "false"
+
+      - role: frontend
+        container_name: student4-frontend
+        service_connect_name: student4-frontend
+        container_port: 8004
+        ingress: internal
+        depends_on: [student4-backend]
+        build:
+          context: .
+          dockerfile: student-4Nicholas-Hatzidimitriou/frontend/Dockerfile
+        env:
+          FLASK_DEBUG: "false"
+          # Same-task backend: 127.0.0.1, not a Service Connect name - this
+          # container shares localhost with student4-backend above.
+          STUDENT4_BACKEND_URL: "http://127.0.0.1:5004"
+          # Cross-stack (Student 1's own task): Service Connect alias.
+          STAFF_SERVICE_URL: "http://staff-backend:5001"
+
+  # ============================================================
+  # Student 1 - Andy - Staff Management
+  # ============================================================
+  #
+  # TODO(owner: Student 1 - Andy): fill in every field below, matching the
+  # pattern above, then set status: ready.
+  #
+  # Needed:
+  #   - Confirm Dockerfile paths for backend/database/frontend (student-1
+  #     uses a plain nginx:alpine frontend - container_port is 80, not 8001;
+  #     8001 is only the external host-mapping used in local docker-compose).
+  #   - Backend env: AI_MODE_ENABLED/MCP_ENABLED/RAG_ENABLED/
+  #     MULTI_AGENT_ENABLED all "false" (already the convention in your own
+  #     code - just confirm the names match).
+  #   - Frontend env: your API_BASE mechanism (40-write-config.sh) writes an
+  #     ABSOLUTE backend URL, not a relative-path nginx proxy like Student
+  #     4's. That still works in the cloud IF the backend is reachable from
+  #     the browser - but your backend is internal-only in this design, so
+  #     either (a) add a reverse-proxy location block to your frontend's
+  #     nginx config (same pattern as Student 4's), or (b) confirm with the
+  #     team whether your frontend should be external instead of internal.
+  #     This decision affects the `ingress` value below - do not guess it.
+  - name: student1
+    owner: "Student 1 - Andy"
+    status: todo
+    containers:
+      - role: database
+        container_name: staff-database
+        service_connect_name: staff-database
+        container_port: 0 # TODO(owner: Student 1 - Andy): real container port
+        ingress: internal
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 1 - Andy): e.g. student-1-Andy-Lam/database/Dockerfile
+        env: {} # TODO(owner: Student 1 - Andy)
+
+      - role: backend
+        container_name: staff-backend
+        service_connect_name: staff-backend
+        container_port: 5001
+        ingress: internal
+        depends_on: [staff-database]
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 1 - Andy): e.g. student-1-Andy-Lam/backend/Dockerfile
+        env:
+          AI_MODE_ENABLED: "false"
+          MCP_ENABLED: "false"
+          RAG_ENABLED: "false"
+          MULTI_AGENT_ENABLED: "false"
+          # TODO(owner: Student 1 - Andy): DB_PATH / DATABASE_SERVICE_URL etc.
+
+      - role: frontend
+        container_name: staff-frontend
+        service_connect_name: staff-frontend
+        container_port: 80 # nginx:alpine default - not 8001, see note above
+        ingress: todo # TODO(owner: Student 1 - Andy): internal or external? see note above
+        depends_on: [staff-backend]
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 1 - Andy): e.g. student-1-Andy-Lam/frontend/Dockerfile
+        env:
+          API_BASE: "" # TODO(owner: Student 1 - Andy): see ingress note above
+
+  # ============================================================
+  # Student 2 - Hein - Teaching, Subject and Classroom Allocation
+  # ============================================================
+  #
+  # TODO(owner: Student 2 - Hein): fill in every field below, matching the
+  # pattern above, then set status: ready.
+  #
+  # Needed:
+  #   - Dockerfile paths (database/Dockerfile, backend/Dockerfile under
+  #     student-2Hein-Htet-Aung/, frontend Dockerfile).
+  #   - Your database (allocation-database) isn't published to any host
+  #     port locally - confirm its actual container port (6002, per
+  #     DATABASE_SERVICE_URL in docker-compose.yml) is what the container
+  #     itself listens on.
+  #   - Same API_BASE-is-absolute situation as Student 1 above - resolve the
+  #     same way (reverse proxy, or confirm external ingress).
+  - name: student2
+    owner: "Student 2 - Hein"
+    status: todo
+    containers:
+      - role: database
+        container_name: allocation-database
+        service_connect_name: allocation-database
+        container_port: 6002
+        ingress: internal
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 2 - Hein): e.g. student-2Hein-Htet-Aung/database/Dockerfile
+        env: {} # TODO(owner: Student 2 - Hein)
+
+      - role: backend
+        container_name: allocation-backend
+        service_connect_name: allocation-backend
+        container_port: 5002
+        ingress: internal
+        depends_on: [allocation-database]
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 2 - Hein): e.g. student-2Hein-Htet-Aung/backend/Dockerfile
+        env:
+          AI_MODE_ENABLED: "false"
+          MCP_ENABLED: "false"
+          RAG_ENABLED: "false"
+          MULTI_AGENT_ENABLED: "false"
+          DATABASE_SERVICE_URL: "http://127.0.0.1:6002"
+          STAFF_SERVICE_URL: "http://staff-backend:5001"
+          WORKLOAD_SERVICE_URL: "http://student3-backend:5003"
+
+      - role: frontend
+        container_name: allocation-frontend
+        service_connect_name: allocation-frontend
+        container_port: 80
+        ingress: todo # TODO(owner: Student 2 - Hein): internal or external? same note as Student 1
+        depends_on: [allocation-backend]
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 2 - Hein): e.g. student-2Hein-Htet-Aung/frontend/Dockerfile
+        env:
+          API_BASE: "" # TODO(owner: Student 2 - Hein)
+
+  # ============================================================
+  # Student 3 - Tristan - Workload and Availability Management
+  # ============================================================
+  #
+  # TODO(owner: Student 3 - Tristan): fill in every field below, matching
+  # the pattern above, then set status: ready.
+  #
+  # Needed:
+  #   - Dockerfile paths under student-3Tristan-Lim/.
+  #   - Your frontend already has a real nginx reverse-proxy location block
+  #     (confirmed - see student-3Tristan-Lim/frontend-service/nginx.conf),
+  #     so you may be closest to Student 4's pattern already. Confirm the
+  #     proxy target becomes 127.0.0.1:5003 in this design, not
+  #     student3-backend or any other Docker-Compose-only hostname.
+  #   - Your own multi-agent integration (routes/multi_agent_mode.py,
+  #     templates/tabs/multi-agent.html) exists on your personal branch but
+  #     is not yet merged into main - that's a separate, higher-priority
+  #     issue than this cloud manifest; flagging it here too since it'll
+  #     need the same MULTI_AGENT_ENABLED=false treatment once merged.
+  - name: student3
+    owner: "Student 3 - Tristan"
+    status: todo
+    containers:
+      - role: database
+        container_name: student3-database
+        service_connect_name: student3-database
+        container_port: 5103
+        ingress: internal
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 3 - Tristan): e.g. student-3Tristan-Lim/database-service/Dockerfile
+        env: {} # TODO(owner: Student 3 - Tristan)
+
+      - role: backend
+        container_name: student3-backend
+        service_connect_name: student3-backend
+        container_port: 5003
+        ingress: internal
+        depends_on: [student3-database]
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 3 - Tristan): e.g. student-3Tristan-Lim/backend-service/Dockerfile
+        env:
+          AI_MODE_ENABLED: "false"
+          MCP_ENABLED: "false"
+          RAG_ENABLED: "false"
+          MULTI_AGENT_ENABLED: "false"
+          DATABASE_SERVICE_URL: "http://127.0.0.1:5103"
+          STAFF_SERVICE_URL: "http://staff-backend:5001"
+
+      - role: frontend
+        container_name: student3-frontend
+        service_connect_name: student3-frontend
+        container_port: 80
+        ingress: todo # TODO(owner: Student 3 - Tristan): internal or external? see Student 1's note
+        depends_on: [student3-backend]
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 3 - Tristan): e.g. student-3Tristan-Lim/frontend-service/Dockerfile
+        env:
+          BACKEND_URL: "http://127.0.0.1:5003" # TODO(owner: Student 3 - Tristan): confirm against your docker-entrypoint.sh
+
+  # ============================================================
+  # Student 5 - Matthew - Performance and Professional Development
+  # ============================================================
+  #
+  # TODO(owner: Student 5 - Matthew): fill in every field below, matching
+  # the pattern above, then set status: ready.
+  #
+  # Needed:
+  #   - Dockerfile paths under student-5Matthew-Barnard/.
+  #   - You already have a real nginx reverse-proxy location block
+  #     (confirmed - see student-5Matthew-Barnard/frontend-service/
+  #     nginx.conf) using a resolver + variable, same pattern Student 4
+  #     uses. Check your resolver address the same way Student 4's was
+  #     fixed - if it's hardcoded to Docker Compose's 127.0.0.11, it will
+  #     502 on Fargate. See the README's troubleshooting section.
+  #   - No Release 2 work exists yet on your branch at all for multi-agent,
+  #     pre-commit, or endpoint-test evidence - those are separate, higher
+  #     priority than this cloud manifest.
+  - name: student5
+    owner: "Student 5 - Matthew"
+    status: todo
+    containers:
+      - role: database
+        container_name: student5-database
+        service_connect_name: student5-database
+        container_port: 5105
+        ingress: internal
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 5 - Matthew): e.g. student-5Matthew-Barnard/database-service/Dockerfile
+        env: {} # TODO(owner: Student 5 - Matthew)
+
+      - role: backend
+        container_name: student5-backend
+        service_connect_name: student5-backend
+        container_port: 5005
+        ingress: internal
+        depends_on: [student5-database]
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 5 - Matthew): e.g. student-5Matthew-Barnard/backend-service/Dockerfile
+        env:
+          AI_MODE_ENABLED: "false"
+          MCP_ENABLED: "false"
+          RAG_ENABLED: "false"
+          MULTI_AGENT_ENABLED: "false"
+          DATABASE_SERVICE_URL: "http://127.0.0.1:5105"
+          STAFF_SERVICE_URL: "http://staff-backend:5001"
+
+      - role: frontend
+        container_name: student5-frontend
+        service_connect_name: student5-frontend
+        container_port: 80
+        ingress: todo # TODO(owner: Student 5 - Matthew): internal or external? see Student 1's note. Check your nginx resolver too (see note above).
+        depends_on: [student5-backend]
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: Student 5 - Matthew): e.g. student-5Matthew-Barnard/frontend-service/Dockerfile
+        env: {} # TODO(owner: Student 5 - Matthew)
+
+  # ============================================================
+  # unified-home
+  # ============================================================
+  #
+  # TODO(owner: team lead): this is the ONLY stack that should be external -
+  # every student frontend above should stay internal, reached only through
+  # this one's reverse-proxy routes. Fill in the proxy routes once every
+  # student has decided their own ingress above (see each student's note).
+  - name: unified-home
+    owner: "team lead"
+    status: todo
+    containers:
+      - role: frontend
+        container_name: unified-home
+        service_connect_name: unified-home
+        container_port: 80
+        ingress: external
+        build:
+          context: .
+          dockerfile: "" # TODO(owner: team lead): e.g. shared/frontend/Dockerfile (does not exist yet - currently a bind-mounted nginx:alpine in docker-compose.yml, needs an actual Dockerfile for ECS)
+        env: {}
+        # TODO(owner: team lead): shared/frontend/index.html hardcodes
+        # http://localhost:8001 through :8005 for every student's frontend
+        # link (confirmed, see reports/release2/discovery.md and the
+        # shared-features audit). These need to become proxy_pass routes to
+        # each frontend's Service Connect name once every student has
+        # decided their own ingress above, matching Student 4's nginx
+        # pattern (location block per student, resolver read from
+        # /etc/resolv.conf, not hardcoded).
