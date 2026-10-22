@@ -1,0 +1,39 @@
+repos:
+  - repo: local
+    hooks:
+      - id: student5-ruff-security
+        name: Student 5 - Ruff Security Scan
+        entry: >-
+          ruff check --config student-5Matthew-Barnard/ruff.toml
+          student-5Matthew-Barnard/backend-service
+          student-5Matthew-Barnard/database-service
+          student-5Matthew-Barnard/tests
+          ai-services/multi-agent-server/evidence.py
+          ai-services/multi-agent-server/tests/test_student5_evidence.py
+        language: python
+        additional_dependencies: ["ruff==0.16.8"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: student5-detect-secrets
+        name: Student 5 - Secret Detection
+        entry: detect-secrets-hook
+        language: python
+        additional_dependencies: ["detect-secrets==1.5.0"]
+        files: ^(student-5Matthew-Barnard/|ai-services/multi-agent-server/(evidence\.py|tests/test_student5_evidence\.py)$)
+        types: [text]
+        stages: [pre-commit]
+
+      - id: student5-pip-audit
+        name: Student 5 - Dependency Audit
+        entry: >-
+          pip-audit
+          -r student-5Matthew-Barnard/backend-service/requirements.txt
+          -r student-5Matthew-Barnard/database-service/requirements.txt
+          --progress-spinner off
+        language: python
+        additional_dependencies: ["pip-audit==2.10.1"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

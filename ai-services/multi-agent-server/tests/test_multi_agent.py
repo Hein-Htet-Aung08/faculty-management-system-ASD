@@ -197,10 +197,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(record["qualifications"], "None recorded")
         self.assertEqual(record["availability"], "Monday AM: Available")
 
-    def test_unfilled_sections_report_not_implemented(self):
-        for student in (5,):
-            with self.assertRaisesRegex(evidence.EvidenceError, f"Student {student} evidence is not implemented"):
-                evidence.FEATURES[f"student{student}"]["collect"]()
+
 
     def test_select_relevant_prefers_matching_records(self):
         items = [

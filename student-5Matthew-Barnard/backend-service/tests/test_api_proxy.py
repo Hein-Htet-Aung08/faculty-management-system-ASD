@@ -56,6 +56,9 @@ class ApiProxyTests(unittest.TestCase):
 
 class AiModeRouteTests(unittest.TestCase):
     def setUp(self):
+        env_patch = patch.dict("os.environ", {"AI_MODE_ENABLED": "true"})
+        env_patch.start()
+        self.addCleanup(env_patch.stop)
         self.client = create_app().test_client()
 
     @patch("ai_service.generate_recommendation")

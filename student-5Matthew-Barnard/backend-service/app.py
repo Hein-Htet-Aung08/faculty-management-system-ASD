@@ -7,6 +7,7 @@ from requests import RequestException
 import ai_service
 import database_client
 import mcp_client
+import multi_agent_client
 import rag_client
 import staff_client
 
@@ -233,6 +234,64 @@ def create_app():
             return jsonify(rag_client.refresh_corpus())
         except rag_client.RAGServiceError as exc:
             return jsonify({"error": str(exc)}), 503
+
+    @app.get("/api/multi-agent/status")
+    def multi_agent_status():
+        return jsonify({"enabled": multi_agent_client.enabled()})
+
+    @app.post("/api/multi-agent/workflow")
+    def start_multi_agent_workflow():
+        if not multi_agent_client.enabled():
+            return jsonify({"error": "Multi-Agent integration is disabled"}), 503
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "request body must be a JSON object"}), 400
+        user_request = payload.get("user_request")
+        if not isinstance(user_request, str) or not 1 <= len(user_request.strip()) <= 1000:
+            return jsonify({"error": "user_request must be 1 to 1000 characters"}), 400
+        result, status = multi_agent_client.start_workflow(user_request.strip())
+        return jsonify(result), status
+
+    @app.get("/api/multi-agent/workflow/history")
+    def multi_agent_history():
+        if not multi_agent_client.enabled():
+            return jsonify({"error": "Multi-Agent integration is disabled"}), 503
+        try:
+            limit = int(request.args.get("limit", "20"))
+            if not 1 <= limit <= 100:
+                raise ValueError
+        except ValueError:
+            return jsonify({"error": "limit must be between 1 and 100"}), 400
+        result, status = multi_agent_client.workflow_history(limit)
+        return jsonify(result), status
+
+    @app.get("/api/multi-agent/workflow/<string:workflow_id>")
+    def multi_agent_workflow(workflow_id):
+        if not multi_agent_client.enabled():
+            return jsonify({"error": "Multi-Agent integration is disabled"}), 503
+        result, status = multi_agent_client.get_workflow(workflow_id)
+        return jsonify(result), status
+
+    @app.post("/api/multi-agent/workflow/<string:workflow_id>/decision")
+    def multi_agent_decision(workflow_id):
+        if not multi_agent_client.enabled():
+            return jsonify({"error": "Multi-Agent integration is disabled"}), 503
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "request body must be a JSON object"}), 400
+        decision = payload.get("decision")
+        if decision not in ("Accept", "Partially Accept", "Correct", "Reject"):
+            return jsonify({"error": "decision must be Accept, Partially Accept, Correct or Reject"}), 400
+        decision_data = {"decision": decision}
+        for field, limit in (("reviewer", 100), ("notes", 2000), ("correction", 2000)):
+            value = payload.get(field, "")
+            if not isinstance(value, str) or len(value.strip()) > limit:
+                return jsonify({"error": f"{field} must be text up to {limit} characters"}), 400
+            decision_data[field] = value.strip()
+        if decision == "Correct" and not decision_data["correction"]:
+            return jsonify({"error": "a correction is required when the decision is Correct"}), 400
+        result, status = multi_agent_client.submit_decision(workflow_id, decision_data)
+        return jsonify(result), status
 
     return app
 

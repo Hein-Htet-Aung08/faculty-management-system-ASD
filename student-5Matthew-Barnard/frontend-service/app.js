@@ -84,6 +84,9 @@ const resources = {
 let currentResource = 'development-goals';
 let currentRows = [];
 let editingId = null;
+let currentWorkflow = null;
+let multiAgentEnabled = false;
+let multiAgentBusy = false;
 const staffDirectory = new Map();
 
 const $ = (selector) => document.querySelector(selector);
@@ -209,6 +212,15 @@ function activateResource(resource) {
   document.querySelectorAll('.nav-button').forEach((button) => {
     button.classList.toggle('active', button.dataset.resource === resource);
   });
+  $('#multi-agent-panel').hidden = resource !== 'multi-agent-mode';
+  if (resource === 'multi-agent-mode') {
+    $('#resource-panel').hidden = true;
+    $('#ai-panel').hidden = true;
+    $('#mcp-panel').hidden = true;
+    $('#rag-panel').hidden = true;
+    checkMultiAgent();
+    return;
+  }
   if (resource === 'ai-mode') {
     $('#resource-panel').hidden = true;
     $('#ai-panel').hidden = false;
@@ -499,6 +511,191 @@ async function refreshRag() {
     button.disabled = false;
   }
 }
+
+function setMultiAgentBusy(busy) {
+  multiAgentBusy = busy;
+  $('#multi-agent-run').disabled = busy || !multiAgentEnabled;
+  $('#multi-agent-refresh').disabled = busy || !multiAgentEnabled;
+  $('#multi-agent-review-fields').disabled = busy || !multiAgentEnabled
+    || currentWorkflow?.human_decision?.status !== 'pending';
+  $('#multi-agent-history').querySelectorAll('button').forEach((button) => {
+    button.disabled = busy || !multiAgentEnabled;
+  });
+}
+
+function multiAgentMessage(message, isError = false) {
+  const box = $('#multi-agent-message');
+  box.textContent = message;
+  box.className = isError ? 'form-error' : '';
+  box.hidden = !message;
+}
+
+async function checkMultiAgent() {
+  if (multiAgentBusy) return;
+  setMultiAgentBusy(true);
+  const status = $('#multi-agent-status');
+  status.textContent = 'Checking...';
+  status.className = 'ai-status checking';
+  try {
+    const result = await api('/multi-agent/status');
+    multiAgentEnabled = result.enabled;
+    status.textContent = result.enabled ? 'Multi-Agent enabled' : 'Multi-Agent disabled';
+    status.className = `ai-status ${result.enabled ? 'ready' : 'failed'}`;
+    if (result.enabled) await loadMultiAgentHistory();
+  } catch (error) {
+    multiAgentEnabled = false;
+    status.textContent = 'Backend unavailable';
+    status.className = 'ai-status failed';
+    multiAgentMessage(error.message, true);
+  } finally {
+    setMultiAgentBusy(false);
+  }
+}
+
+function multiAgentStage(title, result, field) {
+  return `<section class="workflow-stage"><h3>${escapeHtml(title)}</h3>
+    <p class="workflow-meta">Status: ${escapeHtml(result?.status || 'Unknown')}</p>
+    <div class="workflow-text">${escapeHtml(result?.[field] || 'No output returned.')}</div></section>`;
+}
+
+function showMultiAgentWorkflow(workflow) {
+  currentWorkflow = workflow;
+  const decision = workflow.human_decision || {};
+  const checks = Array.isArray(workflow.automated_checks) ? workflow.automated_checks : [];
+  const sources = workflow.worker_result?.evidence_sources || [];
+  const recorded = decision.status === 'recorded'
+    ? `<section class="workflow-stage"><h3>Human decision: ${escapeHtml(decision.decision)}</h3>
+      <p>Reviewed by ${escapeHtml(decision.reviewer)}</p>
+      <div class="workflow-text">${escapeHtml(decision.notes || '')}</div>
+      ${decision.correction ? `<h4>Correction</h4><div class="workflow-text">${escapeHtml(decision.correction)}</div>` : ''}</section>`
+    : '';
+  const box = $('#multi-agent-result');
+  box.innerHTML = `<h3>${escapeHtml(workflow.user_request)}</h3>
+    <p class="workflow-meta">${escapeHtml(workflow.workflow_id)} | ${escapeHtml(String(workflow.status || '').replaceAll('_', ' '))}</p>`
+    + multiAgentStage('Planner', workflow.planner_result, 'plan')
+    + multiAgentStage('Worker', workflow.worker_result, 'output')
+    + multiAgentStage('Reviewer', workflow.reviewer_result, 'review')
+    + `<section class="workflow-stage"><h3>Automated checks</h3><ul>${checks.map((check) =>
+      `<li>${check.passed ? 'Passed' : 'Failed'}: ${escapeHtml(check.check)}${check.detail ? ` - ${escapeHtml(check.detail)}` : ''}</li>`
+    ).join('')}</ul>
+      <details><summary>Evidence sources (${sources.length})</summary>
+      <ul class="rag-sources">${sources.map((source) => `<li>${escapeHtml(source)}</li>`).join('')}</ul></details></section>`
+    + recorded;
+  box.hidden = false;
+  $('#multi-agent-decision-form').reset();
+  $('#multi-agent-decision-form').hidden = decision.status !== 'pending';
+  updateMultiAgentCorrection();
+}
+
+function updateMultiAgentCorrection() {
+  const correcting = $('#multi-agent-decision').value === 'Correct';
+  $('#multi-agent-correction-label').hidden = !correcting;
+  $('#multi-agent-correction').required = correcting;
+  $('#multi-agent-correction').disabled = !correcting;
+}
+
+async function loadMultiAgentHistory() {
+  const box = $('#multi-agent-history');
+  box.textContent = 'Loading history...';
+  try {
+    const result = await api('/multi-agent/workflow/history?limit=20');
+    const workflows = result.workflows || [];
+    box.innerHTML = workflows.length ? `<ul class="workflow-history">${workflows.map((workflow) =>
+      `<li><button type="button" class="btn secondary secondary-button" data-workflow-id="${escapeHtml(workflow.workflow_id)}">${escapeHtml(workflow.user_request)}</button>
+        <span class="workflow-meta">${escapeHtml(String(workflow.status || '').replaceAll('_', ' '))} | ${escapeHtml(workflow.timestamp)}</span></li>`
+    ).join('')}</ul>` : '<p>No workflows recorded yet.</p>';
+    setMultiAgentBusy(multiAgentBusy);
+  } catch (error) {
+    box.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+async function runMultiAgentWorkflow(event) {
+  event.preventDefault();
+  if (multiAgentBusy || !multiAgentEnabled) return;
+  const user_request = $('#multi-agent-request').value.trim();
+  if (!user_request) return multiAgentMessage('Enter a request first.', true);
+  setMultiAgentBusy(true);
+  currentWorkflow = null;
+  $('#multi-agent-result').hidden = true;
+  $('#multi-agent-decision-form').hidden = true;
+  $('#multi-agent-run').textContent = 'Running...';
+  multiAgentMessage('Running Planner, Worker and Reviewer. This may take several minutes.');
+  try {
+    const workflow = await api('/multi-agent/workflow', {
+      method: 'POST', body: JSON.stringify({ user_request })
+    });
+    showMultiAgentWorkflow(workflow);
+    multiAgentMessage('Workflow ready for human review.');
+    await loadMultiAgentHistory();
+  } catch (error) {
+    multiAgentMessage(error.message, true);
+  } finally {
+    $('#multi-agent-run').textContent = 'Run workflow';
+    setMultiAgentBusy(false);
+  }
+}
+
+async function openMultiAgentWorkflow(workflowId) {
+  if (multiAgentBusy || !multiAgentEnabled) return;
+  setMultiAgentBusy(true);
+  currentWorkflow = null;
+  $('#multi-agent-result').hidden = true;
+  $('#multi-agent-decision-form').hidden = true;
+  multiAgentMessage('Loading workflow...');
+  try {
+    const workflow = await api(`/multi-agent/workflow/${encodeURIComponent(workflowId)}`);
+    showMultiAgentWorkflow(workflow);
+    multiAgentMessage('');
+  } catch (error) {
+    multiAgentMessage(error.message, true);
+  } finally {
+    setMultiAgentBusy(false);
+  }
+}
+
+async function saveMultiAgentDecision(event) {
+  event.preventDefault();
+  if (multiAgentBusy || !multiAgentEnabled || currentWorkflow?.human_decision?.status !== 'pending') return;
+  const payload = {
+    decision: $('#multi-agent-decision').value,
+    reviewer: $('#multi-agent-reviewer').value.trim(),
+    notes: $('#multi-agent-notes').value.trim()
+  };
+  if (!payload.reviewer) return multiAgentMessage('Enter your name first.', true);
+  if (payload.decision === 'Correct') {
+    payload.correction = $('#multi-agent-correction').value.trim();
+    if (!payload.correction) return multiAgentMessage('Enter the correction first.', true);
+  }
+  setMultiAgentBusy(true);
+  multiAgentMessage('Saving human decision...');
+  try {
+    const workflow = await api(`/multi-agent/workflow/${encodeURIComponent(currentWorkflow.workflow_id)}/decision`, {
+      method: 'POST', body: JSON.stringify(payload)
+    });
+    showMultiAgentWorkflow(workflow);
+    multiAgentMessage('Human decision saved.');
+    await loadMultiAgentHistory();
+  } catch (error) {
+    multiAgentMessage(error.message, true);
+  } finally {
+    setMultiAgentBusy(false);
+  }
+}
+
+$('#multi-agent-request-form').addEventListener('submit', runMultiAgentWorkflow);
+$('#multi-agent-decision-form').addEventListener('submit', saveMultiAgentDecision);
+$('#multi-agent-decision').addEventListener('change', updateMultiAgentCorrection);
+$('#multi-agent-refresh').addEventListener('click', async () => {
+  if (multiAgentBusy || !multiAgentEnabled) return;
+  setMultiAgentBusy(true);
+  try { await loadMultiAgentHistory(); }
+  finally { setMultiAgentBusy(false); }
+});
+$('#multi-agent-history').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-workflow-id]');
+  if (button) openMultiAgentWorkflow(button.dataset.workflowId);
+});
 
 document.querySelectorAll('.nav-button').forEach((button) => {
   button.addEventListener('click', () => activateResource(button.dataset.resource));
