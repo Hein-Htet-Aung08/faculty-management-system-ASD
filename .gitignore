@@ -22,3 +22,6 @@ ai-services/rag-server/rag-audit.jsonl
 # Multi-Agent Server runtime logs (regenerated on every run)
 ai-services/multi-agent-server/workflow_history.jsonl
 ai-services/multi-agent-server/coordination_audit.jsonl
+
+# CI test output
+student-3Tristan-Lim/test-results/

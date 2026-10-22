@@ -40,7 +40,7 @@ jobs:
                       -r "$STUDENT_DIR/backend-service/requirements-dev.txt"
 
       - name: Test GET /api/staff-workload/profiles and /alerts
-        working-directory: student-3Tristan-Lim/backend-service
+        working-directory: student-3Tristan-Lim
         run: |
           set -o pipefail
           mkdir -p test-results
@@ -48,7 +48,7 @@ jobs:
 
       - name: Publish endpoint test report
         if: always()
-        working-directory: student-3Tristan-Lim/backend-service
+        working-directory: student-3Tristan-Lim
         run: |
           python tests/summarise_results.py test-results/endpoint-tests.xml > test-results/endpoint-tests.md || true
           cat test-results/endpoint-tests.md >> "$GITHUB_STEP_SUMMARY"
@@ -57,7 +57,7 @@ jobs:
         if: always()
         with:
           name: student-3-endpoint-tests
-          path: student-3Tristan-Lim/backend-service/test-results/
+          path: student-3Tristan-Lim/test-results/
 
   # ------------------------------------------------------------------ build ---
 
@@ -143,10 +143,10 @@ jobs:
 
       - name: Post-commit endpoint tests against running containers
         # Runs before the CRUD and recompute steps change any seeded rows.
-        working-directory: student-3Tristan-Lim/backend-service
+        working-directory: student-3Tristan-Lim
         run: |
           set -o pipefail
-          pip install -q -r requirements-dev.txt requests
+          pip install -q -r backend-service/requirements-dev.txt requests
           mkdir -p test-results
           LIVE_BACKEND_URL="http://localhost:${BACKEND_PORT}" \
             python -m pytest tests/test_live_endpoints.py -v --junitxml=test-results/live-endpoint-tests.xml
