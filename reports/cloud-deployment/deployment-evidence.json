@@ -1,0 +1,55 @@
+{
+  "platform": "AWS",
+  "region": "ap-southeast-2",
+  "hosting": "EC2 + Docker Compose",
+  "deployed_commit": "d0ac4bda376d29379e7bdcefcfdcb6129687a486",
+  "deployed_at": "2026-10-22T14:29:42Z",
+  "workflow_run": {
+    "url": "",
+    "conclusion": "failure",
+    "log": ""
+  },
+  "deployment_scripts": [
+    "deploy/deploy.sh"
+  ],
+  "cloud_config": [
+    "docker-compose.cloud.yml"
+  ],
+  "services": [
+    {
+      "student": 1,
+      "feature": "Staff Management",
+      "frontend_url": "http://13.239.54.15:8001",
+      "backend_url": "http://13.239.54.15:8001",
+      "crud_read_path": "/api/staff"
+    },
+    {
+      "student": 2,
+      "feature": "Teaching, Subject and Classroom Allocation",
+      "frontend_url": "http://13.239.54.15:8002",
+      "backend_url": "http://13.239.54.15:8002",
+      "crud_read_path": "/subjects"
+    },
+    {
+      "student": 3,
+      "feature": "Workload and Availability Management",
+      "frontend_url": "http://13.239.54.15:8003",
+      "backend_url": "http://13.239.54.15:8003",
+      "crud_read_path": "/api/staff-workload/profiles"
+    },
+    {
+      "student": 4,
+      "feature": "Research and Grant Management",
+      "frontend_url": "http://13.239.54.15:8004",
+      "backend_url": "http://13.239.54.15:8004",
+      "crud_read_path": "/projects"
+    },
+    {
+      "student": 5,
+      "feature": "Performance and Professional Development",
+      "frontend_url": "http://13.239.54.15:8005",
+      "backend_url": "http://13.239.54.15:8005",
+      "crud_read_path": "/api/development-goals"
+    }
+  ]
+}
