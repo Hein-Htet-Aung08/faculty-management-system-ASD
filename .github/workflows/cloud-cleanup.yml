@@ -1,0 +1,45 @@
+name: Cloud Cleanup (AWS)
+
+# Manual only, deliberately - this tears down real infrastructure and must
+# never run automatically.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  cleanup:
+    name: Cleanup (real AWS calls)
+    runs-on: ubuntu-latest
+    # TODO(owner: team lead): consider adding `environment: production`
+    # here too (same as cloud-deployment.yml's deploy job) if you want a
+    # required-reviewer gate before this runs - it deletes everything.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install manifest tooling
+        run: pip install --no-cache-dir -r scripts/cloud/aws/team/requirements.txt
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Write config.env for this run
+        run: |
+          cat > scripts/cloud/aws/team/config.env <<CONFIG
+          AWS_REGION=${{ vars.AWS_REGION }}
+          PROJECT_PREFIX=faculty-fms
+          CONFIG
+
+      - name: Cleanup
+        run: bash scripts/cloud/aws/team/cleanup.sh

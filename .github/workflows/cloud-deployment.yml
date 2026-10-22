@@ -1,0 +1,125 @@
+name: Cloud Deployment (AWS)
+
+# Manual only - this never deploys on a push. Real deployment is a human
+# decision, triggered deliberately.
+on:
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: "Fail if any stack in the manifest is still status: todo"
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    name: Validate (no AWS calls)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install manifest tooling
+        run: pip install --no-cache-dir -r scripts/cloud/aws/team/requirements.txt
+
+      - name: bash -n on every script
+        run: |
+          for f in scripts/cloud/aws/team/*.sh; do
+            echo "--- $f ---"
+            bash -n "$f"
+          done
+
+      - name: Manifest parses and lists stacks
+        run: |
+          echo "Ready:"
+          python3 scripts/cloud/aws/team/deploy/manifest.py ready-names
+          echo "Still TODO:"
+          python3 scripts/cloud/aws/team/deploy/manifest.py todo-names
+
+      - name: Dry-run every script (no AWS calls, no credentials needed)
+        run: |
+          cp scripts/cloud/aws/team/config.env.example scripts/cloud/aws/team/config.env
+          DRY_RUN=true bash scripts/cloud/aws/team/env-setup.sh
+          DRY_RUN=true bash scripts/cloud/aws/team/build-and-push-images.sh
+          DRY_RUN=true bash scripts/cloud/aws/team/deploy.sh
+          DRY_RUN=true bash scripts/cloud/aws/team/deployment-test.sh
+          rm scripts/cloud/aws/team/config.env
+
+      # TODO(owner: team lead): decide whether this job should also run
+      # `docker compose -f docker-compose.yml config` and/or each ready
+      # stack's own post-commit endpoint tests against a running local
+      # stack, matching the build brief's "validate job that brings up the
+      # compose stack and runs every student's post-commit endpoint tests"
+      # suggestion. Left out of this skeleton since that needs each
+      # student's own backend running, which is a bigger addition than a
+      # dry-run check.
+
+  deploy:
+    name: Deploy (real AWS calls)
+    needs: [validate]
+    runs-on: ubuntu-latest
+    # TODO(owner: team lead): confirm a GitHub Environment named
+    # "production" exists (Settings > Environments) if you want required
+    # reviewers before this job runs, or remove the next line entirely.
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install manifest tooling
+        run: pip install --no-cache-dir -r scripts/cloud/aws/team/requirements.txt
+
+      # TODO(owner: team lead): requires AWS_ROLE_ARN and AWS_REGION to
+      # already exist as repository (or environment) variables - set by
+      # bootstrap.sh's printed `gh variable set` commands. This step fails
+      # until that's done once.
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Write config.env for this run
+        run: |
+          cat > scripts/cloud/aws/team/config.env <<CONFIG
+          AWS_REGION=${{ vars.AWS_REGION }}
+          PROJECT_PREFIX=faculty-fms
+          CONFIG
+
+      - name: Environment setup
+        env:
+          STRICT: ${{ inputs.strict }}
+        run: bash scripts/cloud/aws/team/env-setup.sh
+
+      - name: Build and push images
+        env:
+          STRICT: ${{ inputs.strict }}
+        run: bash scripts/cloud/aws/team/build-and-push-images.sh
+
+      - name: Deploy
+        env:
+          STRICT: ${{ inputs.strict }}
+        run: bash scripts/cloud/aws/team/deploy.sh
+
+      - name: Deployment test
+        run: bash scripts/cloud/aws/team/deployment-test.sh
+
+      - name: Upload deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-deployment-evidence
+          path: reports/cloud/
