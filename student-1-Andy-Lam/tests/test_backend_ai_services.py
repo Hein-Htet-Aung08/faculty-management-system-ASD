@@ -23,7 +23,9 @@ def rag_on(monkeypatch):
 def test_status_reports_all_disabled_by_default(client):
     response = client.get("/api/ai-services/status")
 
-    assert response.json == {"ai_mode_enabled": False, "mcp_enabled": False, "rag_enabled": False}
+    assert response.json == {
+        "ai_mode_enabled": False, "mcp_enabled": False, "rag_enabled": False, "multi_agent_enabled": False
+    }
 
 
 @pytest.mark.parametrize("path, body", [

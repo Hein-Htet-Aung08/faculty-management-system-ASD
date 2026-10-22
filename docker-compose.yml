@@ -32,14 +32,16 @@ services:
       - staff-data:/app/data
     environment:
       - DB_PATH=/app/data/staff.db
-      # AI-Mode (Ollama), MCP and RAG all run on the host, outside Docker.
-      # All three default to off in the code; enabled here for local deployment.
+      # AI-Mode (Ollama), MCP, RAG and Multi-Agent all run on the host, outside Docker.
+      # All four default to off in the code; enabled here for local deployment.
       - AI_MODE_ENABLED=true
       - OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
       - MCP_ENABLED=true
       - MCP_SERVER_URL=http://host.docker.internal:5201/mcp
       - RAG_ENABLED=true
       - RAG_SERVER_URL=http://host.docker.internal:5200
+      - MULTI_AGENT_ENABLED=true
+      - MULTI_AGENT_SERVER_URL=http://host.docker.internal:5202
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

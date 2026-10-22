@@ -333,11 +333,12 @@ def generate_staff_analysis(staff_id):
 
 @app.route("/api/ai-services/status")
 def get_ai_services_status():
-    # Lets the frontend enable or disable the AI-Mode, MCP and RAG buttons
+    # Lets the frontend enable or disable the AI-Mode, MCP, RAG and Multi-Agent buttons
     return jsonify({
         "ai_mode_enabled": llm_client.AI_MODE_ENABLED,
         "mcp_enabled": ai_services.MCP_ENABLED,
-        "rag_enabled": ai_services.RAG_ENABLED
+        "rag_enabled": ai_services.RAG_ENABLED,
+        "multi_agent_enabled": ai_services.MULTI_AGENT_ENABLED
     })
 
 def run_mcp_tool(tool_name, arguments):
@@ -407,6 +408,65 @@ def rag_refresh():
         return jsonify(ai_services.refresh_rag_corpus()), 200
     except ai_services.AIServiceError as e:
         return jsonify({"error": str(e)}), 503
+
+# ---------- SHARED MULTI-AGENT SERVER (Release 2) ----------
+
+def forward_multi_agent(method, path, **kwargs):
+    if not ai_services.MULTI_AGENT_ENABLED:
+        return {"error": "Multi-Agent integration is disabled"}, 503
+
+    try:
+        return ai_services.call_multi_agent(method, path, **kwargs)
+    except ai_services.AIServiceError as e:
+        return {"error": str(e)}, 503
+
+def get_staff_workflow(workflow_id):
+    result, status_code = forward_multi_agent("GET", f"workflow/{workflow_id}")
+
+    # Only expose workflows that were run for Staff Management
+    if status_code == 200 and result.get("feature") != ai_services.MULTI_AGENT_FEATURE:
+        return {"error": "Workflow not found"}, 404
+    return result, status_code
+
+@app.route("/api/multi-agent/workflow", methods=["POST"])
+def multi_agent_run():
+    data = request.get_json(silent=True) or {}
+    user_request = str(data.get("user_request", "")).strip()
+
+    if not user_request:
+        return jsonify({"error": "user_request is required"}), 400
+
+    result, status_code = forward_multi_agent(
+        "POST", "workflow",
+        json={"user_request": user_request, "feature": ai_services.MULTI_AGENT_FEATURE},
+        timeout=ai_services.MULTI_AGENT_RUN_TIMEOUT_SECONDS,
+    )
+    return jsonify(result), status_code
+
+@app.route("/api/multi-agent/workflow/history")
+def multi_agent_history():
+    result, status_code = forward_multi_agent(
+        "GET", "workflow/history",
+        params={"feature": ai_services.MULTI_AGENT_FEATURE, "limit": request.args.get("limit", "20")},
+    )
+    return jsonify(result), status_code
+
+@app.route("/api/multi-agent/workflow/<workflow_id>")
+def multi_agent_workflow(workflow_id):
+    result, status_code = get_staff_workflow(workflow_id)
+    return jsonify(result), status_code
+
+@app.route("/api/multi-agent/workflow/<workflow_id>/decision", methods=["POST"])
+def multi_agent_decision(workflow_id):
+    existing, status_code = get_staff_workflow(workflow_id)
+    if status_code != 200:
+        return jsonify(existing), status_code
+
+    data = request.get_json(silent=True) or {}
+    decision = {key: data[key] for key in ("decision", "reviewer", "notes", "correction") if key in data}
+
+    result, status_code = forward_multi_agent("POST", f"workflow/{workflow_id}/decision", json=decision)
+    return jsonify(result), status_code
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
