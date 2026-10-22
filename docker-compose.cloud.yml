@@ -65,7 +65,7 @@ services:
   staff-frontend:
     ports: !override []
     environment:
-      API_BASE: "/"
+      API_BASE: "."
 
   # ============================================================
   # Student 2: Teaching, Subject and Classroom Allocation
@@ -105,7 +105,7 @@ services:
   student3-frontend:
     ports: !override []
     environment:
-      BACKEND_URL: "http://13.239.54.15:8003"
+      BACKEND_URL: ".."
 
   # ============================================================
   # Student 4: Research and Grant Management
