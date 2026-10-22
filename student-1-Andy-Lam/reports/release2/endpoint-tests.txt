@@ -1,0 +1,18 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.1.1, pluggy-1.7.0 -- C:\Users\kring\Documents\GitHub\faculty-management-system-ASD\venv\Scripts\python.exe
+rootdir: C:\Users\kring\Documents\GitHub\faculty-management-system-ASD
+plugins: anyio-4.14.2, platformdirs-4.13.5
+collecting ... collected 10 items
+
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_get_staff_returns_seeded_record PASSED [ 10%]
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_get_staff_joins_department_name PASSED [ 20%]
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_get_staff_returns_all_profile_fields PASSED [ 30%]
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_get_staff_unknown_id_returns_404 PASSED [ 40%]
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_create_staff_returns_201_with_new_id PASSED [ 50%]
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_created_staff_is_returned_by_get_endpoint PASSED [ 60%]
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_create_staff_stores_initial_expertise PASSED [ 70%]
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_create_staff_missing_field_returns_400 PASSED [ 80%]
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_create_staff_unknown_department_returns_400 PASSED [ 90%]
+student-1-Andy-Lam/tests/test_release2_endpoints.py::test_failed_create_does_not_add_staff PASSED [100%]
+
+============================= 10 passed in 4.19s ==============================

@@ -21,6 +21,14 @@ RAG_TIMEOUT_SECONDS = float(os.getenv("RAG_TIMEOUT_SECONDS", "130"))
 # outside the top 5 when it ties with individual staff profiles.
 RAG_TOP_K = int(os.getenv("RAG_TOP_K", "8"))
 
+MULTI_AGENT_ENABLED = os.getenv("MULTI_AGENT_ENABLED", "false").lower() == "true"
+MULTI_AGENT_SERVER_URL = os.getenv("MULTI_AGENT_SERVER_URL", "http://localhost:5202")
+MULTI_AGENT_TIMEOUT_SECONDS = float(os.getenv("MULTI_AGENT_TIMEOUT_SECONDS", "20"))
+# A full Planner -> Worker -> Reviewer run makes three model calls, two on the 8B model
+MULTI_AGENT_RUN_TIMEOUT_SECONDS = float(os.getenv("MULTI_AGENT_RUN_TIMEOUT_SECONDS", "420"))
+# Always sent so the Worker only ever sees Staff Management evidence
+MULTI_AGENT_FEATURE = "student1"
+
 INSUFFICIENT_CONTEXT = "Insufficient context."
 
 
@@ -115,6 +123,28 @@ def ask_rag(question):
         "confidence_category": "Insufficient" if insufficient else data.get("confidence_category"),
         "citations": [] if insufficient else data.get("citations", []),
     }
+
+
+def call_multi_agent(method, path, timeout=None, **kwargs):
+    """
+    Forwards a request to the shared Multi-Agent Server and returns
+    (body, status_code). The server's own 4xx replies (bad input, unknown
+    workflow, already decided) are passed back unchanged; only an unreachable
+    server or a non-JSON reply raises AIServiceError.
+    """
+    url = f"{MULTI_AGENT_SERVER_URL.rstrip('/')}/{path.lstrip('/')}"
+    timeout = timeout or MULTI_AGENT_TIMEOUT_SECONDS
+    try:
+        response = requests.request(method, url, timeout=timeout, **kwargs)
+    except requests.Timeout as e:
+        raise AIServiceError(f"Multi-Agent server did not respond within {timeout} seconds") from e
+    except requests.RequestException as e:
+        raise AIServiceError(f"Could not reach Multi-Agent server at {MULTI_AGENT_SERVER_URL}") from e
+
+    try:
+        return response.json(), response.status_code
+    except ValueError as e:
+        raise AIServiceError(f"Unexpected Multi-Agent response (HTTP {response.status_code})") from e
 
 
 def refresh_rag_corpus():

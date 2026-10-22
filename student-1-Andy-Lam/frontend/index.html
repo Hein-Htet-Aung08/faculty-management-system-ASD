@@ -100,6 +100,56 @@
                 <div id="rag-result" class="ai-result-panel" aria-live="polite"></div>
             </div>
         </div>
+
+        <!-- Release 2: shared Multi-Agent Server, Planner -> Worker -> Reviewer -> Human Review -->
+        <div id="multi-agent" class="ai-card ai-card-wide">
+            <h3>Multi-Agent Workflow</h3>
+            <p class="ai-hint">A Planner, Worker and Reviewer agent answer from staff records; you then accept, correct or reject the result.</p>
+
+            <form id="ma-run-form" class="ai-inline-form">
+                <div class="form-field">
+                    <label for="ma-request">Request</label>
+                    <input type="text" id="ma-request" placeholder="e.g. Which active staff have cloud expertise and are free on Monday?" required>
+                </div>
+                <button type="submit" id="ma-run-btn" class="btn ma-btn">Run workflow</button>
+            </form>
+
+            <div id="ma-result" class="ai-result-panel" aria-live="polite"></div>
+
+            <form id="ma-decision-form" class="ma-decision" hidden>
+                <h4>Human Review</h4>
+                <div class="ma-decision-grid">
+                    <div class="form-field">
+                        <label for="ma-decision">Decision</label>
+                        <select id="ma-decision" required>
+                            <option value="Accept">Accept</option>
+                            <option value="Partially Accept">Partially Accept</option>
+                            <option value="Correct">Correct</option>
+                            <option value="Reject">Reject</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="ma-reviewer">Reviewer name</label>
+                        <input type="text" id="ma-reviewer" required>
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label for="ma-notes">Notes</label>
+                    <textarea id="ma-notes" rows="2"></textarea>
+                </div>
+                <div class="form-field" id="ma-correction-field" hidden>
+                    <label for="ma-correction">Correction</label>
+                    <textarea id="ma-correction" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn ma-btn">Submit decision</button>
+            </form>
+
+            <div class="ma-history-header">
+                <h4>Workflow History</h4>
+                <button type="button" id="ma-history-btn" class="btn secondary ma-btn">Refresh</button>
+            </div>
+            <ul id="ma-history" class="ma-history"></ul>
+        </div>
     </div>
 </section>
 
@@ -178,6 +228,7 @@
 
 </main>
 
+<script src="js/config.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -107,21 +107,51 @@ def not_implemented(student):
 #
 # OWNER: Student 1 - Andy
 #
-# TODO: return evidence for your feature, read through your own
-# backend/API (never another student's database).
-#
-# Pattern:
-#
-# def student1_evidence():
-#     rows = as_list(fetch_json(STUDENT1_BACKEND_URL, "/api/<your-route>"))
-#     return items_from(rows, "student1/<resource>")
-#
-# Each item's source (e.g. "student1/<resource>/<id>") is what
-# the Worker cites. Also update your evidence_description in
-# FEATURES below.
+# One item per staff member, read from the Student 1 backend API
+# (the same routes the RAG loader uses). Expertise, qualifications
+# and availability are flattened into text on the staff record so
+# the Worker can answer from a single cited source per person.
+
+def _joined(rows, format_row):
+    return "; ".join(format_row(row) for row in rows if isinstance(row, dict)) or "None recorded"
+
 
 def student1_evidence():
-    not_implemented(1)
+    # /api/staff returns one row per staff/expertise pair, so de-duplicate
+    staff_rows = as_list(fetch_json(STUDENT1_BACKEND_URL, "/api/staff"))
+    staff_by_id = {}
+    for row in staff_rows:
+        if isinstance(row, dict) and row.get("staff_id") is not None:
+            staff_by_id.setdefault(row["staff_id"], row)
+
+    items = []
+    for staff_id, row in staff_by_id.items():
+        expertise = as_list(fetch_json(STUDENT1_BACKEND_URL, f"/api/staff/{staff_id}/expertise"))
+        qualifications = as_list(fetch_json(STUDENT1_BACKEND_URL, f"/api/staff/{staff_id}/qualifications"))
+        availability = as_list(fetch_json(STUDENT1_BACKEND_URL, f"/api/staff/{staff_id}/availability"))
+
+        record = {
+            "staff_id": staff_id,
+            "name": row.get("name"),
+            "department": row.get("department_name"),
+            "position": row.get("position"),
+            "employment_type": row.get("employment_type"),
+            "status": row.get("status"),
+            "expertise": _joined(
+                expertise, lambda e: f"{e.get('expertise_area')} (skill {e.get('skill_level')}/5)"
+            ),
+            "qualifications": _joined(
+                qualifications,
+                lambda q: f"{q.get('qualification_name')}, {q.get('institution')} ({q.get('year_obtained')})",
+            ),
+            "availability": _joined(
+                availability,
+                lambda a: f"{a.get('day')} {a.get('time_slot')}: {a.get('availability_status')}",
+            ),
+        }
+        items.append(evidence_item(f"student1/staff/{staff_id}", record))
+
+    return items
 
 
 # ============================================================
@@ -280,7 +310,11 @@ FEATURES = {
     "student1": {
         "name": "Academic Staff Management",
         "owner": "Andy Lam",
-        "evidence_description": "TODO: describe the evidence your section supplies",
+        "evidence_description": (
+            "one record per staff member: department, position, employment type, "
+            "status, expertise areas with skill level (1-5), qualifications and "
+            "weekly availability"
+        ),
         "collect": student1_evidence,
     },
     "student2": {

@@ -15,10 +15,12 @@ DATABASE_DIR = STUDENT_DIR / "database"
 # on import), not pytest tests -- keep them out of automated runs and CI.
 collect_ignore = ["manual"]
 
-# MCP/RAG are always off in tests; individual tests switch them on with
-# the servers replaced by fakes, so no shared server is ever contacted.
+# AI-Mode/MCP/RAG/Multi-Agent are always off in tests; individual tests switch them on with
+# the model and servers replaced by fakes, so nothing external is ever contacted.
+os.environ["AI_MODE_ENABLED"] = "false"
 os.environ["MCP_ENABLED"] = "false"
 os.environ["RAG_ENABLED"] = "false"
+os.environ["MULTI_AGENT_ENABLED"] = "false"
 
 for path in (
     BACKEND_DIR,
@@ -35,7 +37,8 @@ def seeded_db(tmp_path_factory):
     env = {**os.environ, "DB_PATH": str(db_path)}
 
     for script in ("init_db.py", "seed.py"):
-        subprocess.run(
+        # Fixed arguments only: this repo's own scripts, run by the current interpreter
+        subprocess.run(  # noqa: S603
             [sys.executable, script],
             cwd=DATABASE_DIR,
             env=env,
