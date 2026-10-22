@@ -8,11 +8,9 @@ Check:
 - Any FAIL in the Automated Checks is a risk to report
 - Anything missing from the output
 
-Return exactly:
+Reply with exactly these four lines and nothing else. Every line is required, even when there is nothing to fix:
 
-Risk: (Low, Medium or High, with the reason)
-Correction:
-Retest:
-Recommendation:
-
-Maximum 80 words.
+Risk: <Low, Medium or High> - <one sentence reason>
+Correction: <what to change in the output, or "None">
+Retest: <what to re-run or check, or "None">
+Recommendation: <Accept, Partially Accept, Correct or Reject> - <one sentence reason>
