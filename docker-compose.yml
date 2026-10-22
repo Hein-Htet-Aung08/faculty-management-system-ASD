@@ -170,7 +170,8 @@ services:
   # ---- Student 4: Nicholas - Research and Grant Management ----
   student4-frontend:
     build:
-      context: ./student-4Nicholas-Hatzidimitriou/frontend
+      context: .
+      dockerfile: ./student-4Nicholas-Hatzidimitriou/frontend/Dockerfile
     container_name: student4-frontend
     ports:
       - "8004:8004"
