@@ -161,7 +161,7 @@ def main():
         columns = list(TABLES[table]["columns"].keys())
         placeholders = ", ".join("?" for _ in columns)
         cursor.executemany(
-            f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",
+            f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",  # noqa: S608 - table and columns come from schema.TABLES
             rows,
         )
         print(f"  {table}: {len(rows)} records")

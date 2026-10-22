@@ -25,5 +25,7 @@ ai-services/rag-server/rag-audit.jsonl
 ai-services/multi-agent-server/workflow_history.jsonl
 ai-services/multi-agent-server/coordination_audit.jsonl
 
+# CI test output
+student-3Tristan-Lim/test-results/
 scripts/cloud/aws/personal-test-student4/.env.personal-test
 scripts/cloud/aws/team/config.env

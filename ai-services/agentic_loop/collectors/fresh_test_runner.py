@@ -34,6 +34,7 @@ SAFE_SUITES = {
         ("research-route-registration", "pytest", "student-4Nicholas-Hatzidimitriou/backend/tests/test_ai_mode_routes.py"),
     ],
     5: [
+        ("performance-endpoints", "pytest", "student-5Matthew-Barnard/tests/test_release2_endpoints.py"),
         ("performance-backend", "unittest_discover", "student-5Matthew-Barnard/backend-service/tests"),
         ("performance-database", "unittest_discover", "student-5Matthew-Barnard/database-service/tests"),
     ],

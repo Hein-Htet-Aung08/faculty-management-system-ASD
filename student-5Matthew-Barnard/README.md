@@ -10,6 +10,7 @@ training programs, staff enrolments, and development recommendations.
 - Ten example records in each database table
 - Validation and relationships between related records
 - AI-assisted training recommendations using the shared Ollama service
+- Multi-Agent development reviews with a final human decision
 - Staff names and details loaded from the Staff Management service
 - Automated tests for the database, API, and AI route
 - A GitHub Actions workflow that runs the tests and checks the Docker builds
@@ -29,11 +30,12 @@ Nginx frontend -- /api --> Flask backend :5005 --> Database service :5105 --> SQ
                                   +--> Shared Ollama service :11434
                                   +--> Shared local MCP server :5201
                                   +--> Shared local RAG server :5200
+                                  +--> Shared local Multi-Agent server :5202
 ```
 
 The frontend is served by Nginx, which also sends `/api` requests to the
 backend. The backend handles the feature logic and communicates with the
-database, Ollama, MCP and RAG services. Only the database service directly
+database, Ollama, MCP, RAG and Multi-Agent services. Only the database service directly
 accesses the SQLite database.
 
 When the full group application is running, the backend also gets staff names
@@ -54,8 +56,8 @@ docker compose up --build -d
 Open `http://localhost:8000` for the group homepage, or
 `http://localhost:8005` to open this feature directly.
 
-Ollama, MCP and RAG run on your computer outside Docker. Start the MCP and RAG
-servers using the commands below to use their tabs.
+Ollama, MCP, RAG and Multi-Agent run on your computer outside Docker. Start
+the shared servers using the commands below to use their tabs.
 
 To stop the application, run:
 
@@ -169,6 +171,33 @@ a confidence category. Ask an unrelated question to check the
 insufficient-context message. RAG defaults to disabled outside Compose and is
 disabled in CI.
 
+## Multi-Agent
+
+The Multi-Agent tab reviews performance and development records through the
+shared local server. The Planner creates a plan, the Worker uses Student 5
+evidence, and the Reviewer checks the output. A person then accepts, partially
+accepts, corrects or rejects it. Decisions are saved in the workflow history.
+They do not automatically change goals, training or recommendations.
+
+With Ollama and the feature containers running, open another terminal at the
+repository root and run:
+
+```powershell
+python -m pip install -r ai-services/multi-agent-server/requirements.txt
+python ai-services/multi-agent-server/app.py
+```
+
+Open `http://localhost:8005`, choose Multi-Agent and run a request. Review the
+agent outputs and sources, enter your name and save a decision. Correct also
+requires correction text. Refresh history lists previous workflows, which
+can be opened to view their outputs and recorded decision.
+
+Both Compose files enable the mode and connect to `host.docker.internal:5202`.
+For a backend running directly on your computer, set `MULTI_AGENT_ENABLED=true`
+and `MULTI_AGENT_SERVER_URL=http://127.0.0.1:5202`. The mode defaults to disabled
+when no setting is supplied. The enabled label shows the backend setting;
+running a workflow checks the connection to the shared server.
+
 ## API Endpoints
 
 Each resource supports `GET`, `POST`, `PUT`, and `DELETE` requests through
@@ -212,6 +241,33 @@ python -m unittest discover -s tests -v
 
 The automated tests use a mocked Ollama response, so the AI model does not
 need to be downloaded in GitHub Actions.
+
+## Release 2 Testing
+
+The dedicated endpoint tests cover GET and POST `/api/development-goals`.
+They run the real backend and database validation with a fresh temporary
+SQLite database for each test. The HTTP connection between those services
+is replaced by a test adapter. Ollama and the shared AI servers are not needed.
+
+From the repository root, with your virtual environment active, run:
+
+```powershell
+python -m pip install -r student-5Matthew-Barnard/requirements-dev.txt
+python -m pre_commit install -c student-5Matthew-Barnard/.pre-commit-config.yaml
+python -m pre_commit run -c student-5Matthew-Barnard/.pre-commit-config.yaml --all-files
+python -m pytest student-5Matthew-Barnard/tests/test_release2_endpoints.py -v
+```
+
+The commit hook runs Ruff security rules, secret detection and dependency
+auditing. The accepted container-binding and fixed SQL identifier findings
+are explained in `reports/release2/security-findings.md`.
+
+The Student 5 GitHub Actions workflow runs the endpoint tests after a push,
+alongside the existing tests and three container builds. AI-Mode, MCP, RAG
+and Multi-Agent are disabled in the CI stack. Endpoint results are uploaded
+as text and JUnit XML. Local results are in `reports/release2`; those files
+are labelled as local checks, while a successful Actions run provides the
+post-commit CI evidence.
 
 ## Release 0 Evidence
 

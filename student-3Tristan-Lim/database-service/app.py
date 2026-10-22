@@ -20,6 +20,12 @@ def get_db_connection():
     return conn
 
 
+# Every SQL statement below that is built with an f-string only inserts
+# identifiers taken from schema.TABLES: the table name is checked against
+# that allowlist by _table_or_404, the primary key comes from the schema,
+# and column names are filtered against the schema's columns. All values
+# are bound as ? parameters. Ruff's S608 is therefore suppressed per line.
+
 def _table_or_404(table):
     return table if table in TABLES else None
 
@@ -44,7 +50,7 @@ def list_rows(table):
             clauses.append(f"{key} = ?")
             params.append(request.args.get(key))
 
-    sql = f"SELECT * FROM {table}"
+    sql = f"SELECT * FROM {table}"  # noqa: S608
     if clauses:
         sql += " WHERE " + " AND ".join(clauses)
 
@@ -61,7 +67,7 @@ def get_row(table, row_id):
 
     pk = TABLES[table]["pk"]
     conn = get_db_connection()
-    row = conn.execute(f"SELECT * FROM {table} WHERE {pk} = ?", (row_id,)).fetchone()
+    row = conn.execute(f"SELECT * FROM {table} WHERE {pk} = ?", (row_id,)).fetchone()  # noqa: S608
     conn.close()
 
     if row is None:
@@ -87,12 +93,12 @@ def create_row(table):
     conn = get_db_connection()
     try:
         cursor = conn.execute(
-            f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({placeholders})",
+            f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({placeholders})",  # noqa: S608
             [provided[c] for c in cols],
         )
         conn.commit()
         new_id = cursor.lastrowid
-        row = conn.execute(f"SELECT * FROM {table} WHERE {pk} = ?", (new_id,)).fetchone()
+        row = conn.execute(f"SELECT * FROM {table} WHERE {pk} = ?", (new_id,)).fetchone()  # noqa: S608
     except sqlite3.Error as exc:
         conn.close()
         return jsonify({"error": str(exc)}), 400
@@ -113,7 +119,7 @@ def update_row(table, row_id):
         return jsonify({"error": "no writable fields supplied"}), 400
 
     conn = get_db_connection()
-    exists = conn.execute(f"SELECT 1 FROM {table} WHERE {pk} = ?", (row_id,)).fetchone()
+    exists = conn.execute(f"SELECT 1 FROM {table} WHERE {pk} = ?", (row_id,)).fetchone()  # noqa: S608
     if exists is None:
         conn.close()
         return jsonify({"error": "not found"}), 404
@@ -121,11 +127,11 @@ def update_row(table, row_id):
     assignments = ", ".join(f"{c} = ?" for c in provided)
     try:
         conn.execute(
-            f"UPDATE {table} SET {assignments} WHERE {pk} = ?",
+            f"UPDATE {table} SET {assignments} WHERE {pk} = ?",  # noqa: S608
             [*provided.values(), row_id],
         )
         conn.commit()
-        row = conn.execute(f"SELECT * FROM {table} WHERE {pk} = ?", (row_id,)).fetchone()
+        row = conn.execute(f"SELECT * FROM {table} WHERE {pk} = ?", (row_id,)).fetchone()  # noqa: S608  # noqa: S608
     except sqlite3.Error as exc:
         conn.close()
         return jsonify({"error": str(exc)}), 400
@@ -140,7 +146,7 @@ def delete_row(table, row_id):
 
     pk = TABLES[table]["pk"]
     conn = get_db_connection()
-    cursor = conn.execute(f"DELETE FROM {table} WHERE {pk} = ?", (row_id,))
+    cursor = conn.execute(f"DELETE FROM {table} WHERE {pk} = ?", (row_id,))  # noqa: S608
     conn.commit()
     conn.close()
 
@@ -181,4 +187,9 @@ def timetable():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5103, debug=True)
+    # 0.0.0.0 so Docker can publish the port; the debugger stays off unless asked for.
+    app.run(
+        host=os.getenv("HOST", "0.0.0.0"),  # noqa: S104
+        port=5103,
+        debug=os.getenv("FLASK_DEBUG", "false").lower() == "true",
+    )

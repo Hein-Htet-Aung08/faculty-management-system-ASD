@@ -17,7 +17,7 @@
       </div>
       <div class="header-actions">
         <a class="btn secondary home-link" href="http://localhost:8000">&larr; All features</a>
-        <div class="release-badge">Release 1</div>
+        <div class="release-badge">Release 2</div>
       </div>
     </header>
 
@@ -38,6 +38,7 @@
         <button class="tab-button nav-button ai-nav" data-resource="ai-mode">AI-Mode</button>
         <button class="tab-button nav-button" data-resource="mcp-mode">MCP Tools</button>
         <button class="tab-button nav-button" data-resource="rag-mode">RAG Questions</button>
+        <button class="tab-button nav-button" data-resource="multi-agent-mode">Multi-Agent</button>
       </nav>
 
       <section id="resource-panel" class="workspace-card">
@@ -154,6 +155,60 @@
             <button id="rag-refresh-button" class="btn secondary secondary-button">Refresh context</button>
           </div>
           <div id="rag-result" class="ai-result" role="status" aria-live="polite" hidden></div>
+        </div>
+      </section>
+      <section id="multi-agent-panel" class="workspace-card" hidden>
+        <div class="workspace-heading">
+          <div>
+            <p class="eyebrow accent">Shared Multi-Agent server</p>
+            <h2>Review performance and development</h2>
+            <p>Ask the agents to review recorded development activity, then review their output and record your decision.</p>
+          </div>
+          <div id="multi-agent-status" class="ai-status">Not checked</div>
+        </div>
+
+        <div class="multi-agent-workbench">
+          <form id="multi-agent-request-form">
+            <label for="multi-agent-request">Your request</label>
+            <textarea id="multi-agent-request" maxlength="1000" required>Review staff ID 1's development goals and training, and recommend a suitable next development activity using the recorded evidence.</textarea>
+            <div class="rag-actions">
+              <button id="multi-agent-run" type="submit" class="btn primary-button">Run workflow</button>
+              <button id="multi-agent-refresh" type="button" class="btn secondary secondary-button">Refresh history</button>
+            </div>
+          </form>
+
+          <p id="multi-agent-message" role="status" aria-live="polite" hidden></p>
+          <div id="multi-agent-result" hidden></div>
+
+          <form id="multi-agent-decision-form" hidden>
+            <h3>Human review</h3>
+            <p>Review the agent outputs and sources before recording your decision.</p>
+            <fieldset id="multi-agent-review-fields" class="multi-agent-review-fields">
+              <label for="multi-agent-reviewer">Your name
+                <input id="multi-agent-reviewer" type="text" maxlength="100" required />
+              </label>
+              <label for="multi-agent-decision">Decision
+                <select id="multi-agent-decision">
+                  <option>Accept</option>
+                  <option>Partially Accept</option>
+                  <option>Correct</option>
+                  <option>Reject</option>
+                </select>
+              </label>
+              <label for="multi-agent-notes" class="wide-field">Notes
+                <textarea id="multi-agent-notes" maxlength="2000"></textarea>
+              </label>
+              <label id="multi-agent-correction-label" for="multi-agent-correction" class="wide-field" hidden>Correction
+                <textarea id="multi-agent-correction" maxlength="2000" disabled></textarea>
+              </label>
+              <button id="multi-agent-submit-decision" type="submit" class="btn primary-button">Save decision</button>
+            </fieldset>
+          </form>
+
+          <section class="workflow-stage">
+            <h3>Workflow history</h3>
+            <div id="multi-agent-history">Open this tab to load recent workflows.</div>
+          </section>
         </div>
       </section>
     </main>

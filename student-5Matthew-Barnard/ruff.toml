@@ -1,0 +1,7 @@
+[lint]
+select = ["S"]
+
+[lint.per-file-ignores]
+"**/student-5Matthew-Barnard/backend-service/app.py" = ["S104"]
+"**/student-5Matthew-Barnard/database-service/app.py" = ["S104", "S608"]
+"**/student-5Matthew-Barnard/database-service/database.py" = ["S608"]
