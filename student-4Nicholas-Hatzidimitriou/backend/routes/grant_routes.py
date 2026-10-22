@@ -6,7 +6,7 @@ grants_bp = Blueprint("grants", __name__)
 
 @grants_bp.route("/grants", methods=["GET"])
 def get_grants():
-    rows = database_apo.get_grants(
+    rows = database_api.list_grants(
         status=request.args.get("status"),
         project_id=request.args.get("project_id"),
     )
@@ -14,7 +14,7 @@ def get_grants():
 
 @grants_bp.route("/grants/<int:grant_id>", methods=["GET"])
 def get_grant(grant_id):
-    row = database_api.get_grant_by_id(grant_id)
+    row = database_api.get_grant(grant_id)
     if row is None:
         return jsonify({"error": "Grant not found"}), 404
     return jsonify(row_to_dict(row)), 200
@@ -22,7 +22,7 @@ def get_grant(grant_id):
 @grants_bp.route("/grants", methods=["POST"])
 def create_grant():
     data = request.get_json()
-    required_fields = ["projectID", "fundingBody", "amountRequestd", "applicationDeadline", "status"]
+    required_fields = ["projectID", "fundingBody", "amountRequested", "applicationDeadline", "status"]
     missing = [f for f in required_fields if f not in data]
     if missing:
         return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
@@ -54,5 +54,5 @@ def delete_grant(grant_id):
 def get_grant_alerts(grant_id):
     if not database_api.grant_exists(grant_id):
         return jsonify({"error": "Grant not found"}), 404
-    rows = database_api.get_grant_alerts(grant_id)
+    rows = database_api.list_grant_alerts(grant_id=grant_id)
     return jsonify(rows_to_list(rows)), 200

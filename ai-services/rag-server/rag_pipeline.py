@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import math
 import os
 import re
@@ -12,6 +13,8 @@ from typing import Any
 
 import chromadb
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -2379,8 +2382,8 @@ def reset_collection():
                 COLLECTION_NAME
         )
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Could not delete existing collection %s: %s", COLLECTION_NAME, exc)
 
     _collection = (
         client

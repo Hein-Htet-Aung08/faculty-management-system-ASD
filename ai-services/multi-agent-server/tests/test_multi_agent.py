@@ -153,6 +153,23 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(items[1]["record"]["staff_name"], "John Smith")
         self.assertEqual(items[1]["record"]["department"], "Computer Science")
 
+    def test_student4_denormalises_project_title_onto_each_grant(self):
+        responses = {
+            "/projects": [{"projectID": 1, "title": "AI-Driven Curriculum Analytics",
+                           "department": "Computer Science", "status": "in progress"}],
+            "/projects/1/grants": [{"grantID": 10, "projectID": 1, "fundingBody": "ARC",
+                                    "amountRequested": 150000, "status": "awarded"}],
+            "/ai-analysis": [{"analysisID": 5, "projectID": 1, "generatedSummary": "Strong progress."}],
+        }
+        with patch.object(evidence, "fetch_json", side_effect=lambda base, path, params=None: responses[path]):
+            items = evidence.student4_evidence()
+
+        self.assertEqual(
+            [i["source"] for i in items],
+            ["student4/projects/1", "student4/grants/10", "student4/research_history/5"],
+        )
+        self.assertEqual(items[1]["record"]["projectTitle"], "AI-Driven Curriculum Analytics")
+
     def test_student1_builds_one_record_per_staff_member_without_contact_details(self):
         responses = {
             # /api/staff repeats a staff member once per expertise row
@@ -181,7 +198,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(record["availability"], "Monday AM: Available")
 
     def test_unfilled_sections_report_not_implemented(self):
-        for student in (4, 5):
+        for student in (5,):
             with self.assertRaisesRegex(evidence.EvidenceError, f"Student {student} evidence is not implemented"):
                 evidence.FEATURES[f"student{student}"]["collect"]()
 
