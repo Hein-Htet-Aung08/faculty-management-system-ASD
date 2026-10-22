@@ -37,7 +37,8 @@ def seeded_db(tmp_path_factory):
     env = {**os.environ, "DB_PATH": str(db_path)}
 
     for script in ("init_db.py", "seed.py"):
-        subprocess.run(
+        # Fixed arguments only: this repo's own scripts, run by the current interpreter
+        subprocess.run(  # noqa: S603
             [sys.executable, script],
             cwd=DATABASE_DIR,
             env=env,

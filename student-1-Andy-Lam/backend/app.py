@@ -469,5 +469,9 @@ def multi_agent_decision(workflow_id):
     return jsonify(result), status_code
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    # The Werkzeug debugger allows code execution from the browser, so it is
+    # opt-in for local development only and never on in Docker or the cloud.
+    debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    # All interfaces, so the backend is reachable from outside its container
+    app.run(host="0.0.0.0", port=5001, debug=debug)  # noqa: S104
 

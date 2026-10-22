@@ -60,8 +60,12 @@ jobs:
       - name: Check backend imports correctly
         run: python -c "import sys; sys.path.insert(0, '$STUDENT_DIR/backend'); import app"
 
-      - name: Run unit tests (AI-Mode/MCP/RAG/Multi-Agent faked or disabled)
-        run: python -m pytest "$STUDENT_DIR/tests" -v
+      # Release 2 post-commit testing: two endpoint functions of the Staff Management API
+      - name: "Post-commit endpoint tests: GET /api/staff/<id> and POST /api/staff"
+        run: python -m pytest "$STUDENT_DIR/tests/test_release2_endpoints.py" -v
+
+      - name: Run remaining unit tests (AI-Mode/MCP/RAG/Multi-Agent faked or disabled)
+        run: python -m pytest "$STUDENT_DIR/tests" -v --ignore="$STUDENT_DIR/tests/test_release2_endpoints.py"
 
       - name: Run shared Multi-Agent Server tests (includes Student 1 evidence)
         working-directory: ai-services/multi-agent-server

@@ -1,0 +1,45 @@
+# Student 1 pre-commit security scans (Release 2).
+# Install once from the repo root:
+#   pre-commit install -c student-1-Andy-Lam/.pre-commit-config.yaml
+# Run manually:
+#   pre-commit run -c student-1-Andy-Lam/.pre-commit-config.yaml --all-files
+
+repos:
+  - repo: local
+    hooks:
+      - id: student1-ruff-security
+        name: Student 1 - Ruff Security Scan
+        # S101 (assert) is how pytest checks results, so it is allowed in tests only
+        entry: >-
+          ruff check --select S
+          --per-file-ignores 'student-1-Andy-Lam/tests/*.py:S101'
+          --exclude student-1-Andy-Lam/tests/manual
+          student-1-Andy-Lam/backend
+          student-1-Andy-Lam/database
+          student-1-Andy-Lam/tests
+        language: python
+        additional_dependencies: ["ruff==0.16.8"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: student1-detect-secrets
+        name: Student 1 - Secret Detection
+        entry: detect-secrets-hook
+        language: python
+        additional_dependencies: ["detect-secrets==1.5.0"]
+        files: ^student-1-Andy-Lam/
+        types: [text]
+        stages: [pre-commit]
+
+      - id: student1-pip-audit
+        name: Student 1 - Dependency Audit
+        entry: >-
+          pip-audit
+          -r student-1-Andy-Lam/backend/requirements.txt
+          --progress-spinner off
+        language: python
+        additional_dependencies: ["pip-audit==2.10.1"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
