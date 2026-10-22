@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import sys
 
@@ -11,6 +12,7 @@ if str(BASE_DIR) not in sys.path:
 from routes.ai_mode import ai_mode_bp
 from routes.exports import exports_bp
 from routes.mcp_mode import mcp_bp
+from routes.multi_agent_mode import multi_agent_bp
 from routes.rag_mode import rag_bp
 from routes.staff_directory import staff_bp
 from routes.staff_workload_api import api_bp
@@ -27,6 +29,7 @@ def create_app():
     app.register_blueprint(api_bp)
     app.register_blueprint(mcp_bp)
     app.register_blueprint(rag_bp)
+    app.register_blueprint(multi_agent_bp)
     return app
 
 
@@ -34,4 +37,9 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5003, debug=True)
+    # 0.0.0.0 so Docker can publish the port; the debugger stays off unless asked for.
+    app.run(
+        host=os.getenv("HOST", "0.0.0.0"),  # noqa: S104
+        port=5003,
+        debug=os.getenv("FLASK_DEBUG", "false").lower() == "true",
+    )

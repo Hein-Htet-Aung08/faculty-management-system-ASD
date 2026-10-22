@@ -21,6 +21,44 @@ env:
 
 jobs:
 
+  # ------------------------------------------------- post-commit endpoints ---
+
+  endpoint-tests:
+    name: Post-commit endpoint tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        run: |
+          pip install -r "$STUDENT_DIR/backend-service/requirements.txt" \
+                      -r "$STUDENT_DIR/backend-service/requirements-dev.txt"
+
+      - name: Test GET /api/staff-workload/profiles and /alerts
+        working-directory: student-3Tristan-Lim
+        run: |
+          set -o pipefail
+          mkdir -p test-results
+          python -m pytest tests -v --junitxml=test-results/endpoint-tests.xml | tee test-results/endpoint-tests.txt
+
+      - name: Publish endpoint test report
+        if: always()
+        working-directory: student-3Tristan-Lim
+        run: |
+          python tests/summarise_results.py test-results/endpoint-tests.xml > test-results/endpoint-tests.md || true
+          cat test-results/endpoint-tests.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: student-3-endpoint-tests
+          path: student-3Tristan-Lim/test-results/
+
   # ------------------------------------------------------------------ build ---
 
   build-images:
@@ -54,10 +92,14 @@ jobs:
   smoke-test:
     name: Run and validate services
     runs-on: ubuntu-latest
-    needs: [build-images]
+    needs: [build-images, endpoint-tests]
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Build images
         run: |
@@ -75,6 +117,7 @@ jobs:
             -e LLM_TIMEOUT=5 \
             -e MCP_ENABLED=false \
             -e RAG_ENABLED=false \
+            -e MULTI_AGENT_ENABLED=false \
             s3-be:ci
           docker run -d --name s3-fe --network s3-net -p ${FRONTEND_PORT}:80 \
             -e BACKEND_URL=http://localhost:${BACKEND_PORT} s3-fe:ci
@@ -97,6 +140,17 @@ jobs:
           wait_for "database-service" "http://localhost:${DATABASE_PORT}/health" s3-db
           wait_for "backend-service"  "http://localhost:${BACKEND_PORT}/health"  s3-be
           wait_for "frontend-service" "http://localhost:${FRONTEND_PORT}/index.html" s3-fe
+
+      - name: Post-commit endpoint tests against running containers
+        # Runs before the CRUD and recompute steps change any seeded rows.
+        working-directory: student-3Tristan-Lim
+        run: |
+          set -o pipefail
+          pip install -q -r backend-service/requirements-dev.txt requests
+          mkdir -p test-results
+          LIVE_BACKEND_URL="http://localhost:${BACKEND_PORT}" \
+            python -m pytest tests/test_live_endpoints.py -v --junitxml=test-results/live-endpoint-tests.xml
+          python tests/summarise_results.py test-results/live-endpoint-tests.xml >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify seed data meets the ten record minimum
         run: |
@@ -215,7 +269,7 @@ jobs:
           grep -q "LLM unreachable" /tmp/ai || { echo "FAIL unexpected body"; cat /tmp/ai; exit 1; }
           echo "PASS AI-Mode returned 503 with a clear message"
 
-      - name: Verify MCP and RAG are disabled during CI/CD
+      - name: Verify MCP, RAG and Multi-Agent are disabled during CI/CD
         run: |
           # Per the Release 1 spec, the shared MCP and RAG servers are
           # non-containerised and run only on a developer's own machine, so
@@ -236,6 +290,16 @@ jobs:
           grep -q "RAG mode is off" /tmp/rag || { echo "FAIL unexpected body"; cat /tmp/rag; exit 1; }
           echo "PASS RAG correctly reports disabled (403) during CI"
 
+          # Release 2: the shared Multi-Agent Server is also host-only.
+          code=$(curl -s -o /tmp/ma -w "%{http_code}" --max-time 10 \
+                 -X POST -H "Content-Type: application/json" \
+                 -d '{"user_request":"Which staff are overloaded?"}' "http://localhost:${BACKEND_PORT}/multi-agent/workflow" || true)
+          [ "$code" = "403" ] || { echo "FAIL expected 403 with Multi-Agent disabled, got $code"; cat /tmp/ma; exit 1; }
+          grep -q "Multi-Agent mode is off" /tmp/ma || { echo "FAIL unexpected body"; cat /tmp/ma; exit 1; }
+          curl -s "http://localhost:${BACKEND_PORT}/multi-agent/status" | grep -q '"enabled": *false' \
+            || { echo "FAIL status endpoint does not report disabled"; exit 1; }
+          echo "PASS Multi-Agent correctly reports disabled (403) during CI"
+
       - name: Verify prompts are packaged in the backend image
         run: |
           docker exec s3-be sh -c "ls /app/prompts/service/implementation/system_prompt.txt \
@@ -244,7 +308,7 @@ jobs:
 
       - name: Verify frontend assets
         run: |
-          for path in /index.html /tabs/normal.html /tabs/ai-mode.html /js/api.js /js/config.js; do
+          for path in /index.html /tabs/normal.html /tabs/ai-mode.html /tabs/multi-agent.html /js/api.js /js/config.js; do
             code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${FRONTEND_PORT}$path")
             [ "$code" = "200" ] || { echo "FAIL $path -> $code"; exit 1; }
             echo "PASS $path -> 200"
@@ -317,14 +381,17 @@ jobs:
           - AI-Mode degrades cleanly when no LLM runtime is reachable
           - MCP correctly reports disabled (403) with MCP_ENABLED=false
           - RAG correctly reports disabled (403) with RAG_ENABLED=false
+          - Multi-Agent correctly reports disabled (403) with MULTI_AGENT_ENABLED=false
+          - Post-commit endpoint tests: GET /api/staff-workload/profiles and /alerts
+            (pytest, database faked and against the running containers)
           - Prompt files are packaged inside the backend image
           - Frontend assets served and backend URL injected at container start
 
           ## Not covered here
 
-          The Ollama runtime and the shared, non-containerised MCP/RAG servers
+          The Ollama runtime and the shared, non-containerised MCP/RAG/Multi-Agent servers
           are not available on a GitHub Actions runner. Per the Release 1
-          spec, MCP and RAG integration is retained but disabled during
+          and Release 2 specs, MCP, RAG and Multi-Agent integration is retained but disabled during
           CI/CD; the Frontend -> Backend -> Ollama/MCP/RAG path and the
           Plan -> Act -> Observe -> Adapt cycle are demonstrated locally
           instead.
