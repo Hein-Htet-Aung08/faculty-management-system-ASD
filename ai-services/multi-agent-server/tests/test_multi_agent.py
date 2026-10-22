@@ -181,7 +181,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(record["availability"], "Monday AM: Available")
 
     def test_unfilled_sections_report_not_implemented(self):
-        for student in (4, 5):
+        for student in (4,):
             with self.assertRaisesRegex(evidence.EvidenceError, f"Student {student} evidence is not implemented"):
                 evidence.FEATURES[f"student{student}"]["collect"]()
 

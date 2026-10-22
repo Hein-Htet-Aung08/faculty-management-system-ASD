@@ -281,22 +281,68 @@ def student4_evidence():
 # ============================================================
 #
 # OWNER: Student 5 - Matthew
-#
-# TODO: return evidence for your feature, read through your own
-# backend/API (never another student's database).
-#
-# Pattern:
-#
-# def student5_evidence():
-#     rows = as_list(fetch_json(STUDENT5_BACKEND_URL, "/api/<your-route>"))
-#     return items_from(rows, "student5/<resource>")
-#
-# Each item's source (e.g. "student5/<resource>/<id>") is what
-# the Worker cites. Also update your evidence_description in
-# FEATURES below.
 
 def student5_evidence():
-    not_implemented(5)
+    resources = {
+        "performance-reviews": "reviewID",
+        "development-goals": "goalID",
+        "training-programs": "trainingID",
+        "staff-training": "staffTrainingID",
+        "development-recommendations": "recommendationID",
+    }
+    records = {}
+    for resource, key in resources.items():
+        rows = as_list(fetch_json(STUDENT5_BACKEND_URL, f"/api/{resource}"))
+        if any(not isinstance(row, dict) or row.get(key) is None for row in rows):
+            raise EvidenceError(f"unexpected {resource} record")
+        records[resource] = rows
+
+    staff_names = {}
+    try:
+        directory = as_list(
+            fetch_json(STUDENT5_BACKEND_URL, "/api/integration/staff"), "staff"
+        )
+        for staff in directory:
+            if isinstance(staff, dict) and staff.get("staff_id") and staff.get("name"):
+                staff_names[staff["staff_id"]] = staff["name"]
+    except EvidenceError:
+        pass
+
+    programs = {row["trainingID"]: row for row in records["training-programs"]}
+    goals = {row["goalID"]: row for row in records["development-goals"]}
+    items = []
+
+    for resource, key in resources.items():
+        for row in records[resource]:
+            record = {
+                "staffID": row.get("staffID"),
+                "staffName": staff_names.get(row.get("staffID")),
+                "status": row.get("status"), **row,
+            }
+            if resource == "development-goals":
+                record = {
+                    "title": row.get("title"), "progress": row.get("progress"),
+                    "targetDate": row.get("targetDate"), **record,
+                }
+            elif resource == "training-programs":
+                record = {
+                    "title": row.get("title"), "skillArea": row.get("skillArea"),
+                    "provider": row.get("provider"), **record,
+                }
+            elif resource == "staff-training":
+                program = programs.get(row.get("trainingID"), {})
+                record = {"trainingTitle": program.get("title"), **record}
+            elif resource == "development-recommendations":
+                goal = goals.get(row.get("goalID"), {})
+                record = {
+                    "actionState": "Proposed recommendation",
+                    "staffID": row.get("staffID"), "status": row.get("status"),
+                    "goalTitle": goal.get("title"),
+                    "recommendation": row.get("recommendation"), **record,
+                }
+            items.append(evidence_item(f"student5/{resource}/{row[key]}", record))
+
+    return items
 
 
 # ============================================================
@@ -341,7 +387,11 @@ FEATURES = {
     "student5": {
         "name": "Performance and Professional Development",
         "owner": "Matthew Barnard",
-        "evidence_description": "TODO: describe the evidence your section supplies",
+        "evidence_description": (
+            "performance reviews, development goals with progress and target dates, "
+            "training programs, staff enrolments with program titles, and proposed "
+            "development recommendations with related goals and decision status"
+        ),
         "collect": student5_evidence,
     },
 }
