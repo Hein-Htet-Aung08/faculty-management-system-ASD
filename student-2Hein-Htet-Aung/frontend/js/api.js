@@ -1,15 +1,20 @@
-const API_BASE_URL =
-  (window.APP_CONFIG && window.APP_CONFIG.API_BASE)
-  || "http://localhost:5002";
+const API_BASE_URL = window.location.origin;
+
 
 async function apiRequest(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    },
-    ...options
-  });
+  const baseUrl =
+    window.APP_CONFIG?.API_BASE || ".";
+
+  const response = await fetch(
+    `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`,
+    {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    }
+  );
 
   const contentType =
     response.headers.get("content-type") || "";
@@ -25,10 +30,7 @@ async function apiRequest(path, options = {}) {
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
 
-    if (
-      typeof data === "object" &&
-      data !== null
-    ) {
+    if (typeof data === "object" && data !== null) {
       if (data.error) {
         message = data.error;
       } else if (
@@ -39,16 +41,9 @@ async function apiRequest(path, options = {}) {
       }
     }
 
-    if (
-      typeof data === "string" &&
-      data.trim()
-    ) {
+    if (typeof data === "string" && data.trim()) {
       const parser = new DOMParser();
-      const doc = parser.parseFromString(
-        data,
-        "text/html"
-      );
-
+      const doc = parser.parseFromString(data, "text/html");
       const text = doc.body.textContent.trim();
 
       if (text) {
