@@ -1,0 +1,128 @@
+S104 Possible binding to all interfaces
+   --> student-5Matthew-Barnard\backend-service\app.py:305:18
+    |
+303 |     debug = os.getenv("FLASK_DEBUG", "0") == "1"
+304 |     port = int(os.getenv("PORT", "5005"))
+305 |     app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=debug)
+    |                  ^^^^^^^^^
+
+S608 Possible SQL injection vector through string-based query construction
+  --> student-5Matthew-Barnard\database-service\app.py:47:17
+   |
+45 |             return jsonify({"error": str(exc)}), 400
+46 |
+47 |         query = f"SELECT * FROM {spec['table']}"
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+48 |         if clauses:
+49 |             query += " WHERE " + " AND ".join(clauses)
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> student-5Matthew-Barnard\database-service\app.py:68:17
+   |
+66 |         try:
+67 |             row = connection.execute(
+68 |                 f"SELECT * FROM {spec['table']} WHERE {spec['pk']} = ?", (row_id,)
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+69 |             ).fetchone()
+70 |             if row is None:
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> student-5Matthew-Barnard\database-service\app.py:91:17
+   |
+89 |         try:
+90 |             cursor = connection.execute(
+91 |                 f"INSERT INTO {spec['table']} ({', '.join(columns)}) VALUES ({placeholders})",
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+92 |                 [values[column] for column in columns],
+93 |             )
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> student-5Matthew-Barnard\database-service\app.py:96:17
+   |
+94 |             connection.commit()
+95 |             row = connection.execute(
+96 |                 f"SELECT * FROM {spec['table']} WHERE {spec['pk']} = ?",
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+97 |                 (cursor.lastrowid,),
+98 |             ).fetchone()
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> student-5Matthew-Barnard\database-service\app.py:121:17
+    |
+119 |         try:
+120 |             existing = connection.execute(
+121 |                 f"SELECT * FROM {spec['table']} WHERE {spec['pk']} = ?", (row_id,)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+122 |             ).fetchone()
+123 |             if existing is None:
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> student-5Matthew-Barnard\database-service\app.py:135:17
+    |
+133 |             assignments = ", ".join(f"{column} = ?" for column in changes)
+134 |             connection.execute(
+135 |                 f"UPDATE {spec['table']} SET {assignments} WHERE {spec['pk']} = ?",
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+136 |                 [*changes.values(), row_id],
+137 |             )
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> student-5Matthew-Barnard\database-service\app.py:140:17
+    |
+138 |             connection.commit()
+139 |             row = connection.execute(
+140 |                 f"SELECT * FROM {spec['table']} WHERE {spec['pk']} = ?", (row_id,)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+141 |             ).fetchone()
+142 |             return jsonify(dict(row))
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> student-5Matthew-Barnard\database-service\app.py:158:17
+    |
+156 |         try:
+157 |             cursor = connection.execute(
+158 |                 f"DELETE FROM {spec['table']} WHERE {spec['pk']} = ?", (row_id,)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+159 |             )
+160 |             if cursor.rowcount == 0:
+    |
+
+S104 Possible binding to all interfaces
+   --> student-5Matthew-Barnard\database-service\app.py:183:18
+    |
+181 |     debug = os.getenv("FLASK_DEBUG", "0") == "1"
+182 |     port = int(os.getenv("PORT", "5105"))
+183 |     app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=debug)
+    |                  ^^^^^^^^^
+
+S608 Possible SQL injection vector through string-based query construction
+  --> student-5Matthew-Barnard\database-service\database.py:53:21
+   |
+51 |                   placeholders = ", ".join("?" for _ in columns)
+52 |                   connection.executemany(
+53 | /                     f"INSERT OR IGNORE INTO {table} ({', '.join(columns)}) "
+54 | |                     f"VALUES ({placeholders})",
+   | |______________________________________________^
+55 |                       rows,
+56 |                   )
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> student-5Matthew-Barnard\database-service\database.py:66:39
+   |
+64 |     try:
+65 |         return {
+66 |             table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+67 |             for table in SEED_DATA
+68 |         }
+   |
+
+Found 12 errors.

@@ -242,6 +242,33 @@ python -m unittest discover -s tests -v
 The automated tests use a mocked Ollama response, so the AI model does not
 need to be downloaded in GitHub Actions.
 
+## Release 2 Testing
+
+The dedicated endpoint tests cover GET and POST `/api/development-goals`.
+They run the real backend and database validation with a fresh temporary
+SQLite database for each test. The HTTP connection between those services
+is replaced by a test adapter. Ollama and the shared AI servers are not needed.
+
+From the repository root, with your virtual environment active, run:
+
+```powershell
+python -m pip install -r student-5Matthew-Barnard/requirements-dev.txt
+python -m pre_commit install -c student-5Matthew-Barnard/.pre-commit-config.yaml
+python -m pre_commit run -c student-5Matthew-Barnard/.pre-commit-config.yaml --all-files
+python -m pytest student-5Matthew-Barnard/tests/test_release2_endpoints.py -v
+```
+
+The commit hook runs Ruff security rules, secret detection and dependency
+auditing. The accepted container-binding and fixed SQL identifier findings
+are explained in `reports/release2/security-findings.md`.
+
+The Student 5 GitHub Actions workflow runs the endpoint tests after a push,
+alongside the existing tests and three container builds. AI-Mode, MCP, RAG
+and Multi-Agent are disabled in the CI stack. Endpoint results are uploaded
+as text and JUnit XML. Local results are in `reports/release2`; those files
+are labelled as local checks, while a successful Actions run provides the
+post-commit CI evidence.
+
 ## Release 0 Evidence
 
 The Release 0 evidence checklist is in
