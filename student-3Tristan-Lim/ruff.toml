@@ -1,0 +1,4 @@
+# Ruff settings for Student 3 code (used by the pre-commit security scan).
+[lint.per-file-ignores]
+# pytest uses plain assert statements.
+"**/tests/*" = ["S101"]

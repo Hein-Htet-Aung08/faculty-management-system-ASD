@@ -1,0 +1,48 @@
+# Student 3 pre-commit security scans (Release 2).
+# Covers the Student 3 feature and the shared Multi-Agent Server (owned by Student 3).
+# Install once from the repo root:
+#   pre-commit install -c student-3Tristan-Lim/.pre-commit-config.yaml
+# Run manually:
+#   pre-commit run -c student-3Tristan-Lim/.pre-commit-config.yaml --all-files
+
+repos:
+  - repo: local
+    hooks:
+      - id: student3-ruff-security
+        name: Student 3 - Ruff Security Scan
+        # ruff.toml allows S101 (assert) in tests only; it is still enforced elsewhere.
+        entry: >-
+          ruff check --select S
+          --config student-3Tristan-Lim/ruff.toml
+          student-3Tristan-Lim/backend-service
+          student-3Tristan-Lim/database-service
+          student-3Tristan-Lim/tests
+          ai-services/multi-agent-server
+        language: python
+        additional_dependencies: ["ruff==0.17.1"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: student3-detect-secrets
+        name: Student 3 - Secret Detection
+        entry: detect-secrets-hook
+        language: python
+        additional_dependencies: ["detect-secrets==1.5.0"]
+        files: ^(student-3Tristan-Lim/|ai-services/multi-agent-server/)
+        types: [text]
+        stages: [pre-commit]
+
+      - id: student3-pip-audit
+        name: Student 3 - Dependency Audit
+        entry: >-
+          pip-audit
+          -r student-3Tristan-Lim/backend-service/requirements.txt
+          -r student-3Tristan-Lim/database-service/requirements.txt
+          -r ai-services/multi-agent-server/requirements.txt
+          --progress-spinner off
+        language: python
+        additional_dependencies: ["pip-audit==2.10.1"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

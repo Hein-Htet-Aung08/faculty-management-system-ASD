@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Multi-Agent Mode</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        body { margin: 0; background: transparent; }
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: end; margin-bottom: 1rem; }
+        .samples { display: flex; gap: .5rem; flex-wrap: wrap; margin: .5rem 0 1rem; }
+        .stack > * + * { margin-top: 1rem; }
+        .agent-text { white-space: pre-wrap; line-height: 1.5; margin: 0; }
+        .decision-buttons { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; }
+    </style>
+</head>
+<body>
+
+<section class="panel-section">
+    <h2>Multi-Agent Mode</h2>
+    <p>Runs the shared Planner &rarr; Worker &rarr; Reviewer workflow on this feature's workload data,
+        then waits for your decision.</p>
+    <p id="ma-status" class="project-id">Checking Multi-Agent mode...</p>
+</section>
+
+<section class="panel-section">
+    <h2>Run Workflow</h2>
+    <div class="form-field">
+        <label for="ma-request">Request</label>
+        <textarea id="ma-request" rows="3" maxlength="1000">Which staff members are overloaded and what open alerts do they have?</textarea>
+    </div>
+    <div class="samples" aria-label="Sample requests">
+        <button type="button" class="btn secondary" data-sample="Which staff members are overloaded and what open alerts do they have?">Overloaded staff</button>
+        <button type="button" class="btn secondary" data-sample="Summarise the underloaded staff in each department.">Underloaded by department</button>
+        <button type="button" class="btn secondary" data-sample="Which departments have open alerts?">Departments with alerts</button>
+    </div>
+    <div class="actions">
+        <button type="button" class="btn" id="ma-run">Run Workflow</button>
+    </div>
+    <div id="workflow-panel" class="ai-result-panel"></div>
+</section>
+
+<section class="panel-section">
+    <h2>Workflow History</h2>
+    <div class="actions">
+        <button type="button" class="btn secondary" id="ma-history">Load History</button>
+    </div>
+    <div id="history-panel" class="ai-result-panel"></div>
+</section>
+
+<script src="/js/config.js"></script>
+<script>
+const BACKEND = window.BACKEND_URL || "http://localhost:5003";
+
+const STATUS_STAMP = {
+    awaiting_human_review: "status-proposed",
+    accepted: "status-active",
+    partially_accepted: "status-applied",
+    corrected: "status-in-progress",
+    rejected: "status-rejected",
+};
+
+function esc(value) {
+    const div = document.createElement("div");
+    div.textContent = value === null || value === undefined ? "" : String(value);
+    return div.innerHTML;
+}
+
+function stamp(text, css) {
+    return `<span class="stamp ${css}">${esc(text)}</span>`;
+}
+
+function statusStamp(status) {
+    return stamp(String(status || "unknown").replaceAll("_", " "), STATUS_STAMP[status] || "status-proposed");
+}
+
+function callout(text, kind) {
+    return `<div class="result-callout ${kind}">${esc(text)}</div>`;
+}
+
+async function api(path, options = {}) {
+    const response = await fetch(`${BACKEND}${path}`, {
+        headers: { "Content-Type": "application/json" },
+        ...options,
+    });
+    let data;
+    try {
+        data = await response.json();
+    } catch {
+        data = { error: `HTTP ${response.status}` };
+    }
+    return { ok: response.ok, status: response.status, data };
+}
+
+function failure(result) {
+    if (result.status === 403) {
+        return callout("Multi-Agent mode is off. Set MULTI_AGENT_ENABLED=true on the backend to use it.", "warning");
+    }
+    return callout(result.data.error || `Request failed (HTTP ${result.status}).`, "warning");
+}
+
+function networkError(error) {
+    return `<p class="error-state">Request failed. Is the backend running at ${esc(BACKEND)}, ` +
+        `and is the shared multi-agent-server running on port 5202?</p><pre>${esc(error)}</pre>`;
+}
+
+// One card per agent. Shows the parsed sections when the model used the
+// expected headings, otherwise the raw text.
+function agentCard(step, title, result, text, headings) {
+    const sections = result.sections || {};
+    const found = headings.filter((h) => sections[h]);
+    const body = found.length
+        ? `<table class="ledger-table"><tbody>${found
+              .map((h) => `<tr><th>${esc(h)}</th><td><p class="agent-text">${esc(sections[h])}</p></td></tr>`)
+              .join("")}</tbody></table>`
+        : `<p class="agent-text">${esc(text)}</p>`;
+    const warning = result.status === "success" ? "" : callout(result.error || result.evidence_error || `Status: ${result.status}`, "warning");
+    return `<div class="tool-result-card">
+        <div class="tool-result-header">
+            <div><span class="tool-result-eyebrow">${esc(step)} &middot; ${esc(result.model || "")}</span><h3>${esc(title)}</h3></div>
+            ${stamp(result.status, result.status === "success" ? "status-active" : "status-rejected")}
+        </div>${warning}${body}</div>`;
+}
+
+function checksCard(checks) {
+    const failed = checks.filter((c) => !c.passed).length;
+    const rows = checks
+        .map((c) => `<tr><td>${esc(c.check)}</td><td>${stamp(c.passed ? "pass" : "fail", c.passed ? "status-active" : "status-rejected")}</td><td>${esc(c.detail)}</td></tr>`)
+        .join("");
+    return `<div class="tool-result-card">
+        <div class="tool-result-header"><div><span class="tool-result-eyebrow">Automated checks</span><h3>Worker output checks</h3></div></div>
+        ${failed ? callout(`${failed} check(s) failed. Review the output carefully.`, "warning") : callout("All checks passed.", "success")}
+        <table class="ledger-table"><thead><tr><th>Check</th><th>Result</th><th>Detail</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+}
+
+function evidenceDetails(evidence) {
+    const rows = evidence
+        .map((item) => `<tr><td>${esc(item.source)}</td><td>${esc(Object.entries(item.record).map(([k, v]) => `${k}=${v}`).join("; "))}</td></tr>`)
+        .join("");
+    return `<details class="raw-json-details"><summary>Evidence supplied to the Worker (${evidence.length})</summary>
+        <table class="ledger-table"><thead><tr><th>Source</th><th>Record</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+}
+
+function decisionCard(workflow) {
+    const decision = workflow.human_decision || {};
+    if (decision.status === "recorded") {
+        const lines = [
+            `Decision: ${decision.decision} by ${decision.reviewer} at ${decision.timestamp}`,
+            decision.notes ? `Notes: ${decision.notes}` : "",
+            decision.correction ? `Correction: ${decision.correction}` : "",
+        ].filter(Boolean).join("\n");
+        return `<div class="tool-result-card">
+            <div class="tool-result-header"><div><span class="tool-result-eyebrow">4 &middot; Human review</span><h3>Decision recorded</h3></div>${statusStamp(workflow.status)}</div>
+            <p class="agent-text">${esc(lines)}</p></div>`;
+    }
+    return `<div class="tool-result-card" id="decision-card">
+        <div class="tool-result-header"><div><span class="tool-result-eyebrow">4 &middot; Human review</span><h3>Your decision</h3></div>${statusStamp(workflow.status)}</div>
+        <div class="form-grid">
+            <div class="form-field"><label for="ma-reviewer">Reviewer name</label><input id="ma-reviewer" maxlength="100"></div>
+            <div class="form-field"><label for="ma-notes">Notes (optional)</label><input id="ma-notes" maxlength="2000"></div>
+            <div class="form-field span-2"><label for="ma-correction">Correction (required for Correct)</label>
+                <textarea id="ma-correction" rows="2" maxlength="2000"></textarea></div>
+        </div>
+        <div class="decision-buttons">
+            ${["Accept", "Partially Accept", "Correct", "Reject"]
+                .map((d) => `<button type="button" class="btn${d === "Accept" ? "" : " secondary"}" data-decision="${d}">${d}</button>`)
+                .join("")}
+        </div>
+        <div id="decision-result"></div>
+    </div>`;
+}
+
+function renderWorkflow(workflow) {
+    const worker = workflow.worker_result;
+    const facts = [
+        ["Workflow", workflow.workflow_id.slice(0, 8)],
+        ["Duration", `${(workflow.duration_ms / 1000).toFixed(1)} s`],
+        ["Evidence items", worker.evidence_count],
+        ["Status", String(workflow.status).replaceAll("_", " ")],
+    ];
+    const panel = document.getElementById("workflow-panel");
+    panel.innerHTML = `<div class="stack">
+        <div class="tool-result-card">
+            <div class="tool-result-header"><div><span class="tool-result-eyebrow">Workflow &middot; ${esc(workflow.feature_name)}</span>
+                <h3>${esc(workflow.user_request)}</h3></div>${statusStamp(workflow.status)}</div>
+            <div class="result-fact-grid">${facts.map(([k, v]) => `<div class="result-fact"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("")}</div>
+        </div>
+        ${agentCard("1 · Planner Agent", "Plan", workflow.planner_result, workflow.planner_result.plan, ["Objective", "Steps", "Evidence Required", "Human Approval"])}
+        ${agentCard("2 · Worker Agent", "Output", worker, worker.output, ["Output", "Evidence Used", "Limitations"])}
+        ${checksCard(workflow.automated_checks || [])}
+        ${agentCard("3 · Reviewer Agent", "Review", workflow.reviewer_result, workflow.reviewer_result.review, ["Risk", "Correction", "Retest", "Recommendation"])}
+        ${decisionCard(workflow)}
+        ${evidenceDetails(workflow.evidence || [])}
+    </div>`;
+
+    panel.querySelectorAll("[data-decision]").forEach((button) => {
+        button.addEventListener("click", () => submitDecision(workflow.workflow_id, button.dataset.decision));
+    });
+}
+
+async function submitDecision(workflowId, decision) {
+    const result = document.getElementById("decision-result");
+    const body = {
+        decision,
+        reviewer: document.getElementById("ma-reviewer").value.trim(),
+        notes: document.getElementById("ma-notes").value.trim(),
+        correction: document.getElementById("ma-correction").value.trim(),
+    };
+    if (decision === "Correct" && !body.correction) {
+        result.innerHTML = callout("Enter the correction before choosing Correct.", "warning");
+        return;
+    }
+    result.innerHTML = '<p class="empty-state">Recording decision...</p>';
+    try {
+        const response = await api(`/multi-agent/workflow/${encodeURIComponent(workflowId)}/decision`, {
+            method: "POST",
+            body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+            result.innerHTML = failure(response);
+            return;
+        }
+        renderWorkflow(response.data);
+        loadHistory();
+    } catch (error) {
+        result.innerHTML = networkError(error);
+    }
+}
+
+async function runWorkflow() {
+    const userRequest = document.getElementById("ma-request").value.trim();
+    const panel = document.getElementById("workflow-panel");
+    if (!userRequest) {
+        panel.innerHTML = callout("Enter a request first.", "warning");
+        return;
+    }
+    const button = document.getElementById("ma-run");
+    button.disabled = true;
+    panel.innerHTML = '<p class="empty-state">Planner, Worker and Reviewer are running... this can take up to a few minutes on a CPU.</p>';
+    try {
+        const response = await api("/multi-agent/workflow", {
+            method: "POST",
+            body: JSON.stringify({ user_request: userRequest }),
+        });
+        if (response.ok) {
+            renderWorkflow(response.data);
+            loadHistory();
+        } else {
+            panel.innerHTML = failure(response);
+        }
+    } catch (error) {
+        panel.innerHTML = networkError(error);
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function openWorkflow(workflowId) {
+    const panel = document.getElementById("workflow-panel");
+    panel.innerHTML = '<p class="empty-state">Loading workflow...</p>';
+    try {
+        const response = await api(`/multi-agent/workflow/${encodeURIComponent(workflowId)}`);
+        if (response.ok) {
+            renderWorkflow(response.data);
+        } else {
+            panel.innerHTML = failure(response);
+        }
+        panel.scrollIntoView({ behavior: "smooth" });
+    } catch (error) {
+        panel.innerHTML = networkError(error);
+    }
+}
+
+async function loadHistory() {
+    const panel = document.getElementById("history-panel");
+    panel.innerHTML = '<p class="empty-state">Loading history...</p>';
+    try {
+        const response = await api("/multi-agent/workflow/history?limit=10");
+        if (!response.ok) {
+            panel.innerHTML = failure(response);
+            return;
+        }
+        const workflows = response.data.workflows || [];
+        if (!workflows.length) {
+            panel.innerHTML = '<p class="empty-state">No workflows yet.</p>';
+            return;
+        }
+        const rows = workflows
+            .map((w) => `<tr>
+                <td>${esc(new Date(w.timestamp).toLocaleString())}</td>
+                <td>${esc(w.user_request)}</td>
+                <td>${statusStamp(w.status)}</td>
+                <td>${esc(w.decision || "Pending")}</td>
+                <td>${esc(w.evidence_count)}</td>
+                <td><button type="button" class="btn secondary" data-open="${esc(w.workflow_id)}">Open</button></td>
+            </tr>`)
+            .join("");
+        panel.innerHTML = `<table class="ledger-table"><thead><tr><th>Time</th><th>Request</th><th>Status</th>
+            <th>Decision</th><th>Evidence</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+        panel.querySelectorAll("[data-open]").forEach((button) => {
+            button.addEventListener("click", () => openWorkflow(button.dataset.open));
+        });
+    } catch (error) {
+        panel.innerHTML = networkError(error);
+    }
+}
+
+async function loadStatus() {
+    const line = document.getElementById("ma-status");
+    try {
+        const { data } = await api("/multi-agent/status");
+        if (!data.enabled) {
+            line.innerHTML = `Multi-Agent mode: ${stamp("off", "status-rejected")} (MULTI_AGENT_ENABLED is not true on the backend)`;
+            return;
+        }
+        const models = data.models || {};
+        line.innerHTML = data.server === "reachable"
+            ? `Multi-Agent mode: ${stamp("on", "status-active")} &middot; Planner ${esc(models.planner_agent)} &middot; ` +
+              `Worker ${esc(models.worker_agent)} &middot; Reviewer ${esc(models.reviewer_agent)}`
+            : `Multi-Agent mode: ${stamp("on", "status-active")} &middot; ${stamp("server unreachable", "status-rejected")} ${esc(data.error || "")}`;
+    } catch (error) {
+        line.innerHTML = `<span class="error-state">Backend unreachable at ${esc(BACKEND)}</span>`;
+    }
+}
+
+document.querySelectorAll("[data-sample]").forEach((button) => {
+    button.addEventListener("click", () => {
+        document.getElementById("ma-request").value = button.dataset.sample;
+    });
+});
+document.getElementById("ma-run").addEventListener("click", runWorkflow);
+document.getElementById("ma-history").addEventListener("click", loadHistory);
+loadStatus();
+</script>
+</body>
+</html>

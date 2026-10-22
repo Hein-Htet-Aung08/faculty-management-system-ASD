@@ -45,7 +45,8 @@ def load_prompt(name):
 
 @lru_cache(maxsize=4)
 def _client(timeout):
-    return OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama", timeout=timeout, max_retries=0)
+    # Ollama ignores the key, but the OpenAI client requires one; "ollama" is a placeholder.
+    return OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama", timeout=timeout, max_retries=0)  # pragma: allowlist secret
 
 
 def chat(model, prompt, *, max_tokens, timeout):

@@ -1,0 +1,15 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-8.3.3, pluggy-1.7.0 -- D:\Coding Projects\faculty-management-system-ASD\.venv-run\Scripts\python.exe
+rootdir: D:\Coding Projects\faculty-management-system-ASD\student-3Tristan-Lim
+plugins: anyio-4.15.1, platformdirs-4.13.5
+collecting ... collected 7 items
+
+tests/test_release2_endpoints.py::test_profiles_returns_rows_as_json PASSED [ 14%]
+tests/test_release2_endpoints.py::test_profiles_passes_status_and_department_filters PASSED [ 28%]
+tests/test_release2_endpoints.py::test_profiles_returns_empty_list_when_nothing_matches PASSED [ 42%]
+tests/test_release2_endpoints.py::test_profiles_returns_503_when_database_is_unreachable PASSED [ 57%]
+tests/test_release2_endpoints.py::test_alerts_default_to_open_alerts PASSED [ 71%]
+tests/test_release2_endpoints.py::test_alerts_accept_an_explicit_status PASSED [ 85%]
+tests/test_release2_endpoints.py::test_alerts_return_503_when_database_times_out PASSED [100%]
+
+============================== 7 passed in 1.07s ==============================
