@@ -1,3 +1,6 @@
+import os
+from functools import wraps
+
 from flask import Blueprint
 from services import database_api
 from services import staff_client
@@ -9,8 +12,23 @@ from services.llm_client import OLLAMA_MODEL, create_chat_completion
 ai_mode_html_bp = Blueprint("ai_mode_html", __name__)
 
 
+def _ai_mode_active():
+    return os.environ.get("AI_MODE_ENABLED", "false").lower() == "true"
+
+
+def require_ai_mode(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not _ai_mode_active():
+            return "<p>AI-Mode is off. The server needs AI_MODE_ENABLED set.</p>", 403
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 @ai_mode_html_bp.post("/projects/<int:project_id>/generate_summary")
 @ai_mode_html_bp.post("/projects/<int:project_id>/generate-summary")
+@require_ai_mode
 def generate_summary_html(project_id):
     project = database_api.get_project(project_id)
     if project is None:
@@ -72,6 +90,7 @@ def generate_summary_html(project_id):
 
 @ai_mode_html_bp.post("/projects/<int:project_id>/match_staff")
 @ai_mode_html_bp.post("/projects/<int:project_id>/match-staff")
+@require_ai_mode
 def match_staff_html(project_id):
     """
     Explains why staff ALREADY assigned to this project suit it.
@@ -145,6 +164,7 @@ def match_staff_html(project_id):
 
 @ai_mode_html_bp.post("/projects/<int:project_id>/recommend_staff")
 @ai_mode_html_bp.post("/projects/<int:project_id>/recommend-staff")
+@require_ai_mode
 def recommend_staff_html(project_id):
     """
     The actual "match staff to research opportunities based on

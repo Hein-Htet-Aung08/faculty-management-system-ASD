@@ -193,6 +193,7 @@ services:
       - "5004:5004"
     environment:
       DATABASE_SERVICE_URL: http://student4-database:5104
+      AI_MODE_ENABLED: "true"
       OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
       OLLAMA_MODEL: qwen2.5:0.5b
       PORT: 5004

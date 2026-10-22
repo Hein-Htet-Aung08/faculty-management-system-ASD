@@ -8,7 +8,6 @@ on:
       - "ai-services/mcp-server/**"
       - "ai-services/rag-server/**"
       - "ai-services/multi-agent-server/**"
-      - "tests/post_commit/student4/**"
       - "docker-compose.yml"
       - ".github/workflows/student-4-NicholasHatzidimitriou.yml"
   pull_request:
@@ -18,11 +17,11 @@ on:
       - "ai-services/mcp-server/**"
       - "ai-services/rag-server/**"
       - "ai-services/multi-agent-server/**"
-      - "tests/post_commit/student4/**"
       - "docker-compose.yml"
       - ".github/workflows/student-4-NicholasHatzidimitriou.yml"
 
 env:
+  AI_MODE_ENABLED: "false"
   MCP_ENABLED: "false"
   RAG_ENABLED: "false"
   MULTI_AGENT_ENABLED: "false"
@@ -113,7 +112,8 @@ jobs:
         run: |
           docker compose -f docker-compose.yml config --format json > compose.json
           jq -e '.services["student4-backend"].environment
-                 | .MCP_ENABLED == "true"
+                 | .AI_MODE_ENABLED == "true"
+                   and .MCP_ENABLED == "true"
                    and (.MCP_SERVER_URL | test("host.docker.internal:5201"))
                    and .RAG_ENABLED == "true"
                    and (.RAG_SERVER_URL | test("host.docker.internal:5200"))
@@ -169,6 +169,7 @@ jobs:
             -e WORKLOAD_SERVICE_URL=http://unavailable-workload-service:5003 \
             -e OLLAMA_BASE_URL=http://unavailable-ollama:11434/v1 \
             -e OLLAMA_MODEL=qwen2.5:0.5b \
+            -e AI_MODE_ENABLED=false \
             -e MCP_ENABLED=false \
             -e MCP_SERVER_URL=http://unavailable-mcp:5201/mcp \
             -e RAG_ENABLED=false \
@@ -198,6 +199,18 @@ jobs:
           echo "Projects returned: $count"
           test "$count" -ge 10
           echo "PASS: at least 10 seeded projects returned via the backend container"
+
+      - name: Verify AI-Mode is retained but cleanly disabled
+        run: |
+          code=$(curl -s -o /tmp/ai-mode-disabled -w '%{http_code}' \
+            -X POST http://localhost:5004/projects/1/generate-summary || true)
+          if [ "$code" != "403" ]; then
+            echo "FAIL: AI-Mode expected HTTP 403, got $code"
+            cat /tmp/ai-mode-disabled || true
+            exit 1
+          fi
+          grep -q "AI-Mode is off" /tmp/ai-mode-disabled
+          echo "PASS: AI-Mode integration retained but disabled during CI"
 
       - name: Verify MCP is retained but cleanly disabled
         run: |
@@ -252,7 +265,7 @@ jobs:
           BACKEND_URL: http://localhost:5004
         run: |
           set +e
-          pytest tests/post_commit/student4/test_student4_endpoints.py -v | tee /tmp/post-commit-test-output.txt
+          pytest student-4Nicholas-Hatzidimitriou/tests/test_release2_endpoints.py -v | tee /tmp/post-commit-test-output.txt
           echo "PYTEST_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
           set -e
 
@@ -279,6 +292,8 @@ jobs:
             echo '```'
           } > student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-test-results.md
 
+          cp /tmp/post-commit-test-output.txt student-4Nicholas-Hatzidimitriou/reports/release2/endpoint-tests.txt 2>/dev/null || true
+
           printf '{"status": "%s", "timestamp": "%s"}\n' "$STATUS" "$TIMESTAMP" >> student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-audit.jsonl
 
           if [ "$STATUS" = "FAIL" ]; then
@@ -295,6 +310,7 @@ jobs:
           path: |
             student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-test-results.md
             student-4Nicholas-Hatzidimitriou/reports/release2/post-commit-audit.jsonl
+            student-4Nicholas-Hatzidimitriou/reports/release2/endpoint-tests.txt
 
       - name: Collect container logs on failure
         if: failure()
