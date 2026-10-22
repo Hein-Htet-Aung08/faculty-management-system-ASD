@@ -1,0 +1,102 @@
+ Image faculty-management-system-asd-student5-database Built 
+ Image faculty-management-system-asd-staff-frontend Built 
+ Image faculty-management-system-asd-student5-backend Built 
+ Image faculty-management-system-asd-student4-database Built 
+ Image faculty-management-system-asd-student4-frontend Built 
+ Image faculty-management-system-asd-staff-backend Built 
+ Image faculty-management-system-asd-student3-backend Built 
+ Image faculty-management-system-asd-allocation-backend Built 
+ Container student3-database Running 
+ Container faculty-management-system-asd-allocation-database-1 Running 
+ Container student4-frontend Running 
+ Container student4-database Running 
+ Container student5-database Running 
+ Container faculty-management-system-asd-allocation-backend-1 Running 
+ Container student4-backend Running 
+ Container student3-backend Running 
+ Container faculty-management-system-asd-staff-frontend-1 Running 
+ Container faculty-management-system-asd-allocation-frontend-1 Running 
+ Container student5-frontend Running 
+ Container faculty-management-system-asd-cloud-gateway-1 Running 
+ Container unified-home Running 
+ Container faculty-management-system-asd-staff-database-1 Running 
+ Container student5-backend Running 
+ Container faculty-management-system-asd-staff-backend-1 Running 
+ Container student3-frontend Running 
+ Container student5-database Waiting 
+ Container student5-database Healthy 
+ Container student5-backend Waiting 
+ Container student5-backend Healthy 
+ Container student4-database Waiting 
+ Container faculty-management-system-asd-cloud-gateway-1 Waiting 
+ Container student3-frontend Waiting 
+ Container faculty-management-system-asd-staff-frontend-1 Waiting 
+ Container student5-database Waiting 
+ Container student4-backend Waiting 
+ Container faculty-management-system-asd-allocation-database-1 Waiting 
+ Container unified-home Waiting 
+ Container faculty-management-system-asd-staff-database-1 Waiting 
+ Container student3-backend Waiting 
+ Container student5-frontend Waiting 
+ Container faculty-management-system-asd-allocation-backend-1 Waiting 
+ Container student4-frontend Waiting 
+ Container student5-backend Waiting 
+ Container student3-database Waiting 
+ Container faculty-management-system-asd-staff-backend-1 Waiting 
+ Container faculty-management-system-asd-allocation-frontend-1 Waiting 
+ Container unified-home Healthy 
+ Container faculty-management-system-asd-allocation-backend-1 Healthy 
+ Container student4-frontend Healthy 
+ Container student4-database Healthy 
+ Container faculty-management-system-asd-allocation-database-1 Healthy 
+ Container faculty-management-system-asd-allocation-frontend-1 Healthy 
+ Container faculty-management-system-asd-staff-frontend-1 Healthy 
+ Container student4-backend Healthy 
+ Container faculty-management-system-asd-cloud-gateway-1 Healthy 
+ Container student5-database Healthy 
+ Container faculty-management-system-asd-staff-backend-1 Healthy 
+ Container student3-frontend Healthy 
+ Container student5-backend Healthy 
+ Container faculty-management-system-asd-staff-database-1 Healthy 
+ Container student3-database Healthy 
+ Container student5-frontend Healthy 
+ Container student3-backend Healthy 
+[5/6] Checking container status...
+NAME                                                  IMAGE                                                                     COMMAND                  SERVICE               CREATED       STATUS                 PORTS
+faculty-management-system-asd-allocation-backend-1    sha256:e704f0e88f23ef65a396674448dfb367eb71cec87da83110b450ef469ef8485d   "python app.py"          allocation-backend    5 hours ago   Up 5 hours             5002/tcp
+faculty-management-system-asd-allocation-database-1   sha256:0f05f994d9d92573fd50926e6196328273d6eb62ac1f4aa5f1f2805f14b275ed   "python app.py"          allocation-database   5 hours ago   Up 5 hours             6002/tcp
+faculty-management-system-asd-allocation-frontend-1   sha256:057511ac66fc346065416df9e40a9759fb316f2e53ae7bafaf002ef121b9fd4e   "/docker-entrypoint.…"   allocation-frontend   2 hours ago   Up 2 hours             80/tcp
+faculty-management-system-asd-cloud-gateway-1         nginx:1.27-alpine                                                         "/docker-entrypoint.…"   cloud-gateway         5 hours ago   Up 5 hours             0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:8001-8005->8001-8005/tcp, [::]:8001-8005->8001-8005/tcp
+faculty-management-system-asd-staff-backend-1         sha256:829f7cfe5039b74d20d34dfb9677366e58b7afdcb7c9ccd4d709b32ebce6fc0f   "python app.py"          staff-backend         5 hours ago   Up 5 hours             5001/tcp
+faculty-management-system-asd-staff-database-1        sha256:a0cd8dade7fa7d483109fcb9f241eed66c5acbc0b9f15f82045beedd9a0c9f86   "tail -f /dev/null"      staff-database        5 hours ago   Up 5 hours             
+faculty-management-system-asd-staff-frontend-1        sha256:4efe63373cde5c3e19680f8b8d78649e5804fc31e47aefe54d3ee67a62554bef   "/docker-entrypoint.…"   staff-frontend        5 hours ago   Up 5 hours             80/tcp
+student3-backend                                      sha256:70658627ea0a3c1d0cb04b1799b07ff19d0323772caa2d51dc1e983ef276ca49   "python backend-serv…"   student3-backend      2 hours ago   Up 2 hours             5003/tcp
+student3-database                                     sha256:fd2dc32ca9935fffcaa5511871e174036e9e43cfa43d0c08411b2219cb4daf21   "python app.py"          student3-database     2 hours ago   Up 2 hours             5103/tcp
+student3-frontend                                     sha256:2caab374a3dbeec454b6da78bdeae516fc4cc7f425c84ec3e37254c4572f223b   "/docker-entrypoint.…"   student3-frontend     2 hours ago   Up 2 hours             80/tcp
+student4-backend                                      sha256:95540e66f0d70ab7260230119cad81ff61c0f26ecadbf02dd142144ee308a494   "python app.py"          student4-backend      5 hours ago   Up 5 hours             5004/tcp
+student4-database                                     sha256:58b16db9bd05d02ea9865a47128dab8d374ce30c33cb746080d3f9f19401ebe1   "python app.py"          student4-database     5 hours ago   Up 5 hours             5104/tcp
+student4-frontend                                     sha256:e645c91fa168eef4a1a62b5a5beacf5c1ffa4d1acd24b703246b2d979c970219   "./docker-entrypoint…"   student4-frontend     5 hours ago   Up 5 hours             8004/tcp
+student5-backend                                      sha256:a8e73b90aae816f909551fd0c386d6fbed82f9c8531df0bdb08fb09a05215642   "python app.py"          student5-backend      5 hours ago   Up 5 hours (healthy)   5005/tcp
+student5-database                                     sha256:3c140d02772df717f557b08914390ea9c9abc2b90640bee473452fecae0a7770   "python app.py"          student5-database     5 hours ago   Up 5 hours (healthy)   5105/tcp
+student5-frontend                                     sha256:b90a9a5b35914b12410362c5ecb0aed23e9ed220263da7b25e1be15a5a6ef937   "/docker-entrypoint.…"   student5-frontend     5 hours ago   Up 5 hours             80/tcp
+unified-home                                          nginx:alpine                                                              "/docker-entrypoint.…"   home                  5 hours ago   Up 5 hours             80/tcp
+[6/6] Recording deployment information...
+Git commit: 835dea54921ed7d63281ecab3ce933c862315e2f
+Deployment timestamp: 2026-10-22T16:17:43Z
+
+===========================================
+ Deployment commands completed.
+===========================================
+
+IMPORTANT:
+Verify all five frontends, backends, databases,
+and CRUD operations before approving the release.
+PASS: port 80
+PASS: port 8001
+PASS: port 8002
+PASS: port 8003
+PASS: port 8004
+PASS: port 8005
+AWS DEPLOYMENT SUCCESSFUL
+
+

@@ -2,12 +2,12 @@
   "platform": "AWS",
   "region": "ap-southeast-2",
   "hosting": "EC2 + Docker Compose",
-  "deployed_commit": "d0ac4bda376d29379e7bdcefcfdcb6129687a486",
+  "deployed_commit": "835dea54921ed7d63281ecab3ce933c862315e2f",
   "deployed_at": "2026-10-22T14:29:42Z",
   "workflow_run": {
-    "url": "",
-    "conclusion": "failure",
-    "log": ""
+    "url": "https://github.com/Hein-Htet-Aung08/faculty-management-system-ASD/actions/runs/39812505106",
+    "conclusion": "success",
+    "log": "cloud-deployment-run.log"
   },
   "deployment_scripts": [
     "deploy/deploy.sh"

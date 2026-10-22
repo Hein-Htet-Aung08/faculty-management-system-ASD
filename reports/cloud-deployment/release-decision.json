@@ -1,7 +1,7 @@
 {
-  "decision": "Do not release",
-  "reviewer": "Hein",
-  "notes": "",
-  "review_report": "/Users/hein/Documents/UTS/Spring 2026/Advanced Software Development/Project/faculty-management-system-ASD/reports/release2/cloud_deployment_report_review-20261023-024955.md",
-  "timestamp": "2026-10-22T15:50:10+00:00"
+  "decision": "Release",
+  "reviewer": "Hein Htet Aung",
+  "notes": "Automated AWS EC2 deployment succeeded through GitHub Actions and SSM. All five student frontends and CRUD read endpoints returned HTTP 200 during live probes. Cloud AI features are disabled as required. Application CRUD functionality was previously verified manually. No deterministic release blockers remain.",
+  "review_report": "/Users/hein/Documents/UTS/Spring 2026/Advanced Software Development/Project/faculty-management-system-ASD/reports/release2/cloud_deployment_report_review-20261023-033430.md",
+  "timestamp": "2026-10-22T16:39:34+00:00"
 }
