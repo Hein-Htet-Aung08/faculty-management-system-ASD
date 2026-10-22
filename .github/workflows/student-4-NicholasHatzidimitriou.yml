@@ -7,6 +7,8 @@ on:
       - "student-4Nicholas-Hatzidimitriou/**"
       - "ai-services/mcp-server/**"
       - "ai-services/rag-server/**"
+      - "ai-services/multi-agent-server/**"
+      - "tests/post_commit/student4/**"
       - "docker-compose.yml"
       - ".github/workflows/student-4-NicholasHatzidimitriou.yml"
   pull_request:
@@ -15,11 +17,15 @@ on:
       - "student-4Nicholas-Hatzidimitriou/**"
       - "ai-services/mcp-server/**"
       - "ai-services/rag-server/**"
+      - "ai-services/multi-agent-server/**"
+      - "tests/post_commit/student4/**"
       - "docker-compose.yml"
+      - ".github/workflows/student-4-NicholasHatzidimitriou.yml"
 
 env:
   MCP_ENABLED: "false"
   RAG_ENABLED: "false"
+  MULTI_AGENT_ENABLED: "false"
 
 jobs:
   validate-python:
@@ -103,17 +109,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate student4-backend points at the shared host MCP/RAG servers
+      - name: Validate student4-backend points at the shared host MCP/RAG/Multi-Agent servers
         run: |
           docker compose -f docker-compose.yml config --format json > compose.json
           jq -e '.services["student4-backend"].environment
                  | .MCP_ENABLED == "true"
                    and (.MCP_SERVER_URL | test("host.docker.internal:5201"))
                    and .RAG_ENABLED == "true"
-                   and (.RAG_SERVER_URL | test("host.docker.internal:5200"))' compose.json
-          # AI-Mode, MCP and RAG must not be defined as compose services for this feature
+                   and (.RAG_SERVER_URL | test("host.docker.internal:5200"))
+                   and .MULTI_AGENT_ENABLED == "true"
+                   and (.MULTI_AGENT_SERVER_URL | test("host.docker.internal:5202"))' compose.json
           jq -e '.services["student4-backend"].depends_on | keys == ["student4-database"]' compose.json
-          echo "PASS: student4-backend points at host MCP/RAG and depends only on its own database"
+          echo "PASS: student4-backend points at host MCP/RAG/Multi-Agent and depends only on its own database"
 
   build-docker-images:
     name: Build Docker images
@@ -166,6 +173,8 @@ jobs:
             -e MCP_SERVER_URL=http://unavailable-mcp:5201/mcp \
             -e RAG_ENABLED=false \
             -e RAG_SERVER_URL=http://unavailable-rag:5200 \
+            -e MULTI_AGENT_ENABLED=false \
+            -e MULTI_AGENT_SERVER_URL=http://unavailable-multi-agent:5202 \
             student4-backend:ci
 
       - name: Wait for backend health check
@@ -215,6 +224,77 @@ jobs:
           fi
           grep -q "RAG mode is off" /tmp/rag-disabled
           echo "PASS: RAG integration retained but disabled during CI"
+
+      - name: Verify Multi-Agent integration is retained but cleanly disabled
+        run: |
+          code=$(curl -s -o /tmp/multi-agent-disabled -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -d '{"user_request":"Summarise the active research projects"}' \
+            http://localhost:5004/api/multi-agent/workflow || true)
+          if [ "$code" != "403" ]; then
+            echo "FAIL: Multi-Agent expected HTTP 403, got $code"
+            cat /tmp/multi-agent-disabled || true
+            exit 1
+          fi
+          grep -q "Multi-agent mode is off" /tmp/multi-agent-disabled
+          echo "PASS: Multi-Agent integration retained but disabled during CI"
+
+      - name: Set up Python for post-commit endpoint tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install post-commit test dependencies
+        run: pip install --no-cache-dir pytest==9.1.1 requests==2.33.0
+
+      - name: Run post-commit endpoint tests
+        env:
+          BACKEND_URL: http://localhost:5004
+        run: |
+          set +e
+          pytest tests/post_commit/student4/test_student4_endpoints.py -v | tee /tmp/post-commit-test-output.txt
+          echo "PYTEST_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+          set -e
+
+      - name: Write post-commit test results and audit evidence
+        if: always()
+        run: |
+          mkdir -p reports/release2/student4
+          STATUS="PASS"
+          if [ "${PYTEST_EXIT:-1}" != "0" ]; then
+            STATUS="FAIL"
+          fi
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          {
+            echo "# Student 4 Post-Commit Endpoint Test Results"
+            echo ""
+            echo "- Date: $TIMESTAMP"
+            echo "- Backend URL: http://localhost:5004 (running container, MCP/RAG/Multi-Agent disabled)"
+            echo "- Endpoints tested: GET /projects, GET /projects/<id> (known id and unknown-id 404 case)"
+            echo "- Status: $STATUS"
+            echo ""
+            echo '```'
+            cat /tmp/post-commit-test-output.txt 2>/dev/null || echo "(tests did not run - an earlier step in this job failed)"
+            echo '```'
+          } > reports/release2/student4/post-commit-test-results.md
+
+          printf '{"status": "%s", "timestamp": "%s"}\n' "$STATUS" "$TIMESTAMP" >> reports/release2/student4/post-commit-audit.jsonl
+
+          if [ "$STATUS" = "FAIL" ]; then
+            echo "FAIL: post-commit endpoint tests failed - see reports/release2/student4/post-commit-test-results.md"
+            exit 1
+          fi
+          echo "PASS: post-commit endpoint tests, results written to reports/release2/student4/post-commit-test-results.md"
+
+      - name: Upload post-commit test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: student4-post-commit-test-evidence
+          path: |
+            reports/release2/student4/post-commit-test-results.md
+            reports/release2/student4/post-commit-audit.jsonl
 
       - name: Collect container logs on failure
         if: failure()

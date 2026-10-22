@@ -11,6 +11,7 @@ from routes.ai_analysis_routes import ai_analysis_bp
 from routes.ai_mode_html import ai_mode_html_bp
 from routes.mcp_mode import mcp_bp
 from routes.rag_mode import rag_bp
+from routes.multi_agent_mode import multi_agent_bp
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -27,10 +28,12 @@ app.register_blueprint(ai_analysis_bp)
 app.register_blueprint(ai_mode_html_bp, url_prefix="/htmx")
 app.register_blueprint(mcp_bp)
 app.register_blueprint(rag_bp)
+app.register_blueprint(multi_agent_bp)
 
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "service": "research-grant-management"}), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5004)), debug=True)
+    debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5004)), debug=debug_mode)  # noqa: S104 - container needs to bind all interfaces
