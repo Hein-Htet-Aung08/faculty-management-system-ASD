@@ -8,6 +8,7 @@ from collectors import (
     rag_collector,
     multi_agent_workflow_collector,
     testing_report_collector,
+    cloud_deployment_report_collector,
 )
 from pathlib import Path
 from collectors.common import find_student_dirs, student_label, student_number
@@ -25,6 +26,7 @@ from pipelines import (
     rag_pipeline,
     multi_agent_workflow_pipeline,
     testing_report_pipeline,
+    cloud_deployment_report_pipeline,
 )
 import re
 
@@ -104,11 +106,8 @@ def run_mode(mode_key, app_dir, repo_root, *, modes=None, registry=None, runner=
         )
 
     if mode_key == "cloud_deployment_report_review":
-        return (
-            f"[{cfg.label}]\n"
-            "Status: NOT_READY\n"
-            "Deployment evidence is not yet available.\n"
-            "No AI review was executed."
+        return _run_cloud_deployment_report_review(
+            cfg, app_dir, repo_root, registry, runner
         )
 
     if cfg.per_student:
@@ -980,4 +979,93 @@ def _run_testing_report_review(
         f"{cfg.label} completed.\n"
         f"Report: {report_path}\n"
         "Deterministic findings remain authoritative."
+    )
+
+
+def _run_cloud_deployment_report_review(
+    cfg, app_dir, repo_root, registry, runner
+):
+    tag = "CLOUD DEPLOYMENT REVIEW"
+
+    reporter.print_running_header(cfg.label)
+    _log(tag, "OBSERVE", "Collecting cloud deployment evidence.")
+
+    try:
+        ok, evidence = cloud_deployment_report_collector.collect(
+            app_dir, repo_root
+        )
+    except Exception as exc:
+        return f"OBSERVE FAILED: {type(exc).__name__}: {exc}"
+
+    if not ok:
+        return evidence
+
+    _log(tag, "OBSERVE", "Cloud deployment evidence collected.")
+
+    try:
+        task_prompt = registry.read(
+            cfg.prompt_family,
+            cfg.implementation_prompts[0],
+        )
+
+        review_prompt = registry.read(
+            cfg.prompt_family,
+            cfg.review_prompts[0],
+        )
+    except (FileNotFoundError, OSError) as exc:
+        return f"PROMPT LOADING FAILED: {exc}"
+
+    implementation_user = (
+        cloud_deployment_report_pipeline.build_implementation_prompt(
+            task_prompt, evidence
+        )
+    )
+
+    _log(tag, "ACT", "Running implementation assessment.")
+
+    implementation, error = runner.call(
+        "You are an evidence-grounded cloud release validation analyst.",
+        implementation_user,
+        review=False,
+    )
+
+    if error:
+        return f"IMPLEMENTATION MODEL FAILED: {error}"
+
+    review_user = (
+        cloud_deployment_report_pipeline.build_review_prompt(
+            implementation, evidence
+        )
+    )
+
+    _log(tag, "ADAPT", "Running independent reviewer.")
+
+    review, error = runner.call(
+        review_prompt,
+        review_user,
+        review=True,
+    )
+
+    if error:
+        return f"REVIEW MODEL FAILED: {error}"
+
+    print("\nOBSERVE:\n" + evidence)
+    print("\nIMPLEMENTATION ASSESSMENT:\n" + implementation)
+    print("\nINDEPENDENT REVIEW:\n" + review)
+
+    report_path = reporter.write_release2_review_report(
+        repo_root,
+        cfg.key,
+        cfg.label,
+        evidence,
+        implementation,
+        review,
+    )
+
+    _log(tag, "RECORD", f"Report saved: {report_path}")
+
+    return (
+        f"{cfg.label} completed.\n"
+        f"Report: {report_path}\n"
+        "AI findings are advisory. The release decision is made by a human."
     )
