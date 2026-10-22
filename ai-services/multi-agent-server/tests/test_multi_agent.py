@@ -153,10 +153,51 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(items[1]["record"]["staff_name"], "John Smith")
         self.assertEqual(items[1]["record"]["department"], "Computer Science")
 
-    def test_unfilled_sections_report_not_implemented(self):
-        for student in (1, 2, 4, 5):
-            with self.assertRaisesRegex(evidence.EvidenceError, f"Student {student} evidence is not implemented"):
-                evidence.FEATURES[f"student{student}"]["collect"]()
+    def test_student4_denormalises_project_title_onto_each_grant(self):
+        responses = {
+            "/projects": [{"projectID": 1, "title": "AI-Driven Curriculum Analytics",
+                           "department": "Computer Science", "status": "in progress"}],
+            "/projects/1/grants": [{"grantID": 10, "projectID": 1, "fundingBody": "ARC",
+                                    "amountRequested": 150000, "status": "awarded"}],
+            "/ai-analysis": [{"analysisID": 5, "projectID": 1, "generatedSummary": "Strong progress."}],
+        }
+        with patch.object(evidence, "fetch_json", side_effect=lambda base, path, params=None: responses[path]):
+            items = evidence.student4_evidence()
+
+        self.assertEqual(
+            [i["source"] for i in items],
+            ["student4/projects/1", "student4/grants/10", "student4/research_history/5"],
+        )
+        self.assertEqual(items[1]["record"]["projectTitle"], "AI-Driven Curriculum Analytics")
+
+    def test_student1_builds_one_record_per_staff_member_without_contact_details(self):
+        responses = {
+            # /api/staff repeats a staff member once per expertise row
+            "/api/staff": [
+                {"staff_id": 1, "name": "John Smith", "department_name": "Computer Science",
+                 "position": "Lecturer", "employment_type": "Full-time", "status": "Active",
+                 "email": "j@x", "expertise_area": "Cloud"},
+                {"staff_id": 1, "name": "John Smith", "department_name": "Computer Science",
+                 "position": "Lecturer", "employment_type": "Full-time", "status": "Active",
+                 "email": "j@x", "expertise_area": "Data"},
+            ],
+            "/api/staff/1/expertise": [{"expertise_area": "Cloud", "skill_level": 5},
+                                       {"expertise_area": "Data", "skill_level": 3}],
+            "/api/staff/1/qualifications": [],
+            "/api/staff/1/availability": [{"day": "Monday", "time_slot": "AM", "availability_status": "Available"}],
+        }
+        with patch.object(evidence, "fetch_json", side_effect=lambda base, path, params=None: responses[path]):
+            items = evidence.student1_evidence()
+
+        self.assertEqual([i["source"] for i in items], ["student1/staff/1"])
+        record = items[0]["record"]
+        self.assertNotIn("email", record)
+        self.assertEqual(record["department"], "Computer Science")
+        self.assertEqual(record["expertise"], "Cloud (skill 5/5); Data (skill 3/5)")
+        self.assertEqual(record["qualifications"], "None recorded")
+        self.assertEqual(record["availability"], "Monday AM: Available")
+
+
 
     def test_select_relevant_prefers_matching_records(self):
         items = [
@@ -173,6 +214,39 @@ class EvidenceTests(unittest.TestCase):
     def test_parse_sections_handles_markdown_bold_headings(self):
         sections = parse_sections("**Risk:** Low\n**Recommendation:** Accept", ["Risk", "Recommendation"])
         self.assertEqual(sections, {"Risk": "Low", "Recommendation": "Accept"})
+
+    
+    def test_student2_collects_all_four_evidence_types(self):
+        context = {
+            "subjects": [
+                {"subject_code": "41114", "name": "Advanced Software Development"}
+            ],
+            "subject_offers": [
+                {"offer_id": "41114_SPR_2026", "year": "2026"}
+            ],
+            "classrooms": [
+                {"classroom_id": "CB11.04.406", "capacity": 30}
+            ],
+            "teaching_allocations": [
+                {"allocation_id": 4, "classroom_id": "CB11.04.406",
+                 "email": "private@example.com"}
+            ],
+        }
+
+        with patch.object(evidence, "fetch_json", return_value=context):
+            items = evidence.student2_evidence()
+
+        self.assertEqual(
+            [item["source"] for item in items],
+            [
+                "student2/subjects/41114",
+                "student2/subject_offers/41114_SPR_2026",
+                "student2/classrooms/CB11.04.406",
+                "student2/teaching_allocations/4",
+            ],
+        )
+        self.assertNotIn("email", items[3]["record"])
+
 
 
 class ApiTests(TempLogs):

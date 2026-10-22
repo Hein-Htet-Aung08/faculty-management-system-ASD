@@ -107,21 +107,51 @@ def not_implemented(student):
 #
 # OWNER: Student 1 - Andy
 #
-# TODO: return evidence for your feature, read through your own
-# backend/API (never another student's database).
-#
-# Pattern:
-#
-# def student1_evidence():
-#     rows = as_list(fetch_json(STUDENT1_BACKEND_URL, "/api/<your-route>"))
-#     return items_from(rows, "student1/<resource>")
-#
-# Each item's source (e.g. "student1/<resource>/<id>") is what
-# the Worker cites. Also update your evidence_description in
-# FEATURES below.
+# One item per staff member, read from the Student 1 backend API
+# (the same routes the RAG loader uses). Expertise, qualifications
+# and availability are flattened into text on the staff record so
+# the Worker can answer from a single cited source per person.
+
+def _joined(rows, format_row):
+    return "; ".join(format_row(row) for row in rows if isinstance(row, dict)) or "None recorded"
+
 
 def student1_evidence():
-    not_implemented(1)
+    # /api/staff returns one row per staff/expertise pair, so de-duplicate
+    staff_rows = as_list(fetch_json(STUDENT1_BACKEND_URL, "/api/staff"))
+    staff_by_id = {}
+    for row in staff_rows:
+        if isinstance(row, dict) and row.get("staff_id") is not None:
+            staff_by_id.setdefault(row["staff_id"], row)
+
+    items = []
+    for staff_id, row in staff_by_id.items():
+        expertise = as_list(fetch_json(STUDENT1_BACKEND_URL, f"/api/staff/{staff_id}/expertise"))
+        qualifications = as_list(fetch_json(STUDENT1_BACKEND_URL, f"/api/staff/{staff_id}/qualifications"))
+        availability = as_list(fetch_json(STUDENT1_BACKEND_URL, f"/api/staff/{staff_id}/availability"))
+
+        record = {
+            "staff_id": staff_id,
+            "name": row.get("name"),
+            "department": row.get("department_name"),
+            "position": row.get("position"),
+            "employment_type": row.get("employment_type"),
+            "status": row.get("status"),
+            "expertise": _joined(
+                expertise, lambda e: f"{e.get('expertise_area')} (skill {e.get('skill_level')}/5)"
+            ),
+            "qualifications": _joined(
+                qualifications,
+                lambda q: f"{q.get('qualification_name')}, {q.get('institution')} ({q.get('year_obtained')})",
+            ),
+            "availability": _joined(
+                availability,
+                lambda a: f"{a.get('day')} {a.get('time_slot')}: {a.get('availability_status')}",
+            ),
+        }
+        items.append(evidence_item(f"student1/staff/{staff_id}", record))
+
+    return items
 
 
 # ============================================================
@@ -143,8 +173,45 @@ def student1_evidence():
 # the Worker cites. Also update your evidence_description in
 # FEATURES below.
 
+
 def student2_evidence():
-    not_implemented(2)
+    context = fetch_json(
+        STUDENT2_BACKEND_URL,
+        "/api/rag/context",
+    )
+
+    if not isinstance(context, dict):
+        raise EvidenceError(
+            "Student 2 evidence must be a JSON object."
+        )
+
+    collections = {
+        "subjects": "subject_code",
+        "subject_offers": "offer_id",
+        "classrooms": "classroom_id",
+        "teaching_allocations": "allocation_id",
+    }
+
+    items = []
+
+    for collection, id_field in collections.items():
+        rows = as_list(context.get(collection))
+
+        for index, record in enumerate(rows, start=1):
+            if not isinstance(record, dict):
+                continue
+
+            record_id = record.get(id_field) or index
+
+            items.append(
+                evidence_item(
+                    f"student2/{collection}/{record_id}",
+                    record,
+                )
+            )
+
+    return items
+
 
 
 # ============================================================
@@ -191,22 +258,30 @@ def student3_evidence():
 # ============================================================
 #
 # OWNER: Student 4 - Nicholas
-#
-# TODO: return evidence for your feature, read through your own
-# backend/API (never another student's database).
-#
-# Pattern:
-#
-# def student4_evidence():
-#     rows = as_list(fetch_json(STUDENT4_BACKEND_URL, "/api/<your-route>"))
-#     return items_from(rows, "student4/<resource>")
-#
-# Each item's source (e.g. "student4/<resource>/<id>") is what
-# the Worker cites. Also update your evidence_description in
-# FEATURES below.
 
 def student4_evidence():
-    not_implemented(4)
+    projects = as_list(fetch_json(STUDENT4_BACKEND_URL, "/projects"))
+
+    grant_items = []
+    for project in projects:
+        project_id = project.get("projectID")
+        if project_id is None:
+            continue
+        grants = as_list(fetch_json(STUDENT4_BACKEND_URL, f"/projects/{project_id}/grants"))
+        grant_items.extend(
+            evidence_item(
+                f"student4/grants/{grant.get('grantID', index)}",
+                {**grant, "projectTitle": project.get("title")},
+            )
+            for index, grant in enumerate(grants, start=1)
+            if isinstance(grant, dict)
+        )
+
+    analyses = as_list(fetch_json(STUDENT4_BACKEND_URL, "/ai-analysis"))
+
+    project_items = items_from(projects, "student4/projects")
+    analysis_items = items_from(analyses, "student4/research_history")
+    return project_items + grant_items + analysis_items
 
 
 # ============================================================
@@ -214,22 +289,68 @@ def student4_evidence():
 # ============================================================
 #
 # OWNER: Student 5 - Matthew
-#
-# TODO: return evidence for your feature, read through your own
-# backend/API (never another student's database).
-#
-# Pattern:
-#
-# def student5_evidence():
-#     rows = as_list(fetch_json(STUDENT5_BACKEND_URL, "/api/<your-route>"))
-#     return items_from(rows, "student5/<resource>")
-#
-# Each item's source (e.g. "student5/<resource>/<id>") is what
-# the Worker cites. Also update your evidence_description in
-# FEATURES below.
 
 def student5_evidence():
-    not_implemented(5)
+    resources = {
+        "performance-reviews": "reviewID",
+        "development-goals": "goalID",
+        "training-programs": "trainingID",
+        "staff-training": "staffTrainingID",
+        "development-recommendations": "recommendationID",
+    }
+    records = {}
+    for resource, key in resources.items():
+        rows = as_list(fetch_json(STUDENT5_BACKEND_URL, f"/api/{resource}"))
+        if any(not isinstance(row, dict) or row.get(key) is None for row in rows):
+            raise EvidenceError(f"unexpected {resource} record")
+        records[resource] = rows
+
+    staff_names = {}
+    try:
+        directory = as_list(
+            fetch_json(STUDENT5_BACKEND_URL, "/api/integration/staff"), "staff"
+        )
+        for staff in directory:
+            if isinstance(staff, dict) and staff.get("staff_id") and staff.get("name"):
+                staff_names[staff["staff_id"]] = staff["name"]
+    except EvidenceError:
+        pass
+
+    programs = {row["trainingID"]: row for row in records["training-programs"]}
+    goals = {row["goalID"]: row for row in records["development-goals"]}
+    items = []
+
+    for resource, key in resources.items():
+        for row in records[resource]:
+            record = {
+                "staffID": row.get("staffID"),
+                "staffName": staff_names.get(row.get("staffID")),
+                "status": row.get("status"), **row,
+            }
+            if resource == "development-goals":
+                record = {
+                    "title": row.get("title"), "progress": row.get("progress"),
+                    "targetDate": row.get("targetDate"), **record,
+                }
+            elif resource == "training-programs":
+                record = {
+                    "title": row.get("title"), "skillArea": row.get("skillArea"),
+                    "provider": row.get("provider"), **record,
+                }
+            elif resource == "staff-training":
+                program = programs.get(row.get("trainingID"), {})
+                record = {"trainingTitle": program.get("title"), **record}
+            elif resource == "development-recommendations":
+                goal = goals.get(row.get("goalID"), {})
+                record = {
+                    "actionState": "Proposed recommendation",
+                    "staffID": row.get("staffID"), "status": row.get("status"),
+                    "goalTitle": goal.get("title"),
+                    "recommendation": row.get("recommendation"), **record,
+                }
+            items.append(evidence_item(f"student5/{resource}/{row[key]}", record))
+
+    return items
 
 
 # ============================================================
@@ -243,13 +364,20 @@ FEATURES = {
     "student1": {
         "name": "Academic Staff Management",
         "owner": "Andy Lam",
-        "evidence_description": "TODO: describe the evidence your section supplies",
+        "evidence_description": (
+            "one record per staff member: department, position, employment type, "
+            "status, expertise areas with skill level (1-5), qualifications and "
+            "weekly availability"
+        ),
         "collect": student1_evidence,
     },
     "student2": {
         "name": "Teaching, Subject and Classroom Allocation",
         "owner": "Hein Htet Aung",
-        "evidence_description": "TODO: describe the evidence your section supplies",
+        "evidence_description": (
+            "subject records, subject offers, classroom capacities "
+            "and facilities, teaching allocations, schedules and staff assignments"
+        ),
         "collect": student2_evidence,
     },
     "student3": {
@@ -261,13 +389,18 @@ FEATURES = {
     "student4": {
         "name": "Research and Grant Management",
         "owner": "Nicholas Hatzidimitriou",
-        "evidence_description": "TODO: describe the evidence your section supplies",
+        "evidence_description": "research projects, their grants (funding body, amounts, status), "
+                                 "and AI-generated research history summaries",
         "collect": student4_evidence,
     },
     "student5": {
         "name": "Performance and Professional Development",
         "owner": "Matthew Barnard",
-        "evidence_description": "TODO: describe the evidence your section supplies",
+        "evidence_description": (
+            "performance reviews, development goals with progress and target dates, "
+            "training programs, staff enrolments with program titles, and proposed "
+            "development recommendations with related goals and decision status"
+        ),
         "collect": student5_evidence,
     },
 }

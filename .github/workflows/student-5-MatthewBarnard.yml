@@ -6,6 +6,7 @@ on:
       - "student-5Matthew-Barnard/**"
       - "ai-services/mcp-server/**"
       - "ai-services/rag-server/**"
+      - "ai-services/multi-agent-server/**"
       - "docker-compose.yml"
       - ".github/workflows/student-5-MatthewBarnard.yml"
   pull_request:
@@ -13,9 +14,16 @@ on:
       - "student-5Matthew-Barnard/**"
       - "ai-services/mcp-server/**"
       - "ai-services/rag-server/**"
+      - "ai-services/multi-agent-server/**"
       - "docker-compose.yml"
       - ".github/workflows/student-5-MatthewBarnard.yml"
   workflow_dispatch:
+
+env:
+  AI_MODE_ENABLED: "false"
+  MCP_ENABLED: "false"
+  RAG_ENABLED: "false"
+  MULTI_AGENT_ENABLED: "false"
 
 jobs:
   test:
@@ -33,7 +41,9 @@ jobs:
           cache-dependency-path: |
             student-5Matthew-Barnard/backend-service/requirements.txt
             student-5Matthew-Barnard/database-service/requirements.txt
+            student-5Matthew-Barnard/requirements-dev.txt
             ai-services/rag-server/requirements.txt
+            ai-services/multi-agent-server/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -41,6 +51,28 @@ jobs:
           python -m pip install -r student-5Matthew-Barnard/backend-service/requirements.txt
           python -m pip install -r student-5Matthew-Barnard/database-service/requirements.txt
           python -m pip install -r ai-services/rag-server/requirements.txt
+          python -m pip install -r ai-services/multi-agent-server/requirements.txt
+          python -m pip install -r student-5Matthew-Barnard/requirements-dev.txt
+
+      - name: Validate security hook configuration
+        run: python -m pre_commit validate-config student-5Matthew-Barnard/.pre-commit-config.yaml
+
+      - name: "Post-commit endpoint tests: GET and POST /api/development-goals"
+        run: |
+          mkdir -p student-5Matthew-Barnard/reports/release2
+          set -o pipefail
+          python -m pytest student-5Matthew-Barnard/tests/test_release2_endpoints.py -v \
+            --junitxml=student-5Matthew-Barnard/reports/release2/endpoint-tests.xml \
+            2>&1 | tee student-5Matthew-Barnard/reports/release2/endpoint-tests.txt
+
+      - name: Upload endpoint test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-5-release-2-endpoint-tests
+          path: |
+            student-5Matthew-Barnard/reports/release2/endpoint-tests.txt
+            student-5Matthew-Barnard/reports/release2/endpoint-tests.xml
 
       - name: Test database service
         working-directory: student-5Matthew-Barnard/database-service
@@ -58,6 +90,10 @@ jobs:
         working-directory: ai-services/rag-server
         run: python -m unittest discover -s tests -v
 
+      - name: Test shared Multi-Agent workflows and Student 5 evidence
+        working-directory: ai-services/multi-agent-server
+        run: python -m unittest discover -s tests -v
+
   smoke-test:
     name: Build and smoke-test containers
     needs: test
@@ -69,8 +105,8 @@ jobs:
       - name: Validate Compose configuration
         run: |
           docker compose -f student-5Matthew-Barnard/docker-compose.yml config
-          docker compose -f student-5Matthew-Barnard/docker-compose.yml config --format json | python -c 'import json,sys; e=json.load(sys.stdin)["services"]["student5-backend"]["environment"]; assert e["AI_MODE_ENABLED"] == "true" and e["MCP_ENABLED"] == "true" and e["RAG_ENABLED"] == "true"; assert e["RAG_SERVER_URL"].endswith(":5200")'
-          docker compose config --format json | python -c 'import json,sys; c=json.load(sys.stdin); s=c["services"]["student5-backend"]; e=s["environment"]; assert e["AI_MODE_ENABLED"] == "true" and e["MCP_ENABLED"] == "true" and e["RAG_ENABLED"] == "true"; assert e["MCP_SERVER_URL"].endswith(":5201/mcp") and e["RAG_SERVER_URL"].endswith(":5200"); assert "mcp-server" not in c["services"] and "rag-server" not in c["services"]'
+          docker compose -f student-5Matthew-Barnard/docker-compose.yml config --format json | python -c 'import json,sys; c=json.load(sys.stdin); e=c["services"]["student5-backend"]["environment"]; assert all(e[key] == "true" for key in ["AI_MODE_ENABLED", "MCP_ENABLED", "RAG_ENABLED", "MULTI_AGENT_ENABLED"]); assert e["RAG_SERVER_URL"].endswith(":5200") and e["MULTI_AGENT_SERVER_URL"] == "http://host.docker.internal:5202"; assert not {"ollama", "mcp-server", "rag-server", "multi-agent-server"}.intersection(c["services"])'
+          docker compose config --format json | python -c 'import json,sys; c=json.load(sys.stdin); e=c["services"]["student5-backend"]["environment"]; assert all(e[key] == "true" for key in ["AI_MODE_ENABLED", "MCP_ENABLED", "RAG_ENABLED", "MULTI_AGENT_ENABLED"]); assert e["MCP_SERVER_URL"].endswith(":5201/mcp") and e["RAG_SERVER_URL"].endswith(":5200") and e["MULTI_AGENT_SERVER_URL"] == "http://host.docker.internal:5202"; assert not {"ollama", "mcp-server", "rag-server", "multi-agent-server"}.intersection(c["services"])'
 
       - name: Build all three feature services
         run: |
@@ -86,7 +122,8 @@ jobs:
           docker run -d --name student5-backend --network student5-ci -p 5005:5005 \
             -e PORT=5005 -e DATABASE_SERVICE_URL=http://student5-database:5105 \
             -e OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 -e LLM_TIMEOUT=5 \
-            -e AI_MODE_ENABLED=false -e MCP_ENABLED=false -e RAG_ENABLED=false student5-backend:ci
+            -e AI_MODE_ENABLED=false -e MCP_ENABLED=false -e RAG_ENABLED=false \
+            -e MULTI_AGENT_ENABLED=false student5-backend:ci
           docker run -d --name student5-frontend --network student5-ci -p 8005:80 \
             -v "$PWD/shared/frontend/css:/usr/share/nginx/html/css:ro" student5-frontend:ci
 
@@ -159,6 +196,7 @@ jobs:
             [ "$code" = "200" ] || { echo "FAIL $asset returned $code"; exit 1; }
           done
           curl -fsS http://localhost:8005/ | grep -q 'RAG Questions'
+          curl -fsS http://localhost:8005/ | grep -q 'Multi-Agent'
           code=$(curl -s -o /tmp/ai-response -w "%{http_code}" http://localhost:8005/api/ai/health)
           [ "$code" = "503" ] || { cat /tmp/ai-response; exit 1; }
           grep -q 'AI-Mode is disabled' /tmp/ai-response
@@ -192,6 +230,21 @@ jobs:
           [ "$code" = "503" ] || { cat /tmp/student5-rag-refresh-response; exit 1; }
           echo "PASS RAG integration is present and disabled in CI"
 
+      - name: Verify Multi-Agent remains disabled in CI
+        run: |
+          curl -fsS http://localhost:8005/api/multi-agent/status | python -c 'import json,sys; assert json.load(sys.stdin)["enabled"] is False'
+          for path in /api/multi-agent/workflow /api/multi-agent/workflow/test/decision; do
+            code=$(curl -s -o /tmp/student5-multi-agent-response -w "%{http_code}" \
+              -X POST -H 'Content-Type: application/json' -d '{}' "http://localhost:8005$path")
+            [ "$code" = "503" ] || { cat /tmp/student5-multi-agent-response; exit 1; }
+            grep -q 'Multi-Agent integration is disabled' /tmp/student5-multi-agent-response
+          done
+          for path in /api/multi-agent/workflow/history /api/multi-agent/workflow/test; do
+            code=$(curl -s -o /tmp/student5-multi-agent-response -w "%{http_code}" "http://localhost:8005$path")
+            [ "$code" = "503" ] || { cat /tmp/student5-multi-agent-response; exit 1; }
+          done
+          echo "PASS Multi-Agent integration is present and disabled in CI"
+
       - name: Show service logs
         if: always()
         run: |
@@ -210,11 +263,17 @@ jobs:
     needs: smoke-test
     runs-on: ubuntu-latest
     steps:
+      - name: Download endpoint test results
+        uses: actions/download-artifact@v4
+        with:
+          name: student-5-release-2-endpoint-tests
+          path: evidence/endpoint-tests
+
       - name: Create evidence summary
         run: |
           mkdir -p evidence
           cat > evidence/student-5-ci-summary.md <<EOF
-          # Student 5 Release 1 CI evidence
+          # Student 5 Release 2 CI evidence
 
           - Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           - Commit: ${{ github.sha }}
@@ -224,9 +283,11 @@ jobs:
           This run validated Python tests, three Docker image builds, service health,
           ten-or-more seed records per table, all five resource endpoints, a complete
           CRUD lifecycle through the frontend proxy, frontend assets, and
-          AI-Mode disabled behaviour. It also checked the Student 5 shared MCP tools,
-          RAG context tests, local MCP and RAG connection configuration, and
-          disabled MCP and RAG modes in the CI test stack.
+          AI-Mode disabled behaviour. It also ran the dedicated GET and POST
+          development-goal endpoint tests, Student 5 shared MCP tools, RAG context
+          tests, shared Multi-Agent tests and Student 5 evidence tests. Local
+          connection settings and disabled MCP, RAG and Multi-Agent modes were
+          checked in the CI test stack. Endpoint results are included as text and XML.
 
           The shared agentic loop is outside this feature workflow and needs
           separate evidence from genuine local executions.
@@ -235,5 +296,5 @@ jobs:
       - name: Upload evidence artifact
         uses: actions/upload-artifact@v4
         with:
-          name: student-5-release-1-ci-evidence
+          name: student-5-release-2-ci-evidence
           path: evidence/

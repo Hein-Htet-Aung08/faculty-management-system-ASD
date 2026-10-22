@@ -1,0 +1,211 @@
+<section class="panel-section" id="multi-agent-panel">
+  <h2>Multi-Agent Workflow</h2>
+  <p style="color: var(--line-strong); font-size: 0.9rem;">
+    Describe what you want done with the research and grant data. A Planner agent
+    drafts a plan, a Worker agent carries it out using only evidence from this
+    feature's own backend, and a Reviewer agent checks the result for risk -
+    then you make the final call.
+  </p>
+
+  <form id="multi-agent-run-form" class="form-grid" style="margin-bottom:0.5rem;">
+    <div class="form-field span-2">
+      <label for="multi-agent-request">Request</label>
+      <input
+        type="text"
+        id="multi-agent-request"
+        name="request"
+        placeholder="e.g. Summarise the grants attached to the Financial Risk Modelling with AI project"
+        required
+      >
+    </div>
+    <button type="submit" class="btn">Run Workflow</button>
+  </form>
+
+  <span id="multi-agent-loading" class="loading-indicator">Planner, Worker and Reviewer are working…</span>
+
+  <div id="multi-agent-result" class="ai-result-panel"></div>
+
+  <div style="margin-top:1.5rem;">
+    <button type="button" class="btn secondary" id="multi-agent-history-toggle">Show recent workflows</button>
+    <div id="multi-agent-history"></div>
+  </div>
+</section>
+
+<script>
+(function () {
+  const form = document.getElementById('multi-agent-run-form');
+  const requestInput = document.getElementById('multi-agent-request');
+  const result = document.getElementById('multi-agent-result');
+  const loading = document.getElementById('multi-agent-loading');
+  const historyToggle = document.getElementById('multi-agent-history-toggle');
+  const historyPanel = document.getElementById('multi-agent-history');
+
+  let currentWorkflowId = null;
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML;
+  }
+
+  function section(sections, heading, fallback) {
+    const text = sections && sections[heading];
+    return escapeHtml(text && text.trim() ? text : fallback);
+  }
+
+  function renderWorkflow(data) {
+    currentWorkflowId = data.workflow_id;
+
+    const plannerSections = data.planner_result && data.planner_result.sections || {};
+    const workerSections = data.worker_result && data.worker_result.sections || {};
+    const reviewerSections = data.reviewer_result && data.reviewer_result.sections || {};
+
+    const evidenceUsed = (data.evidence || [])
+      .map((item) => `<li><code>${escapeHtml(item.source)}</code></li>`)
+      .join('') || '<li class="empty-state">No evidence was available.</li>';
+
+    const checks = (data.automated_checks || [])
+      .map((c) => `<li>${c.passed ? '✔' : '✘'} <strong>${escapeHtml(c.check)}</strong>: ${escapeHtml(c.detail)}</li>`)
+      .join('') || '<li class="empty-state">No automated checks recorded.</li>';
+
+    result.innerHTML = `
+      <p><strong>Workflow:</strong> <code>${escapeHtml(data.workflow_id)}</code> - status: ${escapeHtml(data.status)}</p>
+
+      <p style="margin-top:1rem;"><strong>Planner:</strong></p>
+      <p><em>Objective:</em> ${section(plannerSections, 'Objective', 'Not provided.')}</p>
+      <p><em>Steps:</em> ${section(plannerSections, 'Steps', 'Not provided.')}</p>
+      <p><em>Evidence Required:</em> ${section(plannerSections, 'Evidence Required', 'Not provided.')}</p>
+
+      <p style="margin-top:1rem;"><strong>Evidence used (${escapeHtml((data.evidence || []).length)}):</strong></p>
+      <ul>${evidenceUsed}</ul>
+
+      <p style="margin-top:1rem;"><strong>Worker - output:</strong></p>
+      <p>${section(workerSections, 'Output', 'No output produced.')}</p>
+      <p><em>Limitations:</em> ${section(workerSections, 'Limitations', 'None stated.')}</p>
+
+      <p style="margin-top:1rem;"><strong>Automated checks:</strong></p>
+      <ul>${checks}</ul>
+
+      <p style="margin-top:1rem;"><strong>Reviewer:</strong></p>
+      <p><em>Risk:</em> ${section(reviewerSections, 'Risk', 'Not stated.')}</p>
+      <p><em>Correction:</em> ${section(reviewerSections, 'Correction', 'None.')}</p>
+      <p><em>Recommendation:</em> ${section(reviewerSections, 'Recommendation', 'None.')}</p>
+
+      <div class="form-field" style="margin-top:1.25rem;">
+        <label for="multi-agent-reviewer">Your name</label>
+        <input type="text" id="multi-agent-reviewer" placeholder="Reviewer name" value="Nicholas">
+      </div>
+      <div class="form-field" style="margin-top:0.5rem;">
+        <label for="multi-agent-note">Notes (optional)</label>
+        <input type="text" id="multi-agent-note" placeholder="Why you're accepting, correcting, partially accepting or rejecting">
+      </div>
+      <div class="form-field" id="multi-agent-correction-wrapper" style="display:none; margin-top:0.5rem;">
+        <label for="multi-agent-correction">Correction (required for "Correct")</label>
+        <input type="text" id="multi-agent-correction" placeholder="Replacement output">
+      </div>
+
+      <div class="form-field" style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <button type="button" class="btn" data-decision="Accept">Accept</button>
+        <button type="button" class="btn secondary" data-decision="Partially Accept">Partially Accept</button>
+        <button type="button" class="btn secondary" data-decision="Correct">Correct</button>
+        <button type="button" class="btn secondary" data-decision="Reject">Reject</button>
+      </div>
+      <p id="multi-agent-decision-status" style="margin-top:0.5rem; font-size:0.85rem; color: var(--line-strong);"></p>
+    `;
+
+    const correctionWrapper = document.getElementById('multi-agent-correction-wrapper');
+    result.querySelectorAll('[data-decision]').forEach((button) => {
+      button.addEventListener('click', async function () {
+        const decision = button.getAttribute('data-decision');
+        if (decision === 'Correct') {
+          correctionWrapper.style.display = 'block';
+        }
+        await submitDecision(decision);
+      });
+    });
+  }
+
+  async function submitDecision(decision) {
+    const statusEl = document.getElementById('multi-agent-decision-status');
+    const reviewer = document.getElementById('multi-agent-reviewer').value;
+    const notes = document.getElementById('multi-agent-note').value;
+    const correction = document.getElementById('multi-agent-correction').value;
+
+    if (decision === 'Correct' && !correction.trim()) {
+      statusEl.textContent = 'A correction is required for the "Correct" decision.';
+      return;
+    }
+
+    statusEl.textContent = 'Recording decision…';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/multi-agent/workflow/${currentWorkflowId}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, reviewer, notes, correction: correction || null }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        statusEl.textContent = data.error;
+        return;
+      }
+
+      statusEl.textContent = `Recorded: ${data.status}`;
+    } catch (err) {
+      statusEl.textContent = `Request failed: ${err.message}`;
+    }
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const requestText = requestInput.value.trim();
+    if (!requestText) return;
+
+    loading.style.display = 'inline';
+    result.innerHTML = '';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/multi-agent/workflow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_request: requestText }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        result.innerHTML = `<p class="error-state">${escapeHtml(data.error)}</p>`;
+        return;
+      }
+
+      renderWorkflow(data);
+    } catch (err) {
+      result.innerHTML = `<p class="error-state">Request failed: ${escapeHtml(err.message)}</p>`;
+    } finally {
+      loading.style.display = 'none';
+    }
+  });
+
+  historyToggle.addEventListener('click', async function () {
+    if (historyPanel.innerHTML) {
+      historyPanel.innerHTML = '';
+      historyToggle.textContent = 'Show recent workflows';
+      return;
+    }
+
+    historyToggle.textContent = 'Loading…';
+    try {
+      const res = await fetch(`${API_BASE}/api/multi-agent/workflow/history`);
+      const data = await res.json();
+      const rows = (data.workflows || [])
+        .map((w) => `<li><code>${escapeHtml(w.workflow_id)}</code> - "${escapeHtml(w.user_request)}" - ${escapeHtml(w.status)}${w.decision ? ` (${escapeHtml(w.decision)})` : ''}</li>`)
+        .join('') || '<li class="empty-state">No workflows recorded yet.</li>';
+      historyPanel.innerHTML = `<ul style="margin-top:0.75rem;">${rows}</ul>`;
+      historyToggle.textContent = 'Hide recent workflows';
+    } catch (err) {
+      historyPanel.innerHTML = `<p class="error-state">Request failed: ${escapeHtml(err.message)}</p>`;
+      historyToggle.textContent = 'Show recent workflows';
+    }
+  });
+})();
+</script>

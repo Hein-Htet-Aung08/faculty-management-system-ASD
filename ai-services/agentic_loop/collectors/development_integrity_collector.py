@@ -44,7 +44,7 @@ def _insert(connection, spec, values):
     columns = list(values)
     placeholders = ", ".join("?" for _ in columns)
     connection.execute(
-        f"INSERT INTO {spec['table']} ({', '.join(columns)}) VALUES ({placeholders})",
+        f"INSERT INTO {spec['table']} ({', '.join(columns)}) VALUES ({placeholders})",  # noqa: S608 - table/columns come from the fixed internal RESOURCES config, not external input
         [values[column] for column in columns],
     )
 
@@ -87,12 +87,10 @@ def _run_disposable_probes(resource_config, validation, schema):
 def _live_api_evidence(base_url):
     lines = []
     try:
-        with urlopen(f"{base_url}/health", timeout=_HTTP_TIMEOUT) as response:
+        with urlopen(f"{base_url}/health", timeout=_HTTP_TIMEOUT) as response:  # noqa: S310 - base_url is a fixed internal service URL (env var with a hardcoded default), not external input
             lines.append(f"GET /health -> HTTP {response.status}.")
 
-        with urlopen(
-            f"{base_url}/development-goals", timeout=_HTTP_TIMEOUT
-        ) as response:
+        with urlopen(f"{base_url}/development-goals", timeout=_HTTP_TIMEOUT) as response:  # noqa: S310 - same fixed internal service URL
             lines.append(f"GET /development-goals -> HTTP {response.status}.")
             goals = json.load(response)
         inconsistent = [

@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.4, pytest-9.1.1, pluggy-1.7.0 -- /home/nicho/faculty-management-system-ASD/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/nicho/faculty-management-system-ASD
+plugins: anyio-4.15.1, platformdirs-4.13.5
+collecting ... collected 3 items
+
+student-4Nicholas-Hatzidimitriou/tests/test_release2_endpoints.py::test_get_projects_returns_seeded_data PASSED [ 33%]
+student-4Nicholas-Hatzidimitriou/tests/test_release2_endpoints.py::test_get_project_by_id_returns_single_project PASSED [ 66%]
+student-4Nicholas-Hatzidimitriou/tests/test_release2_endpoints.py::test_get_project_by_unknown_id_returns_404 PASSED [100%]
+
+============================== 3 passed in 0.08s ===============================

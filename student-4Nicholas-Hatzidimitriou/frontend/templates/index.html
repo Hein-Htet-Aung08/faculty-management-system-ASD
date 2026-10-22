@@ -55,6 +55,15 @@
       >
         RAG
       </button>
+      <button
+        class="tab-button"
+        hx-get="/tabs/multi-agent"
+        hx-target="#tab-content"
+        hx-swap="innerHTML"
+        onclick="setActiveTab(this)"
+      >
+        Multi-Agent
+      </button>
     </nav>
   </header>
 
@@ -68,13 +77,11 @@
       clicked.classList.add('active');
     }
 
-    // Base URL of this feature's backend API. Update if your team's
-    // integration setup uses a different host/port arrangement.
-    const API_BASE = window.RESEARCH_API_BASE || 'http://localhost:5004';
+    // const API_BASE = 'http://localhost:5004';
+    const API_BASE = {{ research_api_base | tojson }};
 
-    // Base URL of Andy's (Student 1) Staff Management service, used
-    // to enrich staffID references with real names in the UI.
-    const STAFF_API_BASE = window.STAFF_API_BASE || 'http://localhost:5001';
+    // const STAFF_API_BASE = 'http://localhost:5001';
+    const STAFF_API_BASE = {{ staff_api_base | tojson }};
   </script>
 
 </body>

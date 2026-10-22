@@ -1,6 +1,15 @@
 """Release 0 Staff Management behaviour must keep working after Release 1."""
 
+import pytest
+
 import app as app_module
+import llm_client
+
+
+@pytest.fixture
+def ai_mode_on(monkeypatch):
+    monkeypatch.setattr(llm_client, "AI_MODE_ENABLED", True)
+
 
 NEW_STAFF = {
     "name": "Test Person",
@@ -97,7 +106,16 @@ def test_list_departments(client):
     assert len(response.json) == 10
 
 
-def test_generate_analysis_uses_llm_summary_and_rule_based_score(client, monkeypatch):
+def test_generate_analysis_returns_503_when_ai_mode_disabled(client, monkeypatch):
+    monkeypatch.setattr(app_module, "generate_response", lambda *args, **kwargs: pytest.fail("model should not be called"))
+
+    response = client.post("/api/staff/1/generate_analysis")
+
+    assert response.status_code == 503
+    assert "disabled" in response.json["error"]
+
+
+def test_generate_analysis_uses_llm_summary_and_rule_based_score(client, ai_mode_on, monkeypatch):
     monkeypatch.setattr(app_module, "generate_response", lambda *args, **kwargs: "Stub summary.")
 
     response = client.post("/api/staff/1/generate_analysis")
@@ -108,7 +126,7 @@ def test_generate_analysis_uses_llm_summary_and_rule_based_score(client, monkeyp
     assert response.json["suitability_score"] == 10.0
 
 
-def test_generate_analysis_reports_unavailable_llm(client, monkeypatch):
+def test_generate_analysis_reports_unavailable_llm(client, ai_mode_on, monkeypatch):
     def unavailable(*args, **kwargs):
         raise RuntimeError("Could not connect to Ollama")
 

@@ -32,6 +32,9 @@ def print_menu():
                 "  6) MCP            - validate shared MCP integration",
                 "  7) RAG            - validate shared RAG integration",
                 "  8) Run All",
+                "  9) Multi-Agent Workflow Review",
+                " 10) Testing Report Review",
+                " 11) Cloud Deployment Report Review",
                 "  0) Exit",
                 divider(),
             ]
@@ -292,3 +295,57 @@ def write_rag_validation_report(
     )
 
     return path
+
+def write_release2_review_report(
+    repo_root,
+    mode_key,
+    label,
+    evidence,
+    implementation,
+    review,
+):
+    reports_dir = (
+        Path(repo_root)
+        / "reports"
+        / "release2"
+    )
+
+    reports_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    timestamp = _timestamp()
+    stem = f"{mode_key}-{timestamp}"
+
+    markdown = (
+        f"# {label}\n\n"
+        f"Generated: {timestamp}\n\n"
+        "## OBSERVE: Collected Evidence\n\n"
+        f"```text\n{evidence}\n```\n\n"
+        "## ACT: Implementation Assessment\n\n"
+        f"{implementation}\n\n"
+        "## ADAPT: Independent Review\n\n"
+        f"{review}\n\n"
+        "## Human Validation\n\n"
+        "AI findings are advisory. The recorded workflow "
+        "decisions remain authoritative. No source workflow "
+        "or audit records were modified by this review.\n"
+    )
+
+    payload = {
+        "mode": mode_key,
+        "label": label,
+        "timestamp": timestamp,
+        "evidence": evidence,
+        "implementation_assessment": implementation,
+        "independent_review": review,
+        "human_validation_required": True,
+    }
+
+    return _write_pair(
+        reports_dir,
+        stem,
+        markdown,
+        payload,
+    )

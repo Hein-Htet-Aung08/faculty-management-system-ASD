@@ -94,4 +94,41 @@ def build_mode_config():
             ),
             per_student=False,
         ),
+        "multi_agent_workflow_review": ModeConfig(
+            key="multi_agent_workflow_review",
+            label="Multi-Agent Workflow Review",
+            prompt_family="release2",
+            implementation_prompts=(
+                "implementation/multi_agent_workflow_prompt.txt",
+            ),
+            review_prompts=(
+                "review/multi_agent_workflow_review_prompt.txt",
+            ),
+            per_student=False,
+        ),
+        "testing_report_review": ModeConfig(
+            key="testing_report_review",
+            label="Testing Report Review",
+            prompt_family="release2",
+            implementation_prompts=(
+                "implementation/testing_report_prompt.txt",
+            ),
+            review_prompts=(
+                "review/testing_report_review_prompt.txt",
+            ),
+            per_student=False,
+        ),
+        "cloud_deployment_report_review": ModeConfig(
+            key="cloud_deployment_report_review",
+            label="Cloud Deployment Report Review",
+            prompt_family="release2",
+            implementation_prompts=(
+                "implementation/cloud_deployment_report_prompt.txt",
+            ),
+            review_prompts=(
+                "review/cloud_deployment_report_review_prompt.txt",
+            ),
+            per_student=False,
+        ),
+
     }

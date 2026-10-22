@@ -1,0 +1,31 @@
+Student 5 Release 2 endpoint tests
+Run type: local, before commit and push
+Base commit: 02327cb128da3e6f3b89a6dbd56a88a6238e9d53
+Working tree: uncommitted Step 5 and 6 changes
+UTC: 2026-10-22T06:03:30.557673+00:00
+Endpoints: GET /api/development-goals and POST /api/development-goals
+
+============================= test session starts =============================
+platform win32 -- Python 3.12.2, pytest-9.1.1, pluggy-1.7.0 -- C:\Users\Matt\OneDrive\Documents\AdvSoftware\faculty-management-system-ASD\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Matt\OneDrive\Documents\AdvSoftware\faculty-management-system-ASD
+plugins: anyio-4.15.1, platformdirs-4.13.5
+collecting ... collected 14 items
+
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_failed_post_does_not_add_a_goal PASSED [  7%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_get_goals_filters_by_staff_and_status PASSED [ 14%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_get_goals_handles_database_failure PASSED [ 21%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_get_goals_rejects_invalid_status PASSED [ 28%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_get_goals_returns_empty_list_for_no_matches PASSED [ 35%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_get_goals_returns_seeded_records PASSED [ 42%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_post_goal_handles_database_failure PASSED [ 50%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_post_goal_is_saved_and_returned_by_get PASSED [ 57%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_post_goal_rejects_missing_title PASSED [ 64%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_post_goal_rejects_non_object_without_database_call PASSED [ 71%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_post_goal_rejects_progress_outside_range PASSED [ 78%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_post_goal_requires_full_progress_for_completion PASSED [ 85%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_post_goal_returns_created_record PASSED [ 92%]
+student-5Matthew-Barnard/tests/test_release2_endpoints.py::DevelopmentGoalEndpointTests::test_post_goal_stores_sql_text_as_data PASSED [100%]
+
+- generated xml file: C:\Users\Matt\OneDrive\Documents\AdvSoftware\faculty-management-system-ASD\student-5Matthew-Barnard\reports\release2\endpoint-tests.xml -
+============================= 14 passed in 3.29s ==============================

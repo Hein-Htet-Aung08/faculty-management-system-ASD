@@ -21,6 +21,7 @@ from routes.ai_mode import ai_mode_bp
 from routes.mcp_mode import mcp_bp
 from routes.rag_source import rag_source_bp
 from routes.rag_mode import rag_bp
+from routes.multi_agent_mode import multi_agent_bp
 
 
 def create_app():
@@ -69,6 +70,10 @@ def create_app():
         rag_bp
     )
 
+    app.register_blueprint(
+        multi_agent_bp
+    )
+
     return app
 
 
@@ -77,7 +82,7 @@ app = create_app()
 
 if __name__ == "__main__":
     app.run(
-        host="0.0.0.0",
+        host="0.0.0.0",  # noqa: S104 - required for Docker networking
         port=5002,
-        debug=True,
+        debug=False,
     )
