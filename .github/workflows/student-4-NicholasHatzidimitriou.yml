@@ -134,7 +134,7 @@ jobs:
         run: docker build -t student4-backend:ci ./student-4Nicholas-Hatzidimitriou/backend
 
       - name: Build frontend image
-        run: docker build -t student4-frontend:ci ./student-4Nicholas-Hatzidimitriou/frontend
+        run: docker build -t student4-frontend:ci -f student-4Nicholas-Hatzidimitriou/frontend/Dockerfile .
 
       - name: Build database-service image
         run: docker build -t student4-database:ci ./student-4Nicholas-Hatzidimitriou/database-service
