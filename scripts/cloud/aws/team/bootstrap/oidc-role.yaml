@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  GitHub Actions OIDC provider + the deployment role cloud-deployment.yml
+  assumes. TODO(owner: team lead): review the trust policy and the
+  permissions below BEFORE deploying this - they are deliberately left as
+  placeholders, not production-ready defaults. In particular: an AWS
+  account can only have ONE OIDC provider per issuer URL, so if this
+  account already has a GitHub OIDC provider (check IAM > Identity
+  providers first), remove the GitHubOIDCProvider resource below and
+  reference the existing provider's ARN instead.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Description: GitHub org/user that owns the repo, e.g. Hein-Htet-Aung08
+  GitHubRepo:
+    Type: String
+    Description: Repository name, e.g. faculty-management-system-ASD
+  AllowedRef:
+    Type: String
+    Default: "refs/heads/main"
+    Description: >
+      TODO(owner: team lead): which ref is allowed to assume this role.
+      Default only allows pushes/dispatches evaluated against main. If the
+      team wants to run cloud-deployment.yml (workflow_dispatch) from other
+      branches too, this needs widening - see the trust policy's
+      StringLike condition below for exactly what to change.
+  RoleName:
+    Type: String
+    Default: faculty-fms-github-actions-role
+
+Resources:
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        # TODO(owner: team lead): confirm this against AWS's current docs
+        # before relying on it - GitHub rotates this certificate thumbprint
+        # periodically. As of writing, modern AWS accounts can often omit
+        # ThumbprintList entirely for this provider (AWS verifies the TLS
+        # chain itself) - confirm which applies to this account's age/setup.
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !GetAtt GitHubOIDCProvider.Arn
+            Action: 'sts:AssumeRoleWithWebIdentity'
+            Condition:
+              StringEquals:
+                'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com'
+              StringLike:
+                # TODO(owner: team lead): confirm this scoping is what the
+                # team wants - as written, only the ref in AllowedRef (main,
+                # by default) from this exact org/repo can assume this role.
+                'token.actions.githubusercontent.com:sub': !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:${AllowedRef}'
+      # TODO(owner: team lead): this is a PLACEHOLDER permission set - it is
+      # deliberately broad (Resource: "*") so the skeleton isn't blocked on
+      # guessing exact ARNs the team hasn't created yet. Narrow this down
+      # once env-setup.sh / build-and-push-images.sh / deploy.sh have run
+      # for real and the actual resource ARNs (cluster, repos, roles,
+      # namespace) are known. At minimum this needs: ECR push/pull, ECS
+      # register-task-definition/create-service/update-service/describe-*/
+      # list-tasks/describe-tasks/delete-service/delete-cluster, iam:PassRole
+      # for the ECS execution role specifically (not "*"), logs:*, ec2:Describe*,
+      # ec2:CreateSecurityGroup/AuthorizeSecurityGroupIngress/DeleteSecurityGroup,
+      # servicediscovery:* (Service Connect), and iam:CreateServiceLinkedRole.
+      Policies:
+        - PolicyName: TODO-team-lead-review-and-narrow-this-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ecr:*'
+                  - 'ecs:*'
+                  - 'logs:*'
+                  - 'ec2:Describe*'
+                  - 'ec2:CreateSecurityGroup'
+                  - 'ec2:AuthorizeSecurityGroupIngress'
+                  - 'ec2:DeleteSecurityGroup'
+                  - 'servicediscovery:*'
+                  - 'iam:PassRole'
+                  - 'iam:GetRole'
+                  - 'iam:CreateRole'
+                  - 'iam:DeleteRole'
+                  - 'iam:AttachRolePolicy'
+                  - 'iam:DetachRolePolicy'
+                  - 'iam:CreateServiceLinkedRole'
+                Resource: '*' # TODO(owner: team lead): scope this down to real ARNs
+
+Outputs:
+  RoleArn:
+    Description: Pass this to `gh variable set AWS_ROLE_ARN`
+    Value: !GetAtt GitHubActionsRole.Arn
+  OIDCProviderArn:
+    Value: !GetAtt GitHubOIDCProvider.Arn
