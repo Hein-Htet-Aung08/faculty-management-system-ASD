@@ -1,0 +1,52 @@
+{
+  "platform": "AWS",
+  "region": "ap-southeast-2",
+  "hosting": "EC2 + Docker Compose",
+  "deployed_commit": "<commit SHA>",
+  "deployed_at": "<ISO timestamp>",
+  "workflow_run": {
+    "url": "https://github.com/Hein-Htet-Aung08/faculty-management-system-ASD/actions/runs/<run id>",
+    "conclusion": "success",
+    "log": "cloud-deployment-run.log"
+  },
+  "deployment_scripts": ["<path/to/provision script>", "<path/to/deploy script>"],
+  "cloud_config": ["<path/to/cloud compose or env file>"],
+  "services": [
+    {
+      "student": 1,
+      "feature": "Staff Management",
+      "frontend_url": "http://<host>:8001",
+      "backend_url": "http://<host>:5001",
+      "crud_read_path": "/api/staff",
+      "ai_status_path": "/api/ai-services/status"
+    },
+    {
+      "student": 2,
+      "feature": "Teaching, Subject and Classroom Allocation",
+      "frontend_url": "http://<host>:8002",
+      "backend_url": "http://<host>:5002",
+      "crud_read_path": "<read endpoint>"
+    },
+    {
+      "student": 3,
+      "feature": "Workload and Availability Management",
+      "frontend_url": "http://<host>:8003",
+      "backend_url": "http://<host>:5003",
+      "crud_read_path": "/api/staff-workload/profiles"
+    },
+    {
+      "student": 4,
+      "feature": "Research and Grant Management",
+      "frontend_url": "http://<host>:8004",
+      "backend_url": "http://<host>:5004",
+      "crud_read_path": "<read endpoint>"
+    },
+    {
+      "student": 5,
+      "feature": "Performance and Professional Development",
+      "frontend_url": "http://<host>:8005",
+      "backend_url": "http://<host>:5005",
+      "crud_read_path": "<read endpoint>"
+    }
+  ]
+}
