@@ -307,7 +307,7 @@ class RAGHandler(
 def main():
     host = os.getenv(
         "RAG_HOST",
-        "0.0.0.0",
+        "0.0.0.0",  # noqa: S104 - container backends reach this over host.docker.internal
     )
 
     # Student 3 already uses host port 5003.

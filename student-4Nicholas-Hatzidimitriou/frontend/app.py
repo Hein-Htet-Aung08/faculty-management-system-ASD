@@ -10,7 +10,11 @@ app = Flask(__name__, static_folder=_SHARED_CSS_DIR, static_url_path="/css")
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template(
+        "index.html",
+        research_api_base=os.environ.get("RESEARCH_API_BASE", ""),
+        staff_api_base=os.environ.get("STAFF_API_BASE", ""),
+    )
 
 
 @app.route("/tabs/normal")
@@ -33,5 +37,11 @@ def tab_rag():
     return render_template("tabs/rag.html")
 
 
+@app.route("/tabs/multi-agent")
+def tab_multi_agent():
+    return render_template("tabs/multi-agent.html")
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("FLASK_RUN_PORT", 8004)), debug=True)
+    debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=int(os.environ.get("FLASK_RUN_PORT", 8004)), debug=debug_mode)  # noqa: S104 - container needs to bind all interfaces

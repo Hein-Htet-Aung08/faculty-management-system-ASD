@@ -258,22 +258,30 @@ def student3_evidence():
 # ============================================================
 #
 # OWNER: Student 4 - Nicholas
-#
-# TODO: return evidence for your feature, read through your own
-# backend/API (never another student's database).
-#
-# Pattern:
-#
-# def student4_evidence():
-#     rows = as_list(fetch_json(STUDENT4_BACKEND_URL, "/api/<your-route>"))
-#     return items_from(rows, "student4/<resource>")
-#
-# Each item's source (e.g. "student4/<resource>/<id>") is what
-# the Worker cites. Also update your evidence_description in
-# FEATURES below.
 
 def student4_evidence():
-    not_implemented(4)
+    projects = as_list(fetch_json(STUDENT4_BACKEND_URL, "/projects"))
+
+    grant_items = []
+    for project in projects:
+        project_id = project.get("projectID")
+        if project_id is None:
+            continue
+        grants = as_list(fetch_json(STUDENT4_BACKEND_URL, f"/projects/{project_id}/grants"))
+        grant_items.extend(
+            evidence_item(
+                f"student4/grants/{grant.get('grantID', index)}",
+                {**grant, "projectTitle": project.get("title")},
+            )
+            for index, grant in enumerate(grants, start=1)
+            if isinstance(grant, dict)
+        )
+
+    analyses = as_list(fetch_json(STUDENT4_BACKEND_URL, "/ai-analysis"))
+
+    project_items = items_from(projects, "student4/projects")
+    analysis_items = items_from(analyses, "student4/research_history")
+    return project_items + grant_items + analysis_items
 
 
 # ============================================================
@@ -381,7 +389,8 @@ FEATURES = {
     "student4": {
         "name": "Research and Grant Management",
         "owner": "Nicholas Hatzidimitriou",
-        "evidence_description": "TODO: describe the evidence your section supplies",
+        "evidence_description": "research projects, their grants (funding body, amounts, status), "
+                                 "and AI-generated research history summaries",
         "collect": student4_evidence,
     },
     "student5": {
