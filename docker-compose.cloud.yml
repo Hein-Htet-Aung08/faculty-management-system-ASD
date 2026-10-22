@@ -1,0 +1,144 @@
+
+# Release 2: AWS baseline cloud deployment
+#
+# Usage:
+# docker compose -f docker-compose.yml \
+#   -f docker-compose.cloud.yml up -d --build
+#
+# This file overrides docker-compose.yml.
+# AI-Mode, MCP, RAG and Multi-Agent remain disabled in cloud.
+# Only cloud-gateway publishes host ports.
+
+services:
+
+  # ============================================================
+  # Public gateway
+  # ============================================================
+
+  cloud-gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "8001:8001"
+      - "8002:8002"
+      - "8003:8003"
+      - "8004:8004"
+      - "8005:8005"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - home
+      - staff-frontend
+      - staff-backend
+      - allocation-frontend
+      - allocation-backend
+      - student3-frontend
+      - student3-backend
+      - student4-frontend
+      - student5-frontend
+    networks:
+      - faculty-network
+    restart: unless-stopped
+
+  # ============================================================
+  # Unified homepage
+  # ============================================================
+
+  home:
+    ports: !override []
+
+  # ============================================================
+  # Student 1: Staff Management
+  # ============================================================
+
+  staff-database:
+    ports: !override []
+
+  staff-backend:
+    ports: !override []
+    environment:
+      AI_MODE_ENABLED: "false"
+      MCP_ENABLED: "false"
+      RAG_ENABLED: "false"
+      MULTI_AGENT_ENABLED: "false"
+
+  staff-frontend:
+    ports: !override []
+    environment:
+      API_BASE: "http://13.239.54.15:8001"
+
+  # ============================================================
+  # Student 2: Teaching, Subject and Classroom Allocation
+  # ============================================================
+
+  allocation-database:
+    ports: !override []
+
+  allocation-backend:
+    ports: !override []
+    environment:
+      AI_MODE_ENABLED: "false"
+      MCP_ENABLED: "false"
+      RAG_ENABLED: "false"
+      MULTI_AGENT_ENABLED: "false"
+
+  allocation-frontend:
+    ports: !override []
+    environment:
+      API_BASE: "http://13.239.54.15:8002"
+
+  # ============================================================
+  # Student 3: Workload and Availability Management
+  # ============================================================
+
+  student3-database:
+    ports: !override []
+
+  student3-backend:
+    ports: !override []
+    environment:
+      AI_MODE_ENABLED: "false"
+      MCP_ENABLED: "false"
+      RAG_ENABLED: "false"
+      MULTI_AGENT_ENABLED: "false"
+
+  student3-frontend:
+    ports: !override []
+    environment:
+      BACKEND_URL: "http://13.239.54.15:8003"
+
+  # ============================================================
+  # Student 4: Research and Grant Management
+  # ============================================================
+
+  student4-database:
+    ports: !override []
+
+  student4-backend:
+    ports: !override []
+    environment:
+      AI_MODE_ENABLED: "false"
+      MCP_ENABLED: "false"
+      RAG_ENABLED: "false"
+      MULTI_AGENT_ENABLED: "false"
+
+  student4-frontend:
+    ports: !override []
+
+  # ============================================================
+  # Student 5: Performance and Professional Development
+  # ============================================================
+
+  student5-database:
+    ports: !override []
+
+  student5-backend:
+    ports: !override []
+    environment:
+      AI_MODE_ENABLED: "false"
+      MCP_ENABLED: "false"
+      RAG_ENABLED: "false"
+      MULTI_AGENT_ENABLED: "false"
+
+  student5-frontend:
+    ports: !override []
