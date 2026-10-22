@@ -203,7 +203,7 @@ jobs:
       - name: Verify AI-Mode is retained but cleanly disabled
         run: |
           code=$(curl -s -o /tmp/ai-mode-disabled -w '%{http_code}' \
-            -X POST http://localhost:5004/projects/1/generate-summary || true)
+            -X POST http://localhost:5004/htmx/projects/1/generate-summary || true)
           if [ "$code" != "403" ]; then
             echo "FAIL: AI-Mode expected HTTP 403, got $code"
             cat /tmp/ai-mode-disabled || true
