@@ -2,7 +2,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 ENDPOINTS = {
-    "test_endpoints": "GET /api/staff-workload/profiles and /alerts (database faked)",
+    "test_release2_endpoints": "GET /api/staff-workload/profiles and /alerts (database faked)",
     "test_live_endpoints": "GET /api/staff-workload/profiles and /alerts (running containers)",
     "test_multi_agent_mode": "Multi-Agent routes (switch and Student 3 boundary)",
 }
