@@ -1,0 +1,30 @@
+STUDENT 2 - PRE-COMMIT SECURITY REPORT
+Timestamp: 2026-10-28 06:49:24 +1100
+Branch: student-2-hein-teaching-subject-and-classroom-allocation
+Commit base: f806195
+========================================
+Student 2 - Ruff Security Scan...........................................Failed
+- hook id: student2-ruff-security
+- exit code: 1
+
+S602 `subprocess` call with `shell=True` seems safe, but may be changed in the future; consider rewriting without `shell`
+ --> student-2Hein-Htet-Aung/backend/security-demo-temp.py:3:1
+  |
+1 | import subprocess
+2 |
+3 | subprocess.run("echo security test", shell=True)
+  | ^^^^^^^^^^^^^^
+
+S607 Starting a process with a partial executable path
+ --> student-2Hein-Htet-Aung/backend/security-demo-temp.py:3:16
+  |
+1 | import subprocess
+2 |
+3 | subprocess.run("echo security test", shell=True)
+  |                ^^^^^^^^^^^^^^^^^^^^
+
+Found 2 errors.
+
+Student 2 - Secret Detection.............................................Passed
+Student 2 - Dependency Audit.............................................Passed
+Exit status: 1
