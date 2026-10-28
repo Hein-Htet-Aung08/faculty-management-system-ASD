@@ -57,6 +57,9 @@ echo "[4/6] Building and deploying containers..."
     --remove-orphans \
     --wait
 
+# Compose does not recreate the gateway when only nginx.conf changes.
+"${COMPOSE[@]}" restart cloud-gateway
+
 echo "[5/6] Checking container status..."
 
 "${COMPOSE[@]}" ps
